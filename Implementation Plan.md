@@ -50,8 +50,8 @@ src/
 **Tech Stack**: Vitest (Test Runner), JSDOM (Environment)
 
 **Test Files Structure**:
-- `src/utils/__tests__/mathEngine.test.js`
-- `src/utils/__tests__/hmcSampler.test.js`
+- `tests/utils/mathEngine.test.js`
+- `tests/utils/hmcSampler.test.js`
 
 **Test Cases**:
 1. **MathEngine**:
