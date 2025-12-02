@@ -8,21 +8,35 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,css}\"",
+    "prepare": "husky install"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "mathjs": "^13.2.2",
     "plotly.js": "^2.35.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-plotly.js": "^2.6.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "jsdom": "^25.0.1",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.3",
     "vite": "^5.4.10",
-    "vitest": "^2.1.5",
-    "jsdom": "^25.0.1"
+    "vitest": "^2.1.5"
   }
 }

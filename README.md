@@ -23,6 +23,7 @@ npm install
 ```
 
 This will install all required dependencies:
+
 - React & React DOM
 - Vite (build tool)
 - mathjs (math expression parsing)
@@ -51,6 +52,42 @@ npm run test -- --run
 
 # Run tests with UI
 npm run test:ui
+```
+
+### Code Quality
+
+**Linting** (ESLint checks):
+
+```bash
+# Check for linting errors
+npm run lint
+
+# Auto-fix linting issues
+npm run lint:fix
+```
+
+**Formatting** (Prettier):
+
+```bash
+# Format all source files
+npm run format
+
+# Check formatting without making changes
+npm run format:check
+```
+
+**Pre-commit Hooks**:
+
+This project uses [Husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/lint-staged/lint-staged) to automatically run code quality checks before each commit:
+
+- Prettier auto-fixes formatting on staged files
+- ESLint auto-fixes linting issues on `.js` and `.jsx` files
+- Commits are blocked if ESLint finds errors that can't be auto-fixed
+
+To bypass pre-commit hooks (emergencies only):
+
+```bash
+git commit --no-verify -m "your message"
 ```
 
 ## Build
@@ -98,3 +135,32 @@ tests/
 - **Visualization**: plotly.js
 - **Testing**: Vitest with jsdom
 - **Styling**: Vanilla CSS
+- **Code Quality**: ESLint, Prettier
+- **Pre-commit Hooks**: Husky, lint-staged
+- **CI/CD**: GitHub Actions
+
+## CI/CD
+
+This project uses [GitHub Actions](./.github/workflows/ci.yml) for continuous integration. The CI pipeline runs automatically on:
+
+- All pull requests
+- Pushes to the `main` branch
+
+### CI Checks
+
+**Lint Job** (Node 20, Ubuntu):
+
+- Runs ESLint to check for code errors
+- Verifies Prettier formatting
+
+**Test Job** (Node 18 & 20, Ubuntu):
+
+- Runs all Vitest unit tests
+- Ensures compatibility across Node.js LTS versions
+
+**Build Job** (Node 20, Ubuntu):
+
+- Creates production build
+- Verifies build artifacts
+
+**All jobs must pass before a PR can be merged.**

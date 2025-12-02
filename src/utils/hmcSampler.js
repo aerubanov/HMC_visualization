@@ -9,9 +9,9 @@
  * @param {Function} gradU - Gradient function
  * @returns {Object} {q: new position, p: new momentum}
  */
-export function leapfrog(q, p, epsilon, gradU) {
-    // TODO: Implement symplectic integration
-    throw new Error('Not implemented');
+export function leapfrog(_q, _p, _epsilon, _gradU) {
+  // TODO: Implement symplectic integration
+  throw new Error('Not implemented');
 }
 
 /**
@@ -23,7 +23,7 @@ export function leapfrog(q, p, epsilon, gradU) {
  * @param {Function} gradU - Gradient function
  * @returns {Object} {q: new position, accepted: boolean}
  */
-export function step(q, epsilon, L, U, gradU) {
-    // TODO: Implement full HMC step with Metropolis correction
-    throw new Error('Not implemented');
+export function step(_q, _epsilon, _L, _U, _gradU) {
+  // TODO: Implement full HMC step with Metropolis correction
+  throw new Error('Not implemented');
 }

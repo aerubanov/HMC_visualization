@@ -6,9 +6,9 @@
  * @param {string} expression - User input like "-(x^2+y^2)/2"
  * @returns {Function} Compiled function U(x, y)
  */
-export function parseFunction(expression) {
-    // TODO: Implement using math.js
-    throw new Error('Not implemented');
+export function parseFunction(_expression) {
+  // TODO: Implement using math.js
+  throw new Error('Not implemented');
 }
 
 /**
@@ -16,7 +16,7 @@ export function parseFunction(expression) {
  * @param {string} expression - User input like "-(x^2+y^2)/2"
  * @returns {Function} Compiled gradient function returning [dU/dx, dU/dy]
  */
-export function computeGradient(expression) {
-    // TODO: Implement using math.derivative
-    throw new Error('Not implemented');
+export function computeGradient(_expression) {
+  // TODO: Implement using math.derivative
+  throw new Error('Not implemented');
 }
