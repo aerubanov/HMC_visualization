@@ -10,50 +10,11 @@ export class Logp {
     }
 
     // 1. Parse the string to validate and check symbols
-    let pdfNode;
     try {
-      pdfNode = parse(pdfString);
+      parse(pdfString);
     } catch (e) {
       throw new Error(`Syntax error in PDF string: ${e.message}`);
     }
-
-    // Validate symbols (only x, y allowed, plus standard constants and functions)
-    const allowedSymbols = new Set([
-      'x',
-      'y',
-      'e',
-      'pi',
-      'E',
-      'PI',
-      'Infinity',
-      'NaN',
-      'exp',
-      'log',
-      'ln',
-      'sqrt',
-      'pow',
-      'abs',
-      'sin',
-      'cos',
-      'tan',
-      'asin',
-      'acos',
-      'atan',
-      'sinh',
-      'cosh',
-      'tanh',
-    ]);
-
-    pdfNode.traverse((node) => {
-      // Check if it's a symbol node (variable or constant)
-      if (node.isSymbolNode) {
-        if (!allowedSymbols.has(node.name)) {
-          throw new Error(
-            `Unknown symbol: "${node.name}". Only 'x' and 'y' are allowed variables.`
-          );
-        }
-      }
-    });
 
     // 2. Apply log transform: log(pdfString)
     // We wrap the expression in log(...)
@@ -75,6 +36,15 @@ export class Logp {
 
     // Compile for efficiency
     this.logCompiled = this.logNode.compile();
+
+    // Validate by attempting to evaluate at a test point
+    try {
+      this.logCompiled.evaluate({ x: 1, y: 1 });
+    } catch (e) {
+      throw new Error(
+        `Invalid function: unable to evaluate. Ensure only 'x' and 'y' are used as variables. Details: ${e.message}`
+      );
+    }
 
     // 3. Compute symbolic gradients: d(logP)/dx, d(logP)/dy
     try {

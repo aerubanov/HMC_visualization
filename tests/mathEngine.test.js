@@ -12,7 +12,15 @@ describe('Logp Class', () => {
     });
 
     it('should throw an error for unknown variables', () => {
-      expect(() => new Logp('exp(-z)')).toThrow(/Unknown symbol/); // Expecting some error message about 'z'
+      expect(() => new Logp('exp(-z)')).toThrow(
+        /Invalid function: unable to evaluate/
+      );
+    });
+
+    it('should throw an error for undefined functions', () => {
+      expect(() => new Logp('unknownFunc(x)')).toThrow(
+        /Invalid function: unable to evaluate/
+      );
     });
   });
 
