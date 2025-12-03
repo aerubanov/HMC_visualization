@@ -105,22 +105,11 @@ export default function useHMCController() {
     const sampleSteps = useCallback(
         (n) => {
             setIsRunning(true);
-            // In a real app, we might want to do this async or with requestAnimationFrame
-            // For now, we do it synchronously in a loop as requested by the test logic
-            // but in React state updates are batched.
 
-            // If we call stepSampler() n times in a loop, React might batch updates.
-            // However, since we rely on refs for currentParticle, the logic should be correct.
-            // But setSamples will batch.
-
-            // To support "sample N steps", we should probably do the loop here and then update state once?
-            // Or update state N times?
-            // If we update state N times in a loop, React 18 will batch them.
-            // So we might only see the last update.
-
-            // Better approach for React: calculate N steps and update state once.
-
-            if (!logpInstanceRef.current) return;
+            if (!logpInstanceRef.current) {
+                setIsRunning(false);
+                return;
+            }
 
             if (!currentParticleRef.current) {
                 currentParticleRef.current = {
@@ -138,32 +127,46 @@ export default function useHMCController() {
                 return { x: -dx, y: -dy };
             };
 
-            const newSamples = [];
-            const newTrajectories = [];
-            let currentQ = currentParticleRef.current.q;
+            let stepsCompleted = 0;
 
-            try {
-                for (let i = 0; i < n; i++) {
-                    const result = step(currentQ, params.epsilon, params.L, U, gradU);
+            const executeStep = () => {
+                try {
+                    const result = step(
+                        currentParticleRef.current.q,
+                        params.epsilon,
+                        params.L,
+                        U,
+                        gradU
+                    );
 
-                    currentQ = result.q;
-                    newSamples.push(result.q);
+                    currentParticleRef.current = {
+                        q: result.q,
+                        p: result.p || { x: 0, y: 0 },
+                    };
+
+                    // Update state after each step - UI will render between steps
+                    setSamples((prev) => [...prev, result.q]);
                     if (result.trajectory) {
-                        newTrajectories.push(result.trajectory);
+                        setTrajectory((prev) => [...prev, result.trajectory]);
                     }
+                    setCurrentParticle(currentParticleRef.current);
+                    setIterationCount((prev) => prev + 1);
+
+                    stepsCompleted++;
+
+                    if (stepsCompleted < n) {
+                        // Schedule next step on next animation frame
+                        requestAnimationFrame(executeStep);
+                    } else {
+                        setIsRunning(false);
+                    }
+                } catch (e) {
+                    setError(e.message);
+                    setIsRunning(false);
                 }
+            };
 
-                currentParticleRef.current = { q: currentQ, p: { x: 0, y: 0 } }; // Update ref
-
-                setSamples((prev) => [...prev, ...newSamples]);
-                setTrajectory((prev) => [...prev, ...newTrajectories]);
-                setCurrentParticle(currentParticleRef.current);
-                setIterationCount((prev) => prev + n);
-            } catch (e) {
-                setError(e.message);
-            }
-
-            setIsRunning(false);
+            executeStep();
         },
         [params, initialPosition]
     );
