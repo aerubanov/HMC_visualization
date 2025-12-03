@@ -2,6 +2,11 @@
 ## Goal
 Create an interactive web application to visualize the Hamiltonian Monte Carlo (HMC) sampling algorithm. Users can define a custom log-probability density function, adjust sampler parameters, and observe the sampling process and trajectories in real-time.
 
+## Reference papers
+https://arxiv.org/abs/1206.1901
+https://arxiv.org/abs/1111.4246
+https://arxiv.org/abs/1701.02434
+
 ## Architecture Reference
 ### Tech Stack
 - Framework: React (Vite)
