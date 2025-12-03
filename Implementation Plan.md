@@ -1,14 +1,19 @@
 # HMC Visualization Architecture & Implementation Plan
+
 ## Goal
+
 Create an interactive web application to visualize the Hamiltonian Monte Carlo (HMC) sampling algorithm. Users can define a custom log-probability density function, adjust sampler parameters, and observe the sampling process and trajectories in real-time.
 
 ## Reference papers
+
 https://arxiv.org/abs/1206.1901
 https://arxiv.org/abs/1111.4246
 https://arxiv.org/abs/1701.02434
 
 ## Architecture Reference
+
 ### Tech Stack
+
 - Framework: React (Vite)
 - Math Engine: math.js
   - Role: Parses user input strings (e.g., -(x^2+y^2)/2) into executable functions.
@@ -24,6 +29,7 @@ https://arxiv.org/abs/1701.02434
 - Styling: Vanilla CSS (Modern, Dark Mode, Premium feel).
 
 ### Core Logic Modules
+
 - MathEngine
   - Input: User string (e.g., -(x^2)/2).
   - Output:
@@ -31,34 +37,51 @@ https://arxiv.org/abs/1701.02434
     - gradient(x, y): Compiled JS function returning [dU/dx, dU/dy].
 - HMCSampler
   - State: Position $q$, Momentum $p$.
-  - Methods:    
+  - Methods:
     - leapfrog(q, p, epsilon, grad_U): Performs symplectic integration.
-    - step(q, epsilon, L, U, grad_U): Executes one full HMC step (momentum sample -> integration -> Metropolis correction).
+      - $p_{t+\epsilon/2} = p_t - \frac{\epsilon}{2} \nabla U(q_t)$
+      - $q_{t+\epsilon} = q_t + \epsilon p_{t+\epsilon/2}$
+      - $p_{t+\epsilon} = p_{t+\epsilon/2} - \frac{\epsilon}{2} \nabla U(q_{t+\epsilon})$
+    - step(q, epsilon, L, U, grad_U): Executes one full HMC step.
+      1. Sample momentum $p \sim \mathcal{N}(0, I)$
+      2. Simulate dynamics for $L$ steps using `leapfrog`
+      3. Compute energy change $\Delta H = H(q^*, p^*) - H(q, p)$
+      4. Accept with probability $\min(1, e^{-\Delta H})$
 
-## Visualization Strategy: 
+  > [!NOTE]
+  > **Sign Convention**: The MathEngine returns $\log P(q)$ and $\nabla \log P(q)$.
+  > The Potential Energy is $U(q) = -\log P(q)$.
+  > Therefore, `gradU` passed to the sampler must be $-\nabla \log P(q)$.
+
+## Visualization Strategy:
+
 The "Static Background + Dynamic Overlay" approach is natively supported by Plotly's architecture. We will use a single Plot component with an array of data traces. The first trace (contour) will only be recalculated when the user changes the function. The subsequent traces (samples, trajectory) will be updated via React state.
 
 ## Directory Structure
-src/
-  components/
-    Controls.jsx       # Inputs for LogP, epsilon, L
-    Visualizer.jsx     # Plotly wrapper
-  utils/
-    mathEngine.js      # math.js wrappers
-    hmcSampler.js      # Physics simulation
-  App.jsx              # State orchestration
-  index.css            # Global styles
 
+src/
+components/
+Controls.jsx # Inputs for LogP, epsilon, L
+Visualizer.jsx # Plotly wrapper
+utils/
+mathEngine.js # math.js wrappers
+hmcSampler.js # Physics simulation
+App.jsx # State orchestration
+index.css # Global styles
 
 ## Verification Plan
+
 ### Automated Tests
+
 **Tech Stack**: Vitest (Test Runner), JSDOM (Environment)
 
 **Test Files Structure**:
+
 - `tests/utils/mathEngine.test.js`
 - `tests/utils/hmcSampler.test.js`
 
 **Test Cases**:
+
 1. **MathEngine**:
    - `parseFunction`: Verify it correctly compiles valid strings (e.g., "x^2 + y^2") and throws on invalid ones.
    - `computeGradient`: Compare symbolic gradients against known analytical solutions for standard functions (Gaussian, Rosenbrock).
@@ -70,6 +93,7 @@ src/
    - `metropolis`: Mock random number generation to verify acceptance/rejection logic.
 
 ### Manual Verification
+
 Rendering: Confirm contour plot appears and matches the input function.
 Layering: Confirm samples are drawn on top of the contour.
 Animation: Verify the trajectory line animates smoothly without flickering the background contour.
