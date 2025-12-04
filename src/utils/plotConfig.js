@@ -17,6 +17,10 @@ export const COLORS = {
   grid: '#30363d',
   contourLine: '#58a6ff',
   accent: '#f85149',
+  // Trajectory visualization colors
+  trajectory: '#f85149', // Vibrant red/orange for active trajectory
+  sample: '#58a6ff', // Blue for accepted sample points (future)
+  currentParticle: '#56d364', // Green for current position (future)
 };
 
 // Base layout configuration for all plots
@@ -72,6 +76,11 @@ export const PLOT_CONFIG = {
  * @returns {object} Plotly trace object
  */
 export function createContourTrace(x, y, z) {
+  // Calculate z-axis range for proper colorbar scaling
+  const zFlat = z.flat();
+  const zMin = Math.min(...zFlat.filter((v) => !isNaN(v) && isFinite(v)));
+  const zMax = Math.max(...zFlat.filter((v) => !isNaN(v) && isFinite(v)));
+
   return {
     type: 'contour',
     x: x,
@@ -79,6 +88,9 @@ export function createContourTrace(x, y, z) {
     z: z,
     colorscale: 'Viridis',
     showscale: true,
+    // Explicitly set z-axis range to avoid scaling issues
+    zmin: zMin,
+    zmax: zMax,
     contours: {
       coloring: 'heatmap',
       showlabels: true,
@@ -88,11 +100,16 @@ export function createContourTrace(x, y, z) {
       },
     },
     colorbar: {
-      title: 'log P(x, y)',
-      titleside: 'right',
+      title: {
+        text: 'log P(x, y)',
+        side: 'right',
+      },
       tickfont: {
         color: COLORS.text,
       },
+      len: 0.75,
+      thickness: 15,
+      outlinewidth: 0,
     },
     hovertemplate:
       'x: %{x:.2f}<br>y: %{y:.2f}<br>log P: %{z:.2f}<extra></extra>',
@@ -120,4 +137,36 @@ export function generateGrid() {
   );
 
   return { x, y, xGrid, yGrid };
+}
+
+/**
+ * Creates a Plotly scatter trace for HMC trajectory visualization
+ * @param {Array<{x: number, y: number}>} trajectory - Array of trajectory points from leapfrog integrator
+ * @returns {object|null} Plotly trace object or null if trajectory is empty
+ */
+export function createTrajectoryTrace(trajectory) {
+  // Handle invalid or empty trajectory
+  if (!trajectory || !Array.isArray(trajectory) || trajectory.length === 0) {
+    return null;
+  }
+
+  return {
+    type: 'scatter',
+    mode: 'lines+markers',
+    x: trajectory.map((p) => p.x),
+    y: trajectory.map((p) => p.y),
+    line: {
+      color: COLORS.trajectory,
+      width: 2,
+      shape: 'linear',
+    },
+    marker: {
+      size: 4,
+      color: COLORS.trajectory,
+      symbol: 'circle',
+    },
+    name: 'Trajectory',
+    showlegend: true,
+    hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
+  };
 }

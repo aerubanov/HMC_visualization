@@ -12,6 +12,7 @@ function App() {
     isRunning,
     error,
     contourData,
+    trajectory,
     setLogP,
     setParams,
     setInitialPosition,
@@ -39,7 +40,7 @@ function App() {
         />
       </div>
       <div className="App-main">
-        <Visualizer contourData={contourData} />
+        <Visualizer contourData={contourData} trajectory={trajectory} />
       </div>
     </div>
   );

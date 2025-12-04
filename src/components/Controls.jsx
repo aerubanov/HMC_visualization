@@ -44,21 +44,22 @@ function Controls({
       </div>
 
       <div className="controls-content">
-        {/* Log Probability Function */}
+        {/* Probability Function */}
         <section className="control-section">
           <label htmlFor="logp-input" className="control-label">
-            Log Probability Function
+            Probability Function (unnormalized)
           </label>
           <textarea
             id="logp-input"
             className="control-textarea"
-            placeholder="e.g., -(x^2 + y^2)/2"
+            placeholder="e.g., exp(-(x^2 + y^2)/2)"
             value={logP}
             onChange={handleLogPChange}
             rows={3}
           />
           <p className="control-hint">
-            Enter a mathematical expression in terms of x and y
+            Enter an unnormalized probability expression in terms of x and y.
+            The system will automatically compute log(P) and its gradients.
           </p>
         </section>
 

@@ -1,9 +1,13 @@
 import './Visualizer.css';
 import Plot from 'react-plotly.js';
 import PropTypes from 'prop-types';
-import { BASE_LAYOUT, PLOT_CONFIG } from '../utils/plotConfig';
+import {
+  BASE_LAYOUT,
+  PLOT_CONFIG,
+  createTrajectoryTrace,
+} from '../utils/plotConfig';
 
-function Visualizer({ contourData }) {
+function Visualizer({ contourData, trajectory }) {
   // Show placeholder if no contour data is available
   if (!contourData) {
     return (
@@ -57,16 +61,36 @@ function Visualizer({ contourData }) {
     );
   }
 
-  // Render the Plotly contour plot
+  // Build traces array for multi-trace rendering
+  const traces = [];
+
+  // Add contour trace (always first for z-ordering)
+  if (contourData) {
+    traces.push(contourData);
+  }
+
+  // Add trajectory trace if it exists
+  if (trajectory && trajectory.length > 0) {
+    const trajectoryTrace = createTrajectoryTrace(trajectory);
+    if (trajectoryTrace) {
+      traces.push(trajectoryTrace);
+    }
+  }
+
+  // Render the Plotly plot with multiple traces
   console.log(
-    'Visualizer rendering with contourData:',
-    contourData ? 'present' : 'null'
+    'Visualizer rendering with traces:',
+    traces.length,
+    'contour:',
+    !!contourData,
+    'trajectory:',
+    trajectory?.length || 0
   );
 
   return (
     <div className="visualizer">
       <Plot
-        data={[contourData]}
+        data={traces}
         layout={{
           ...BASE_LAYOUT,
           title: {
@@ -89,6 +113,12 @@ Visualizer.propTypes = {
     y: PropTypes.array,
     z: PropTypes.array,
   }),
+  trajectory: PropTypes.arrayOf(
+    PropTypes.shape({
+      x: PropTypes.number.isRequired,
+      y: PropTypes.number.isRequired,
+    })
+  ),
 };
 
 export default Visualizer;

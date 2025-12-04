@@ -94,8 +94,11 @@ describe('useHMCController', () => {
     // Verify that samples array has 5 entries
     expect(result.current.samples).toHaveLength(5);
 
-    // Verify that trajectory array has 5 entries
-    expect(result.current.trajectory).toHaveLength(5);
+    // Verify trajectory is single trajectory (latest one), not accumulated
+    // Since we're in single trajectory mode, trajectory should be from the last step
+    expect(Array.isArray(result.current.trajectory)).toBe(true);
+    // The trajectory should be from the last step's result (which has 1 point: {x: 4, y: 4})
+    expect(result.current.trajectory.length).toBeGreaterThan(0);
 
     // Verify the samples contain the expected values
     expect(result.current.samples[0]).toEqual({ x: 0, y: 0 });
@@ -140,7 +143,9 @@ describe('useHMCController', () => {
     });
 
     expect(result.current.samples).toHaveLength(2);
-    expect(result.current.trajectory).toHaveLength(2);
+    // In single trajectory mode, trajectory is replaced, not accumulated
+    // So trajectory length should not be 2, but should be > 0 (the latest trajectory)
+    expect(result.current.trajectory.length).toBeGreaterThan(0);
   });
 
   it('should handle errors in logP parsing', () => {
@@ -331,6 +336,252 @@ describe('useHMCController', () => {
       // (reset clears samples/trajectory but not the static contour)
       expect(result.current.contourData).toBe(contourDataBeforeReset);
       expect(result.current.samples).toHaveLength(0);
+      expect(result.current.iterationCount).toBe(0);
+    });
+  });
+
+  describe('Trajectory State Management', () => {
+    it('should populate trajectory state when step is executed', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Setup
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+        result.current.setParams({ epsilon: 0.1, L: 10 });
+      });
+
+      // Mock step to return a trajectory with L points
+      vi.mocked(step).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0.5, y: 0.5 },
+        accepted: true,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 0.1, y: 0.1 },
+          { x: 0.2, y: 0.2 },
+        ],
+      });
+
+      // Execute step
+      act(() => {
+        result.current.step();
+      });
+
+      // Wait for step to complete
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify trajectory is populated
+      expect(result.current.trajectory).not.toEqual([]);
+      expect(Array.isArray(result.current.trajectory)).toBe(true);
+      expect(result.current.trajectory.length).toBe(3);
+      expect(result.current.trajectory[0]).toEqual({ x: 0, y: 0 });
+      expect(result.current.trajectory[1]).toEqual({ x: 0.1, y: 0.1 });
+      expect(result.current.trajectory[2]).toEqual({ x: 0.2, y: 0.2 });
+    });
+
+    it('should use single trajectory mode (replace, not accumulate)', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Setup
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+      });
+
+      // First step - returns trajectory A
+      vi.mocked(step).mockReturnValueOnce({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 0.5, y: 0.5 },
+          { x: 1, y: 1 },
+        ],
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      const firstTrajectory = result.current.trajectory;
+      expect(firstTrajectory.length).toBe(3);
+      expect(firstTrajectory[0]).toEqual({ x: 0, y: 0 });
+
+      // Second step - returns trajectory B (different)
+      vi.mocked(step).mockReturnValueOnce({
+        q: { x: 2, y: 2 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [
+          { x: 1, y: 1 },
+          { x: 1.5, y: 1.5 },
+          { x: 2, y: 2 },
+        ],
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      const secondTrajectory = result.current.trajectory;
+
+      // Verify single trajectory mode: trajectory is replaced, not accumulated
+      expect(secondTrajectory.length).toBe(3);
+      expect(secondTrajectory[0]).toEqual({ x: 1, y: 1 });
+      expect(secondTrajectory[2]).toEqual({ x: 2, y: 2 });
+
+      // Verify it's not an array of arrays
+      expect(Array.isArray(secondTrajectory[0])).toBe(false);
+      expect(secondTrajectory[0]).toHaveProperty('x');
+      expect(secondTrajectory[0]).toHaveProperty('y');
+    });
+
+    it('should clear trajectory on reset', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Setup and execute step
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+      });
+
+      vi.mocked(step).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 1, y: 1 },
+        ],
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify trajectory is populated
+      expect(result.current.trajectory.length).toBeGreaterThan(0);
+
+      // Reset
+      act(() => {
+        result.current.reset();
+      });
+
+      // Verify trajectory is cleared
+      expect(result.current.trajectory).toEqual([]);
+    });
+
+    it('should show trajectory even for rejected steps but not save sample', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Setup
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+      });
+
+      // Mock rejected step (returns trajectory but not accepted)
+      vi.mocked(step).mockReturnValue({
+        q: { x: 0, y: 0 }, // Position unchanged
+        p: { x: 0, y: 0 },
+        accepted: false,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 0.5, y: 0.5 },
+        ], // Trajectory still returned for visualization
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify trajectory is shown (not empty)
+      expect(result.current.trajectory.length).toBeGreaterThan(0);
+      expect(result.current.trajectory).toEqual([
+        { x: 0, y: 0 },
+        { x: 0.5, y: 0.5 },
+      ]);
+
+      // Verify sample was NOT added (rejected step)
+      expect(result.current.samples.length).toBe(0);
+    });
+
+    it('should clear trajectory when logP function changes', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Setup and execute step
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+      });
+
+      vi.mocked(step).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 1, y: 1 },
+        ],
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify trajectory is populated
+      expect(result.current.trajectory.length).toBeGreaterThan(0);
+
+      // Change logP function
+      act(() => {
+        result.current.setLogP('-(x^2)/2 - y^2');
+      });
+
+      // Verify trajectory is cleared (setLogP calls reset)
+      expect(result.current.trajectory).toEqual([]);
+      expect(result.current.samples).toEqual([]);
       expect(result.current.iterationCount).toBe(0);
     });
   });

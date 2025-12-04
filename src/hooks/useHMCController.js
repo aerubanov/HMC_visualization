@@ -155,10 +155,14 @@ export default function useHMCController() {
           };
 
           // Update state after each step - UI will render between steps
-          setSamples((prev) => [...prev, result.q]);
-          if (result.trajectory) {
-            setTrajectory((prev) => [...prev, result.trajectory]);
+          // Only save accepted samples
+          if (result.accepted) {
+            setSamples((prev) => [...prev, result.q]);
           }
+
+          // Always show trajectory (even for rejected steps for visualization)
+          setTrajectory(result.trajectory || []);
+
           setCurrentParticle(currentParticleRef.current);
           setIterationCount((prev) => prev + 1);
 

@@ -113,11 +113,12 @@ export function step(q, epsilon, L, U, gradU) {
       trajectory: trajectory,
     };
   } else {
+    // Rejected: return original position but still return the proposed trajectory
     return {
       q: q,
       p: { x: 0, y: 0 },
       accepted: false,
-      trajectory: [],
+      trajectory: trajectory, // Return trajectory even for rejected steps
     };
   }
 }
