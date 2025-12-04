@@ -11,6 +11,7 @@ function App() {
     iterationCount,
     isRunning,
     error,
+    contourData,
     setLogP,
     setParams,
     setInitialPosition,
@@ -38,7 +39,7 @@ function App() {
         />
       </div>
       <div className="App-main">
-        <Visualizer />
+        <Visualizer contourData={contourData} />
       </div>
     </div>
   );
