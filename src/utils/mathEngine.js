@@ -69,7 +69,13 @@ export class Logp {
    */
   getLogProbability(x, y) {
     try {
-      return this.logCompiled.evaluate({ x, y });
+      const result = this.logCompiled.evaluate({ x, y });
+      // Math.js may return complex numbers for some expressions
+      // Extract the real part if it's a complex number object
+      if (typeof result === 'object' && result !== null && 're' in result) {
+        return result.re;
+      }
+      return result;
     } catch (e) {
       throw new Error(`Error evaluating log probability: ${e.message}`);
     }
@@ -83,10 +89,18 @@ export class Logp {
    */
   getLogProbabilityGradient(x, y) {
     try {
-      return [
-        this.gradXCompiled.evaluate({ x, y }),
-        this.gradYCompiled.evaluate({ x, y }),
-      ];
+      let dx = this.gradXCompiled.evaluate({ x, y });
+      let dy = this.gradYCompiled.evaluate({ x, y });
+
+      // Extract real parts if math.js returned complex numbers
+      if (typeof dx === 'object' && dx !== null && 're' in dx) {
+        dx = dx.re;
+      }
+      if (typeof dy === 'object' && dy !== null && 're' in dy) {
+        dy = dy.re;
+      }
+
+      return [dx, dy];
     } catch (e) {
       throw new Error(`Error evaluating gradient: ${e.message}`);
     }

@@ -11,6 +11,9 @@ function App() {
     iterationCount,
     isRunning,
     error,
+    contourData,
+    trajectory,
+    samples,
     setLogP,
     setParams,
     setInitialPosition,
@@ -38,7 +41,11 @@ function App() {
         />
       </div>
       <div className="App-main">
-        <Visualizer />
+        <Visualizer
+          contourData={contourData}
+          trajectory={trajectory}
+          acceptedSamples={samples}
+        />
       </div>
     </div>
   );

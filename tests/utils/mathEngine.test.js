@@ -78,4 +78,67 @@ describe('Logp Class', () => {
       expect(grad2[1]).toBeCloseTo(-200);
     });
   });
+
+  describe('Complex Number Handling', () => {
+    it('should extract real part from complex results in getLogProbability', () => {
+      // Some math.js operations may return complex numbers with zero imaginary part
+      // For example, certain logarithm or power operations
+      const logp = new Logp('exp(-(x^2 + y^2)/2)');
+
+      // Test that result is a plain number, not a complex object
+      const result = logp.getLogProbability(1, 1);
+      expect(typeof result).toBe('number');
+      expect(result).not.toHaveProperty('re');
+      expect(result).not.toHaveProperty('im');
+      expect(result).toBeCloseTo(-1);
+    });
+
+    it('should extract real parts from complex results in getLogProbabilityGradient', () => {
+      // Test that gradient components are plain numbers
+      const logp = new Logp('exp(-(x^2 + y^2)/2)');
+
+      const grad = logp.getLogProbabilityGradient(2, 3);
+      expect(Array.isArray(grad)).toBe(true);
+      expect(grad).toHaveLength(2);
+
+      // Each component should be a plain number
+      expect(typeof grad[0]).toBe('number');
+      expect(typeof grad[1]).toBe('number');
+      expect(grad[0]).not.toHaveProperty('re');
+      expect(grad[1]).not.toHaveProperty('re');
+
+      // Verify the values are correct
+      expect(grad[0]).toBeCloseTo(-2);
+      expect(grad[1]).toBeCloseTo(-3);
+    });
+
+    it('should handle expressions that naturally produce real results', () => {
+      // Simple polynomial wrapped in exp - should produce real numbers
+      // Logp wraps in log(), so exp(x^2 + y^2) -> log(exp(x^2 + y^2)) -> x^2 + y^2
+      const logp = new Logp('exp(x^2 + y^2)');
+
+      const result = logp.getLogProbability(3, 4);
+      expect(typeof result).toBe('number');
+      expect(result).toBeCloseTo(25); // 3^2 + 4^2 = 25
+    });
+
+    it('should handle negative log expressions correctly', () => {
+      // -(x^2 + y^2)/2 is a common log-probability form
+      const logp = new Logp('exp(-(x^2 + y^2)/2)');
+
+      // Test at multiple points to ensure consistency
+      const points = [
+        [0, 0, 0],
+        [1, 0, -0.5],
+        [0, 1, -0.5],
+        [2, 2, -4],
+      ];
+
+      points.forEach(([x, y, expected]) => {
+        const result = logp.getLogProbability(x, y);
+        expect(typeof result).toBe('number');
+        expect(result).toBeCloseTo(expected);
+      });
+    });
+  });
 });

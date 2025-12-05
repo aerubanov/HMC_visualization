@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { step } from '../utils/hmcSampler';
+import { generateGrid, createContourTrace } from '../utils/plotConfig';
 
 export default function useHMCController() {
   const [logP, setLogPString] = useState('');
@@ -12,10 +13,61 @@ export default function useHMCController() {
   const [isRunning, setIsRunning] = useState(false);
   const [iterationCount, setIterationCount] = useState(0);
   const [error, setError] = useState(null);
+  const [contourData, setContourData] = useState(null);
 
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
   const currentParticleRef = useRef(null); // { q, p }
+
+  /**
+   * Computes contour data for the current logp function
+   */
+  const computeContour = useCallback(() => {
+    if (!logpInstanceRef.current) {
+      setContourData(null);
+      return;
+    }
+
+    try {
+      const { x, y } = generateGrid();
+      console.log('Grid generated:', { xLen: x.length, yLen: y.length });
+
+      // Compute z values (log probability) for each grid point
+      const z = y.map((yVal) =>
+        x.map((xVal) => {
+          try {
+            return logpInstanceRef.current.getLogProbability(xVal, yVal);
+          } catch {
+            // Return NaN for points where evaluation fails
+            return NaN;
+          }
+        })
+      );
+
+      console.log('Z values computed:', {
+        zRows: z.length,
+        zCols: z[0]?.length,
+        sampleValues: [z[0]?.[0], z[25]?.[25], z[49]?.[49]],
+        minZ: Math.min(...z.flat()),
+        maxZ: Math.max(...z.flat()),
+        hasNaN: z.flat().some((v) => isNaN(v)),
+      });
+
+      // Create the contour trace
+      const trace = createContourTrace(x, y, z);
+      console.log('Contour trace created:', {
+        type: trace.type,
+        xLength: trace.x.length,
+        yLength: trace.y.length,
+        zShape: [trace.z.length, trace.z[0]?.length],
+        trace: trace,
+      });
+      setContourData(trace);
+    } catch (e) {
+      console.error('Error computing contour:', e);
+      setContourData(null);
+    }
+  }, []);
 
   const reset = useCallback(() => {
     setSamples([]);
@@ -39,17 +91,21 @@ export default function useHMCController() {
       try {
         if (str) {
           logpInstanceRef.current = new Logp(str);
+          // Compute contour data when function changes
+          computeContour();
         } else {
           logpInstanceRef.current = null;
+          setContourData(null);
         }
         // Reset state when function changes
         reset();
       } catch (e) {
         setError(e.message);
         logpInstanceRef.current = null;
+        setContourData(null);
       }
     },
-    [reset]
+    [reset, computeContour]
   );
 
   const setParams = useCallback((newParams) => {
@@ -99,10 +155,14 @@ export default function useHMCController() {
           };
 
           // Update state after each step - UI will render between steps
-          setSamples((prev) => [...prev, result.q]);
-          if (result.trajectory) {
-            setTrajectory((prev) => [...prev, result.trajectory]);
+          // Only save accepted samples
+          if (result.accepted) {
+            setSamples((prev) => [...prev, result.q]);
           }
+
+          // Always show trajectory (even for rejected steps for visualization)
+          setTrajectory(result.trajectory || []);
+
           setCurrentParticle(currentParticleRef.current);
           setIterationCount((prev) => prev + 1);
 
@@ -140,6 +200,7 @@ export default function useHMCController() {
     isRunning,
     iterationCount,
     error,
+    contourData,
     setLogP,
     setParams,
     setInitialPosition,

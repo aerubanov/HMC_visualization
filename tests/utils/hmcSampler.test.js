@@ -308,7 +308,8 @@ describe('HMCSampler', () => {
         if (!result.accepted) {
           expect(result.q.x).toBe(q.x);
           expect(result.q.y).toBe(q.y);
-          expect(result.trajectory.length).toBe(0);
+          // Trajectory should include initial point + L steps
+          expect(result.trajectory.length).toBe(L + 1);
         }
       });
     });
@@ -328,7 +329,7 @@ describe('HMCSampler', () => {
         expect(Array.isArray(result.trajectory)).toBe(true);
 
         if (result.accepted) {
-          expect(result.trajectory.length).toBe(L);
+          expect(result.trajectory.length).toBe(L + 1);
 
           // Each trajectory point should have x and y
           result.trajectory.forEach((point) => {
@@ -338,7 +339,8 @@ describe('HMCSampler', () => {
             expect(typeof point.y).toBe('number');
           });
         } else {
-          expect(result.trajectory.length).toBe(0);
+          // Even if rejected, we return the trajectory
+          expect(result.trajectory.length).toBe(L + 1);
         }
       });
 
@@ -354,7 +356,8 @@ describe('HMCSampler', () => {
         const result = step(q, epsilon, L, U, gradU);
 
         if (!result.accepted) {
-          expect(result.trajectory).toEqual([]);
+          expect(result.trajectory.length).toBe(L + 1);
+          expect(result.trajectory[0]).toEqual(q);
         }
       });
     });
@@ -398,7 +401,8 @@ describe('HMCSampler', () => {
         expect(result).toHaveProperty('p');
         expect(result).toHaveProperty('accepted');
         expect(result).toHaveProperty('trajectory');
-        expect(result.trajectory.length).toBe(0);
+        // Initial point only
+        expect(result.trajectory.length).toBe(1);
       });
 
       it('should not produce NaN with extreme gradients', () => {
