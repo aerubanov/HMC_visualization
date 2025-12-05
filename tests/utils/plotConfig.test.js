@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { createTrajectoryTrace, COLORS } from '../../src/utils/plotConfig';
+import {
+  createTrajectoryTrace,
+  createSamplesTrace,
+  COLORS,
+} from '../../src/utils/plotConfig';
 
 describe('createTrajectoryTrace', () => {
   describe('Valid Input', () => {
@@ -152,6 +156,62 @@ describe('createTrajectoryTrace', () => {
       expect(typeof trace.name).toBe('string');
       expect(typeof trace.showlegend).toBe('boolean');
       expect(typeof trace.hovertemplate).toBe('string');
+    });
+  });
+});
+
+describe('createSamplesTrace', () => {
+  describe('Valid Input', () => {
+    it('should create a valid trace for accepted samples', () => {
+      const samples = [
+        { x: 0, y: 0 },
+        { x: 0.1, y: 0.05 },
+        { x: 0.2, y: 0.1 },
+      ];
+
+      const trace = createSamplesTrace(samples);
+
+      expect(trace).not.toBeNull();
+      expect(trace.type).toBe('scatter');
+      expect(trace.mode).toBe('lines+markers');
+      expect(trace.x).toEqual([0, 0.1, 0.2]);
+      expect(trace.y).toEqual([0, 0.05, 0.1]);
+      expect(trace.name).toBe('Samples');
+      expect(trace.showlegend).toBe(true);
+    });
+
+    it('should have correct marker properties', () => {
+      const samples = [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ];
+
+      const trace = createSamplesTrace(samples);
+
+      expect(trace.marker).toBeDefined();
+      expect(trace.marker.color).toBe(COLORS.trajectory);
+      expect(trace.marker.size).toBeGreaterThan(0);
+      expect(trace.marker.symbol).toBe('circle');
+      expect(trace.marker.opacity).toBeDefined();
+
+      expect(trace.line).toBeDefined();
+      expect(trace.line.color).toBe(COLORS.trajectory);
+      expect(trace.line.dash).toBe('dash');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should return null for empty samples', () => {
+      const samples = [];
+      const trace = createSamplesTrace(samples);
+
+      expect(trace).toBeNull();
+    });
+
+    it('should return null for null input', () => {
+      const trace = createSamplesTrace(null);
+
+      expect(trace).toBeNull();
     });
   });
 });

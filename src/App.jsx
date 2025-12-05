@@ -13,6 +13,7 @@ function App() {
     error,
     contourData,
     trajectory,
+    samples,
     setLogP,
     setParams,
     setInitialPosition,
@@ -40,7 +41,11 @@ function App() {
         />
       </div>
       <div className="App-main">
-        <Visualizer contourData={contourData} trajectory={trajectory} />
+        <Visualizer
+          contourData={contourData}
+          trajectory={trajectory}
+          acceptedSamples={samples}
+        />
       </div>
     </div>
   );

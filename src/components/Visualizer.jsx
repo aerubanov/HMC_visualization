@@ -5,9 +5,10 @@ import {
   BASE_LAYOUT,
   PLOT_CONFIG,
   createTrajectoryTrace,
+  createSamplesTrace,
 } from '../utils/plotConfig';
 
-function Visualizer({ contourData, trajectory }) {
+function Visualizer({ contourData, trajectory, acceptedSamples }) {
   // Show placeholder if no contour data is available
   if (!contourData) {
     return (
@@ -69,6 +70,14 @@ function Visualizer({ contourData, trajectory }) {
     traces.push(contourData);
   }
 
+  // Add samples trace if it exists
+  if (acceptedSamples && acceptedSamples.length > 0) {
+    const samplesTrace = createSamplesTrace(acceptedSamples);
+    if (samplesTrace) {
+      traces.push(samplesTrace);
+    }
+  }
+
   // Add trajectory trace if it exists
   if (trajectory && trajectory.length > 0) {
     const trajectoryTrace = createTrajectoryTrace(trajectory);
@@ -83,8 +92,12 @@ function Visualizer({ contourData, trajectory }) {
     traces.length,
     'contour:',
     !!contourData,
+    'contour:',
+    !!contourData,
     'trajectory:',
-    trajectory?.length || 0
+    trajectory?.length || 0,
+    'samples:',
+    acceptedSamples?.length || 0
   );
 
   return (
@@ -114,6 +127,12 @@ Visualizer.propTypes = {
     z: PropTypes.array,
   }),
   trajectory: PropTypes.arrayOf(
+    PropTypes.shape({
+      x: PropTypes.number.isRequired,
+      y: PropTypes.number.isRequired,
+    })
+  ),
+  acceptedSamples: PropTypes.arrayOf(
     PropTypes.shape({
       x: PropTypes.number.isRequired,
       y: PropTypes.number.isRequired,

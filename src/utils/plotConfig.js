@@ -170,3 +170,36 @@ export function createTrajectoryTrace(trajectory) {
     hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
   };
 }
+
+/**
+ * Creates a Plotly scatter trace for accepted samples visualization
+ * @param {Array<{x: number, y: number}>} samples - Array of accepted sample points
+ * @returns {object|null} Plotly trace object or null if samples is empty
+ */
+export function createSamplesTrace(samples) {
+  // Handle invalid or empty samples
+  if (!samples || !Array.isArray(samples) || samples.length === 0) {
+    return null;
+  }
+
+  return {
+    type: 'scatter',
+    mode: 'lines+markers',
+    x: samples.map((p) => p.x),
+    y: samples.map((p) => p.y),
+    line: {
+      color: COLORS.trajectory,
+      width: 1,
+      dash: 'dash',
+    },
+    marker: {
+      size: 6,
+      color: COLORS.trajectory,
+      symbol: 'circle',
+      opacity: 0.8,
+    },
+    name: 'Samples',
+    showlegend: true,
+    hovertemplate: 'Sample<br>x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
+  };
+}

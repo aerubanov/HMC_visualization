@@ -79,7 +79,7 @@ export function step(q, epsilon, L, U, gradU) {
   // 3. Simulate dynamics for L steps
   let q_proposed = { x: q.x, y: q.y };
   let p_proposed = { x: p_initial.x, y: p_initial.y };
-  const trajectory = [];
+  const trajectory = [{ x: q.x, y: q.y }];
 
   for (let i = 0; i < L; i++) {
     const result = leapfrog(q_proposed, p_proposed, epsilon, gradU);
