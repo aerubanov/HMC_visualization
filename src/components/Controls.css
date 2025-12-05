@@ -103,6 +103,36 @@
   font-style: italic;
 }
 
+/* Textarea with button layout */
+.textarea-with-button {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.btn-apply {
+  align-self: flex-end;
+  width: auto;
+  min-width: 120px;
+  padding: var(--space-xs) var(--space-lg);
+  font-size: 0.875rem;
+  background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-apply:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-apply:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
 .control-group {
   display: flex;
   flex-direction: column;

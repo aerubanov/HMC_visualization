@@ -1,6 +1,6 @@
 import './Controls.css';
 import PropTypes from 'prop-types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function Controls({
   logP,
@@ -17,10 +17,23 @@ function Controls({
   reset,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
+  const [draftLogP, setDraftLogP] = useState(logP);
+
+  // Sync draft with prop when it changes externally (e.g., on reset)
+  useEffect(() => {
+    setDraftLogP(logP);
+  }, [logP]);
 
   const handleLogPChange = (e) => {
-    setLogP(e.target.value);
+    setDraftLogP(e.target.value);
   };
+
+  const handleApplyLogP = () => {
+    setLogP(draftLogP);
+  };
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = draftLogP !== logP;
 
   const handleParamChange = (key, value) => {
     setParams({ [key]: parseFloat(value) });
@@ -49,17 +62,27 @@ function Controls({
           <label htmlFor="logp-input" className="control-label">
             Probability Function (unnormalized)
           </label>
-          <textarea
-            id="logp-input"
-            className="control-textarea"
-            placeholder="e.g., exp(-(x^2 + y^2)/2)"
-            value={logP}
-            onChange={handleLogPChange}
-            rows={3}
-          />
+          <div className="textarea-with-button">
+            <textarea
+              id="logp-input"
+              className="control-textarea"
+              placeholder="e.g., exp(-(x^2 + y^2)/2)"
+              value={draftLogP}
+              onChange={handleLogPChange}
+              rows={3}
+            />
+            <button
+              className="btn btn-apply"
+              onClick={handleApplyLogP}
+              disabled={!hasUnsavedChanges || !draftLogP.trim()}
+              title="Apply the expression"
+            >
+              {hasUnsavedChanges ? '✓ Apply' : 'Applied'}
+            </button>
+          </div>
           <p className="control-hint">
             Enter an unnormalized probability expression in terms of x and y.
-            The system will automatically compute log(P) and its gradients.
+            Click &apos;Apply&apos; to update the visualization.
           </p>
         </section>
 
