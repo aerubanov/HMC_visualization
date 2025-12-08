@@ -9,6 +9,8 @@ function App() {
     params,
     initialPosition,
     iterationCount,
+    acceptedCount,
+    rejectedCount,
     isRunning,
     error,
     contourData,
@@ -30,6 +32,8 @@ function App() {
           params={params}
           initialPosition={initialPosition}
           iterationCount={iterationCount}
+          acceptedCount={acceptedCount}
+          rejectedCount={rejectedCount}
           isRunning={isRunning}
           error={error}
           setLogP={setLogP}

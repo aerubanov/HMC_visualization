@@ -7,6 +7,8 @@ function Controls({
   params,
   initialPosition,
   iterationCount,
+  acceptedCount,
+  rejectedCount,
   isRunning,
   error,
   setLogP,
@@ -54,6 +56,11 @@ function Controls({
   const handleSampleSteps = () => {
     sampleSteps(nSteps);
   };
+
+  const acceptanceRate =
+    iterationCount > 0
+      ? ((acceptedCount / iterationCount) * 100).toFixed(1)
+      : '0.0';
 
   return (
     <div className="controls">
@@ -225,13 +232,27 @@ function Controls({
 
         {/* Status Display */}
         <section className="control-section status-section">
-          <div className="status-item">
-            <span className="status-label">Iterations:</span>
-            <span className="status-value">{iterationCount}</span>
+          <div className="status-grid">
+            <div className="status-item">
+              <span className="status-label">Iterations</span>
+              <span className="status-value">{iterationCount}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Accepted</span>
+              <span className="status-value text-success">{acceptedCount}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Rejected</span>
+              <span className="status-value text-error">{rejectedCount}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Rate</span>
+              <span className="status-value">{acceptanceRate}%</span>
+            </div>
           </div>
 
           {isRunning && (
-            <div className="status-item">
+            <div className="status-running">
               <span className="status-indicator running"></span>
               <span className="status-text">Running...</span>
             </div>
@@ -262,6 +283,8 @@ Controls.propTypes = {
     y: PropTypes.number.isRequired,
   }).isRequired,
   iterationCount: PropTypes.number.isRequired,
+  acceptedCount: PropTypes.number,
+  rejectedCount: PropTypes.number,
   isRunning: PropTypes.bool.isRequired,
   error: PropTypes.string,
   setLogP: PropTypes.func.isRequired,
