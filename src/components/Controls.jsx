@@ -259,6 +259,43 @@ function Controls({
           )}
         </section>
 
+        {/* Resources */}
+        <section className="control-section">
+          <h3 className="section-title">References</h3>
+          <ul className="resources-list">
+            <li>
+              <a
+                href="https://arxiv.org/abs/1701.02434"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="resource-link"
+              >
+                A Conceptual Introduction to HMC (Betancourt, 2017)
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://arxiv.org/abs/1111.4246"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="resource-link"
+              >
+                MCMC using Hamiltonian dynamics (Neal, 2011)
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://arxiv.org/abs/1206.1901"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="resource-link"
+              >
+                NUTS: The No-U-Turn Sampler (Hoffman & Gelman, 2014)
+              </a>
+            </li>
+          </ul>
+        </section>
+
         {/* Error Display */}
         {error && (
           <div className="error-message">

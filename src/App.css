@@ -40,3 +40,48 @@ h1 {
   line-height: 1.1;
   margin-bottom: 1rem;
 }
+
+/* Social Overlay */
+.social-overlay {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 100;
+}
+
+.github-link {
+  color: var(--color-text-primary);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.github-link:hover {
+  color: var(--color-primary);
+}
+
+.libutton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 7px;
+  text-align: center;
+  outline: none;
+  text-decoration: none !important;
+  color: #ffffff !important;
+  width: 200px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: #0a66c2;
+  font-family: 'SF Pro Text', Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.libutton:hover {
+  background-color: #004182;
+}
