@@ -9,18 +9,18 @@ export const GRID_CONFIG = {
   yRange: [-5, 5], // Y-axis bounds
 };
 
-// Color scheme for dark theme
+// Color scheme for light theme
 export const COLORS = {
-  background: '#0f1419',
-  paper: '#1a1f2e',
-  text: '#e1e4e8',
-  grid: '#30363d',
-  contourLine: '#58a6ff',
-  accent: '#f85149',
+  background: '#ffffff',
+  paper: '#f8f9fa',
+  text: '#1a1a1a',
+  grid: '#e1e4e8',
+  contourLine: '#0366d6',
+  accent: '#d73a49',
   // Trajectory visualization colors
-  trajectory: '#f85149', // Vibrant red/orange for active trajectory
-  sample: '#58a6ff', // Blue for accepted sample points (future)
-  currentParticle: '#56d364', // Green for current position (future)
+  trajectory: '#d73a49', // Vibrant red for active trajectory
+  sample: '#0366d6', // Blue for accepted sample points
+  currentParticle: '#28a745', // Green for current position
 };
 
 // Base layout configuration for all plots
@@ -38,12 +38,20 @@ export const BASE_LAYOUT = {
     gridcolor: COLORS.grid,
     zeroline: true,
     zerolinecolor: COLORS.grid,
+    showline: true,
+    mirror: true,
+    ticks: 'outside',
+    linecolor: COLORS.text,
   },
   yaxis: {
     title: 'y',
     gridcolor: COLORS.grid,
     zeroline: true,
     zerolinecolor: COLORS.grid,
+    showline: true,
+    mirror: true,
+    ticks: 'outside',
+    linecolor: COLORS.text,
   },
   margin: {
     l: 60,
@@ -86,7 +94,7 @@ export function createContourTrace(x, y, z) {
     x: x,
     y: y,
     z: z,
-    colorscale: 'Viridis',
+    colorscale: 'YlGnBu',
     showscale: true,
     // Explicitly set z-axis range to avoid scaling issues
     zmin: zMin,

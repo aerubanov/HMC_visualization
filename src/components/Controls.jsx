@@ -18,11 +18,19 @@ function Controls({
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
+  const [localX, setLocalX] = useState(initialPosition.x);
+  const [localY, setLocalY] = useState(initialPosition.y);
 
   // Sync draft with prop when it changes externally (e.g., on reset)
   useEffect(() => {
     setDraftLogP(logP);
   }, [logP]);
+
+  // Sync local position state with props
+  useEffect(() => {
+    setLocalX(initialPosition.x);
+    setLocalY(initialPosition.y);
+  }, [initialPosition]);
 
   const handleLogPChange = (e) => {
     setDraftLogP(e.target.value);
@@ -132,11 +140,21 @@ function Controls({
               </label>
               <input
                 id="x-input"
-                type="number"
+                type="text"
                 className="control-input"
-                step="0.1"
-                value={initialPosition.x}
-                onChange={(e) => handlePositionChange('x', e.target.value)}
+                value={localX}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLocalX(val);
+                  if (val !== '' && val !== '-' && !isNaN(val)) {
+                    handlePositionChange('x', val);
+                  }
+                }}
+                onBlur={() => {
+                  if (localX === '' || localX === '-' || isNaN(localX)) {
+                    setLocalX(initialPosition.x);
+                  }
+                }}
               />
             </div>
 
@@ -146,11 +164,21 @@ function Controls({
               </label>
               <input
                 id="y-input"
-                type="number"
+                type="text"
                 className="control-input"
-                step="0.1"
-                value={initialPosition.y}
-                onChange={(e) => handlePositionChange('y', e.target.value)}
+                value={localY}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLocalY(val);
+                  if (val !== '' && val !== '-' && !isNaN(val)) {
+                    handlePositionChange('y', val);
+                  }
+                }}
+                onBlur={() => {
+                  if (localY === '' || localY === '-' || isNaN(localY)) {
+                    setLocalY(initialPosition.y);
+                  }
+                }}
               />
             </div>
           </div>
