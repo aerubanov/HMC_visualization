@@ -15,6 +15,8 @@ export default function useHMCController() {
   const [error, setError] = useState(null);
   const [contourData, setContourData] = useState(null);
 
+  const [rejectedCount, setRejectedCount] = useState(0);
+
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
   const currentParticleRef = useRef(null); // { q, p }
@@ -73,6 +75,7 @@ export default function useHMCController() {
     setSamples([]);
     setTrajectory([]);
     setIterationCount(0);
+    setRejectedCount(0);
 
     const startState = {
       q: { ...initialPosition },
@@ -158,6 +161,8 @@ export default function useHMCController() {
           // Only save accepted samples
           if (result.accepted) {
             setSamples((prev) => [...prev, result.q]);
+          } else {
+            setRejectedCount((prev) => prev + 1);
           }
 
           // Always show trajectory (even for rejected steps for visualization)
@@ -199,6 +204,8 @@ export default function useHMCController() {
     currentParticle,
     isRunning,
     iterationCount,
+    acceptedCount: samples.length,
+    rejectedCount,
     error,
     contourData,
     setLogP,

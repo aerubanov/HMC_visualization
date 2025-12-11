@@ -224,7 +224,7 @@ describe('useHMCController', () => {
       expect(contourData.z[0]).toHaveLength(50);
 
       // Verify colorscale and other properties
-      expect(contourData).toHaveProperty('colorscale', 'Viridis');
+      expect(contourData).toHaveProperty('colorscale', 'YlGnBu');
       expect(contourData).toHaveProperty('showscale', true);
       expect(contourData).toHaveProperty('contours');
       expect(contourData).toHaveProperty('colorbar');
@@ -583,6 +583,82 @@ describe('useHMCController', () => {
       expect(result.current.trajectory).toEqual([]);
       expect(result.current.samples).toEqual([]);
       expect(result.current.iterationCount).toBe(0);
+    });
+  });
+
+  describe('Accepted/Rejected Samples Tracking', () => {
+    it('should track rejected samples correctly', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Setup
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+      });
+
+      // Mock rejected step
+      vi.mocked(step).mockReturnValue({
+        q: { x: 0, y: 0 },
+        p: { x: 0, y: 0 },
+        accepted: false,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 0.5, y: 0.5 },
+        ],
+      });
+
+      // Execute step
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify rejectedCount incremented
+      expect(result.current.rejectedCount).toBe(1);
+      // Verify acceptedCount (samples length) did not increment
+      expect(result.current.acceptedCount).toBe(0);
+      expect(result.current.samples).toHaveLength(0);
+
+      // Execute another step (accepted this time)
+      vi.mocked(step).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [
+          { x: 0, y: 0 },
+          { x: 1, y: 1 },
+        ],
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify counts
+      expect(result.current.rejectedCount).toBe(1);
+      expect(result.current.acceptedCount).toBe(1);
+      expect(result.current.samples).toHaveLength(1);
+
+      // Verify reset clears counts
+      act(() => {
+        result.current.reset();
+      });
+
+      expect(result.current.rejectedCount).toBe(0);
+      expect(result.current.acceptedCount).toBe(0);
     });
   });
 });

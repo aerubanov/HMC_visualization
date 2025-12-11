@@ -7,6 +7,8 @@ function Controls({
   params,
   initialPosition,
   iterationCount,
+  acceptedCount,
+  rejectedCount,
   isRunning,
   error,
   setLogP,
@@ -18,11 +20,19 @@ function Controls({
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
+  const [localX, setLocalX] = useState(initialPosition.x);
+  const [localY, setLocalY] = useState(initialPosition.y);
 
   // Sync draft with prop when it changes externally (e.g., on reset)
   useEffect(() => {
     setDraftLogP(logP);
   }, [logP]);
+
+  // Sync local position state with props
+  useEffect(() => {
+    setLocalX(initialPosition.x);
+    setLocalY(initialPosition.y);
+  }, [initialPosition]);
 
   const handleLogPChange = (e) => {
     setDraftLogP(e.target.value);
@@ -46,6 +56,11 @@ function Controls({
   const handleSampleSteps = () => {
     sampleSteps(nSteps);
   };
+
+  const acceptanceRate =
+    iterationCount > 0
+      ? ((acceptedCount / iterationCount) * 100).toFixed(1)
+      : '0.0';
 
   return (
     <div className="controls">
@@ -132,11 +147,21 @@ function Controls({
               </label>
               <input
                 id="x-input"
-                type="number"
+                type="text"
                 className="control-input"
-                step="0.1"
-                value={initialPosition.x}
-                onChange={(e) => handlePositionChange('x', e.target.value)}
+                value={localX}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLocalX(val);
+                  if (val !== '' && val !== '-' && !isNaN(val)) {
+                    handlePositionChange('x', val);
+                  }
+                }}
+                onBlur={() => {
+                  if (localX === '' || localX === '-' || isNaN(localX)) {
+                    setLocalX(initialPosition.x);
+                  }
+                }}
               />
             </div>
 
@@ -146,11 +171,21 @@ function Controls({
               </label>
               <input
                 id="y-input"
-                type="number"
+                type="text"
                 className="control-input"
-                step="0.1"
-                value={initialPosition.y}
-                onChange={(e) => handlePositionChange('y', e.target.value)}
+                value={localY}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLocalY(val);
+                  if (val !== '' && val !== '-' && !isNaN(val)) {
+                    handlePositionChange('y', val);
+                  }
+                }}
+                onBlur={() => {
+                  if (localY === '' || localY === '-' || isNaN(localY)) {
+                    setLocalY(initialPosition.y);
+                  }
+                }}
               />
             </div>
           </div>
@@ -197,17 +232,68 @@ function Controls({
 
         {/* Status Display */}
         <section className="control-section status-section">
-          <div className="status-item">
-            <span className="status-label">Iterations:</span>
-            <span className="status-value">{iterationCount}</span>
+          <div className="status-grid">
+            <div className="status-item">
+              <span className="status-label">Iterations</span>
+              <span className="status-value">{iterationCount}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Accepted</span>
+              <span className="status-value text-success">{acceptedCount}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Rejected</span>
+              <span className="status-value text-error">{rejectedCount}</span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Rate</span>
+              <span className="status-value">{acceptanceRate}%</span>
+            </div>
           </div>
 
           {isRunning && (
-            <div className="status-item">
+            <div className="status-running">
               <span className="status-indicator running"></span>
               <span className="status-text">Running...</span>
             </div>
           )}
+        </section>
+
+        {/* Resources */}
+        <section className="control-section">
+          <h3 className="section-title">References</h3>
+          <ul className="resources-list">
+            <li>
+              <a
+                href="https://arxiv.org/abs/1701.02434"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="resource-link"
+              >
+                A Conceptual Introduction to HMC (Betancourt, 2017)
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://arxiv.org/abs/1111.4246"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="resource-link"
+              >
+                MCMC using Hamiltonian dynamics (Neal, 2011)
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://arxiv.org/abs/1206.1901"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="resource-link"
+              >
+                NUTS: The No-U-Turn Sampler (Hoffman & Gelman, 2014)
+              </a>
+            </li>
+          </ul>
         </section>
 
         {/* Error Display */}
@@ -234,6 +320,8 @@ Controls.propTypes = {
     y: PropTypes.number.isRequired,
   }).isRequired,
   iterationCount: PropTypes.number.isRequired,
+  acceptedCount: PropTypes.number,
+  rejectedCount: PropTypes.number,
   isRunning: PropTypes.bool.isRequired,
   error: PropTypes.string,
   setLogP: PropTypes.func.isRequired,
