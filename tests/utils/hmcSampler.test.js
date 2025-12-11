@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { leapfrog, step } from '../../src/utils/hmcSampler';
+import {
+  leapfrogStep,
+  generateProposal,
+  hmcStep,
+} from '../../src/utils/hmcSampler';
 
 // Helper functions for testing
 function kineticEnergy(p) {
@@ -19,7 +23,7 @@ function momentaClose(p1, p2, tolerance = 1e-10) {
 }
 
 describe('HMCSampler', () => {
-  describe('leapfrog', () => {
+  describe('leapfrogStep', () => {
     describe('reversibility', () => {
       it('should be reversible (forward then backward returns to start)', () => {
         const q0 = { x: 1.0, y: 2.0 };
@@ -28,10 +32,10 @@ describe('HMCSampler', () => {
         const gradU = (x, y) => ({ x: x, y: y }); // Quadratic potential
 
         // Forward step
-        const { q: q1, p: p1 } = leapfrog(q0, p0, epsilon, gradU);
+        const { q: q1, p: p1 } = leapfrogStep(q0, p0, epsilon, gradU);
 
         // Backward step with negated momentum
-        const { q: q2, p: p2 } = leapfrog(
+        const { q: q2, p: p2 } = leapfrogStep(
           q1,
           { x: -p1.x, y: -p1.y },
           epsilon,
@@ -49,8 +53,8 @@ describe('HMCSampler', () => {
         const epsilon = 0.01;
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const { q: q1, p: p1 } = leapfrog(q0, p0, epsilon, gradU);
-        const { q: q2, p: p2 } = leapfrog(
+        const { q: q1, p: p1 } = leapfrogStep(q0, p0, epsilon, gradU);
+        const { q: q2, p: p2 } = leapfrogStep(
           q1,
           { x: -p1.x, y: -p1.y },
           epsilon,
@@ -67,8 +71,8 @@ describe('HMCSampler', () => {
         const epsilon = 0.01;
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const { q: q1, p: p1 } = leapfrog(q0, p0, epsilon, gradU);
-        const { q: q2, p: p2 } = leapfrog(
+        const { q: q1, p: p1 } = leapfrogStep(q0, p0, epsilon, gradU);
+        const { q: q2, p: p2 } = leapfrogStep(
           q1,
           { x: -p1.x, y: -p1.y },
           epsilon,
@@ -85,8 +89,8 @@ describe('HMCSampler', () => {
         const epsilon = 0.01;
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const { q: q1, p: p1 } = leapfrog(q0, p0, epsilon, gradU);
-        const { q: q2, p: p2 } = leapfrog(
+        const { q: q1, p: p1 } = leapfrogStep(q0, p0, epsilon, gradU);
+        const { q: q2, p: p2 } = leapfrogStep(
           q1,
           { x: -p1.x, y: -p1.y },
           epsilon,
@@ -108,7 +112,7 @@ describe('HMCSampler', () => {
         let q = { ...q0 };
         let p = { ...p0 };
         for (let i = 0; i < nSteps; i++) {
-          const result = leapfrog(q, p, epsilon, gradU);
+          const result = leapfrogStep(q, p, epsilon, gradU);
           q = result.q;
           p = result.p;
         }
@@ -116,7 +120,7 @@ describe('HMCSampler', () => {
         // Backward integration with negated momentum
         p = { x: -p.x, y: -p.y };
         for (let i = 0; i < nSteps; i++) {
-          const result = leapfrog(q, p, epsilon, gradU);
+          const result = leapfrogStep(q, p, epsilon, gradU);
           q = result.q;
           p = result.p;
         }
@@ -144,7 +148,7 @@ describe('HMCSampler', () => {
 
         // Integrate for multiple steps
         for (let i = 0; i < 100; i++) {
-          const result = leapfrog(q, p, epsilon, gradU);
+          const result = leapfrogStep(q, p, epsilon, gradU);
           q = result.q;
           p = result.p;
 
@@ -170,7 +174,7 @@ describe('HMCSampler', () => {
       let q = { ...q0 };
       let p = { ...p0 };
       for (let i = 0; i < nSteps; i++) {
-        const result = leapfrog(q, p, epsilon, gradU);
+        const result = leapfrogStep(q, p, epsilon, gradU);
         q = result.q;
         p = result.p;
       }
@@ -199,7 +203,7 @@ describe('HMCSampler', () => {
         let p = { ...p0 };
 
         for (let i = 0; i < nSteps; i++) {
-          const result = leapfrog(q, p, epsilon, gradU);
+          const result = leapfrogStep(q, p, epsilon, gradU);
           q = result.q;
           p = result.p;
         }
@@ -214,7 +218,60 @@ describe('HMCSampler', () => {
     });
   });
 
-  describe('step', () => {
+  describe('generateProposal', () => {
+    let originalRandom;
+
+    beforeEach(() => {
+      originalRandom = Math.random;
+    });
+
+    afterEach(() => {
+      Math.random = originalRandom;
+    });
+
+    it('should return proposal with correct structure', () => {
+      Math.random = () => 0.5;
+
+      const q = { x: 0.0, y: 0.0 };
+      const epsilon = 0.1;
+      const L = 5;
+      const U = (x, y) => 0.5 * (x * x + y * y);
+      const gradU = (x, y) => ({ x: x, y: y });
+
+      const result = generateProposal(q, epsilon, L, U, gradU);
+
+      expect(result).toHaveProperty('q_proposed');
+      expect(result).toHaveProperty('p_proposed');
+      expect(result).toHaveProperty('H_initial');
+      expect(result).toHaveProperty('H_proposed');
+      expect(result).toHaveProperty('trajectory');
+      expect(result.trajectory.length).toBe(L + 1);
+    });
+
+    it('should sample varying momentum values', () => {
+      const q = { x: 1.0, y: 1.0 };
+      const epsilon = 0.1;
+      const L = 5;
+      const U = (x, y) => 0.5 * (x * x + y * y);
+      const gradU = (x, y) => ({ x: x, y: y });
+
+      const momenta = [];
+      for (let i = 0; i < 20; i++) {
+        const result = generateProposal(q, epsilon, L, U, gradU);
+        // We can't access initial momentum directly from result, but we can check if results vary
+        momenta.push(result.q_proposed);
+      }
+
+      // Check that proposed positions vary (due to varying initial momentum)
+      const uniqueX = new Set(momenta.map((q) => q.x));
+      const uniqueY = new Set(momenta.map((q) => q.y));
+
+      expect(uniqueX.size).toBeGreaterThan(1);
+      expect(uniqueY.size).toBeGreaterThan(1);
+    });
+  });
+
+  describe('hmcStep', () => {
     let originalRandom;
 
     beforeEach(() => {
@@ -238,7 +295,7 @@ describe('HMCSampler', () => {
 
         let acceptCount = 0;
         for (let i = 0; i < 100; i++) {
-          const result = step(q, epsilon, L, U, gradU);
+          const result = hmcStep(q, epsilon, L, U, gradU);
           if (result.accepted) acceptCount++;
 
           // Verify result structure
@@ -253,8 +310,8 @@ describe('HMCSampler', () => {
       });
 
       it('should sometimes reject when starting from low energy', () => {
-        // We need to align random values with the calls in step():
-        // 1. randn() -> u1
+        // We need to align random values with the calls in hmcStep():
+        // 1. randn() -> u1 (in generateProposal)
         // 2. randn() -> u2
         // 3. randn() -> u1
         // 4. randn() -> u2
@@ -284,7 +341,7 @@ describe('HMCSampler', () => {
         const results = [];
         // Run enough times to hit the rejection logic
         for (let i = 0; i < 5; i++) {
-          results.push(step(q, epsilon, L, U, gradU));
+          results.push(hmcStep(q, epsilon, L, U, gradU));
         }
 
         const rejectedCount = results.filter((r) => !r.accepted).length;
@@ -303,7 +360,7 @@ describe('HMCSampler', () => {
         const U = (x, y) => 0.5 * (x * x + y * y);
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const result = step(q, epsilon, L, U, gradU);
+        const result = hmcStep(q, epsilon, L, U, gradU);
 
         if (!result.accepted) {
           expect(result.q.x).toBe(q.x);
@@ -324,7 +381,7 @@ describe('HMCSampler', () => {
         const U = (x, y) => 0.5 * (x * x + y * y);
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const result = step(q, epsilon, L, U, gradU);
+        const result = hmcStep(q, epsilon, L, U, gradU);
 
         expect(Array.isArray(result.trajectory)).toBe(true);
 
@@ -353,35 +410,12 @@ describe('HMCSampler', () => {
         const U = (x, y) => 0.5 * (x * x + y * y);
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const result = step(q, epsilon, L, U, gradU);
+        const result = hmcStep(q, epsilon, L, U, gradU);
 
         if (!result.accepted) {
           expect(result.trajectory.length).toBe(L + 1);
           expect(result.trajectory[0]).toEqual(q);
         }
-      });
-    });
-
-    describe('momentum sampling', () => {
-      it('should sample varying momentum values', () => {
-        const q = { x: 1.0, y: 1.0 };
-        const epsilon = 0.1;
-        const L = 5;
-        const U = (x, y) => 0.5 * (x * x + y * y);
-        const gradU = (x, y) => ({ x: x, y: y });
-
-        const momenta = [];
-        for (let i = 0; i < 20; i++) {
-          const result = step(q, epsilon, L, U, gradU);
-          momenta.push(result.p);
-        }
-
-        // Check that momentum values are not all the same
-        const uniqueX = new Set(momenta.map((p) => p.x));
-        const uniqueY = new Set(momenta.map((p) => p.y));
-
-        expect(uniqueX.size).toBeGreaterThan(1);
-        expect(uniqueY.size).toBeGreaterThan(1);
       });
     });
 
@@ -395,7 +429,7 @@ describe('HMCSampler', () => {
         const U = (x, y) => 0.5 * (x * x + y * y);
         const gradU = (x, y) => ({ x: x, y: y });
 
-        const result = step(q, epsilon, L, U, gradU);
+        const result = hmcStep(q, epsilon, L, U, gradU);
 
         expect(result).toHaveProperty('q');
         expect(result).toHaveProperty('p');
@@ -414,7 +448,7 @@ describe('HMCSampler', () => {
         const U = (x, y) => 500 * (x * x + y * y);
         const gradU = (x, y) => ({ x: 1000 * x, y: 1000 * y });
 
-        const result = step(q, epsilon, L, U, gradU);
+        const result = hmcStep(q, epsilon, L, U, gradU);
 
         expect(isNaN(result.q.x)).toBe(false);
         expect(isNaN(result.q.y)).toBe(false);

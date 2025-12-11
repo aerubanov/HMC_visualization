@@ -22,14 +22,6 @@ cd HMC_visualization
 npm install
 ```
 
-This will install all required dependencies:
-
-- React & React DOM
-- Vite (build tool)
-- mathjs (math expression parsing)
-- plotly.js & react-plotly.js (visualization)
-- Vitest & jsdom (testing)
-
 ## Development
 
 ### Run Development Server
@@ -44,36 +36,15 @@ The application will be available at `http://localhost:5173`
 ### Run Tests
 
 ```bash
-# Run tests in watch mode
-npm run test
-
-# Run tests once
 npm run test -- --run
-
-# Run tests with UI
-npm run test:ui
 ```
 
 ### Code Quality
 
-**Linting** (ESLint checks):
-
 ```bash
-# Check for linting errors
 npm run lint
-
-# Auto-fix linting issues
-npm run lint:fix
-```
-
-**Formatting** (Prettier):
-
-```bash
-# Format all source files
 npm run format
 
-# Check formatting without making changes
-npm run format:check
 ```
 
 **Pre-commit Hooks**:
@@ -83,12 +54,6 @@ This project uses [Husky](https://typicode.github.io/husky/) and [lint-staged](h
 - Prettier auto-fixes formatting on staged files
 - ESLint auto-fixes linting issues on `.js` and `.jsx` files
 - Commits are blocked if ESLint finds errors that can't be auto-fixed
-
-To bypass pre-commit hooks (emergencies only):
-
-```bash
-git commit --no-verify -m "your message"
-```
 
 ## Build
 
@@ -114,18 +79,29 @@ Preview the production build locally before deployment.
 src/
 ├── components/       # React components
 │   ├── Controls.jsx     # HMC parameter controls
-│   └── Visualizer.jsx   # Plotly visualization wrapper
+│   ├── Controls.css     # Styles for Controls
+│   ├── Visualizer.jsx   # Plotly visualization wrapper
+│   └── Visualizer.css   # Styles for Visualizer
+├── hooks/            # Custom React hooks
+│   └── useHMCController.js # HMC logic controller
 ├── utils/           # Core logic modules
 │   ├── mathEngine.js    # Math.js wrappers for parsing & gradients
-│   └── hmcSampler.js    # HMC physics simulation
+│   ├── hmcSampler.js    # HMC physics simulation
+│   └── plotConfig.js    # Plotly configuration helpers
 ├── App.jsx          # Main application component
+├── App.css          # App-level styles
 ├── main.jsx         # React entry point
 └── index.css        # Global styles
 
 tests/
+├── components/      # Component tests
+│   └── Controls.test.jsx
+├── hooks/           # Hook tests
+│   └── useHMCController.test.js
 └── utils/           # Unit tests
     ├── mathEngine.test.js
-    └── hmcSampler.test.js
+    ├── hmcSampler.test.js
+    └── plotConfig.test.js
 ```
 
 ## Technology Stack

@@ -17,7 +17,6 @@ export class Logp {
     }
 
     // 2. Apply log transform: log(pdfString)
-    // We wrap the expression in log(...)
     const logExpr = `log(${pdfString})`;
     let logNode;
     try {
@@ -26,7 +25,7 @@ export class Logp {
       throw new Error(`Error parsing log expression: ${e.message}`);
     }
 
-    // Simplify the expression (e.g., log(exp(...)) -> ...)
+    // 3. Simplify the expression (e.g., log(exp(...)) -> ...)
     try {
       this.logNode = simplify(logNode);
     } catch (e) {
@@ -34,10 +33,10 @@ export class Logp {
       this.logNode = logNode;
     }
 
-    // Compile for efficiency
+    // 4. Compile for efficiency
     this.logCompiled = this.logNode.compile();
 
-    // Validate by attempting to evaluate at a test point
+    // 5. Validate by attempting to evaluate at a test point
     try {
       this.logCompiled.evaluate({ x: 1, y: 1 });
     } catch (e) {
@@ -46,7 +45,7 @@ export class Logp {
       );
     }
 
-    // 3. Compute symbolic gradients: d(logP)/dx, d(logP)/dy
+    // 6. Compute symbolic gradients: d(logP)/dx, d(logP)/dy
     try {
       const gradX = derivative(this.logNode, 'x');
       const gradY = derivative(this.logNode, 'y');
