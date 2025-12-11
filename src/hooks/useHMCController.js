@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Logp } from '../utils/mathEngine';
-import { step } from '../utils/hmcSampler';
+import { hmcStep } from '../utils/hmcSampler';
 import { generateGrid, createContourTrace } from '../utils/plotConfig';
 
 export default function useHMCController() {
@@ -144,7 +144,7 @@ export default function useHMCController() {
 
       const executeStep = () => {
         try {
-          const result = step(
+          const result = hmcStep(
             currentParticleRef.current.q,
             params.epsilon,
             params.L,

@@ -4,11 +4,12 @@ import useHMCController from '../../src/hooks/useHMCController';
 
 // Mock the HMC sampler functions
 vi.mock('../../src/utils/hmcSampler', () => ({
-  step: vi.fn(),
-  leapfrog: vi.fn(),
+  hmcStep: vi.fn(),
+  leapfrogStep: vi.fn(),
+  generateProposal: vi.fn(),
 }));
 
-import { step } from '../../src/utils/hmcSampler';
+import { hmcStep } from '../../src/utils/hmcSampler';
 
 describe('useHMCController', () => {
   beforeEach(() => {
@@ -62,7 +63,7 @@ describe('useHMCController', () => {
 
     // Mock step return - each call returns a different position
     let callCount = 0;
-    vi.mocked(step).mockImplementation(() => ({
+    vi.mocked(hmcStep).mockImplementation(() => ({
       q: { x: callCount, y: callCount },
       p: { x: 0, y: 0 },
       accepted: true,
@@ -86,7 +87,7 @@ describe('useHMCController', () => {
     );
 
     // Verify that step was called 5 times
-    expect(step).toHaveBeenCalledTimes(5);
+    expect(hmcStep).toHaveBeenCalledTimes(5);
 
     // Verify that iteration count is 5
     expect(result.current.iterationCount).toBe(5);
@@ -113,13 +114,24 @@ describe('useHMCController', () => {
       result.current.setInitialPosition({ x: 0, y: 0 });
     });
 
+    // Mock hmcStep for this test
+    vi.mocked(hmcStep).mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+
     act(() => {
       result.current.step();
     });
 
     expect(result.current.iterationCount).toBe(1);
     expect(result.current.samples.length).toBe(1);
-    expect(result.current.trajectory.length).toBe(1);
+    expect(result.current.trajectory.length).toBe(2);
   });
 
   it('should update plot data (samples, trajectory) after each step', () => {
@@ -130,12 +142,23 @@ describe('useHMCController', () => {
       result.current.setInitialPosition({ x: 0, y: 0 });
     });
 
+    // Mock hmcStep
+    vi.mocked(hmcStep).mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+
     act(() => {
       result.current.step();
     });
 
     expect(result.current.samples).toHaveLength(1);
-    expect(result.current.trajectory).toHaveLength(1);
+    expect(result.current.trajectory).toHaveLength(2);
     expect(result.current.currentParticle).not.toBeNull();
 
     act(() => {
@@ -352,7 +375,7 @@ describe('useHMCController', () => {
       });
 
       // Mock step to return a trajectory with L points
-      vi.mocked(step).mockReturnValue({
+      vi.mocked(hmcStep).mockReturnValue({
         q: { x: 1, y: 1 },
         p: { x: 0.5, y: 0.5 },
         accepted: true,
@@ -395,7 +418,7 @@ describe('useHMCController', () => {
       });
 
       // First step - returns trajectory A
-      vi.mocked(step).mockReturnValueOnce({
+      vi.mocked(hmcStep).mockReturnValueOnce({
         q: { x: 1, y: 1 },
         p: { x: 0, y: 0 },
         accepted: true,
@@ -422,7 +445,7 @@ describe('useHMCController', () => {
       expect(firstTrajectory[0]).toEqual({ x: 0, y: 0 });
 
       // Second step - returns trajectory B (different)
-      vi.mocked(step).mockReturnValueOnce({
+      vi.mocked(hmcStep).mockReturnValueOnce({
         q: { x: 2, y: 2 },
         p: { x: 0, y: 0 },
         accepted: true,
@@ -466,7 +489,7 @@ describe('useHMCController', () => {
         result.current.setInitialPosition({ x: 0, y: 0 });
       });
 
-      vi.mocked(step).mockReturnValue({
+      vi.mocked(hmcStep).mockReturnValue({
         q: { x: 1, y: 1 },
         p: { x: 0, y: 0 },
         accepted: true,
@@ -509,7 +532,7 @@ describe('useHMCController', () => {
       });
 
       // Mock rejected step (returns trajectory but not accepted)
-      vi.mocked(step).mockReturnValue({
+      vi.mocked(hmcStep).mockReturnValue({
         q: { x: 0, y: 0 }, // Position unchanged
         p: { x: 0, y: 0 },
         accepted: false,
@@ -550,7 +573,7 @@ describe('useHMCController', () => {
         result.current.setInitialPosition({ x: 0, y: 0 });
       });
 
-      vi.mocked(step).mockReturnValue({
+      vi.mocked(hmcStep).mockReturnValue({
         q: { x: 1, y: 1 },
         p: { x: 0, y: 0 },
         accepted: true,
@@ -597,7 +620,7 @@ describe('useHMCController', () => {
       });
 
       // Mock rejected step
-      vi.mocked(step).mockReturnValue({
+      vi.mocked(hmcStep).mockReturnValue({
         q: { x: 0, y: 0 },
         p: { x: 0, y: 0 },
         accepted: false,
@@ -626,7 +649,7 @@ describe('useHMCController', () => {
       expect(result.current.samples).toHaveLength(0);
 
       // Execute another step (accepted this time)
-      vi.mocked(step).mockReturnValue({
+      vi.mocked(hmcStep).mockReturnValue({
         q: { x: 1, y: 1 },
         p: { x: 0, y: 0 },
         accepted: true,

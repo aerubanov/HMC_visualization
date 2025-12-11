@@ -24,7 +24,7 @@ function randn() {
  * @param {Function} gradU - Gradient function (x, y) => {x, y}
  * @returns {Object} {q: {x, y}, p: {x, y}}
  */
-export function leapfrog(q, p, epsilon, gradU) {
+export function leapfrogStep(q, p, epsilon, gradU) {
   // Half-step momentum update
   const grad = gradU(q.x, q.y);
   const p_half = {
@@ -49,21 +49,16 @@ export function leapfrog(q, p, epsilon, gradU) {
 }
 
 /**
- * Execute one full HMC step
- * Algorithm:
- *   1. Sample momentum p ~ N(0, I)
- *   2. Simulate dynamics for L steps using leapfrog
- *   3. Compute energy change ΔH = H(q*, p*) - H(q, p)
- *   4. Accept with probability min(1, e^(-ΔH))
+ * Generate a proposal using HMC dynamics
  *
  * @param {Object} q - Current position {x, y}
  * @param {number} epsilon - Step size
  * @param {number} L - Number of leapfrog steps
  * @param {Function} U - Potential function (x, y) => number
  * @param {Function} gradU - Gradient function (x, y) => {x, y}
- * @returns {Object} {q: {x, y}, p: {x, y}, accepted: boolean, trajectory: Array<{x, y}>}
+ * @returns {Object} {q_proposed, p_proposed, H_initial, H_proposed, trajectory}
  */
-export function step(q, epsilon, L, U, gradU) {
+export function generateProposal(q, epsilon, L, U, gradU) {
   // 1. Sample initial momentum from N(0, I)
   const p_initial = {
     x: randn(),
@@ -82,7 +77,7 @@ export function step(q, epsilon, L, U, gradU) {
   const trajectory = [{ x: q.x, y: q.y }];
 
   for (let i = 0; i < L; i++) {
-    const result = leapfrog(q_proposed, p_proposed, epsilon, gradU);
+    const result = leapfrogStep(q_proposed, p_proposed, epsilon, gradU);
     q_proposed = result.q;
     p_proposed = result.p;
 
@@ -99,18 +94,40 @@ export function step(q, epsilon, L, U, gradU) {
   const U_proposed = U(q_proposed.x, q_proposed.y);
   const H_proposed = K_proposed + U_proposed;
 
+  return {
+    q_proposed,
+    p_proposed,
+    H_initial,
+    H_proposed,
+    trajectory,
+  };
+}
+
+/**
+ * Execute one full HMC step
+ *
+ * @param {Object} q - Current position {x, y}
+ * @param {number} epsilon - Step size
+ * @param {number} L - Number of leapfrog steps
+ * @param {Function} U - Potential function (x, y) => number
+ * @param {Function} gradU - Gradient function (x, y) => {x, y}
+ * @returns {Object} {q: {x, y}, p: {x, y}, accepted: boolean, trajectory: Array<{x, y}>}
+ */
+export function hmcStep(q, epsilon, L, U, gradU) {
+  const proposal = generateProposal(q, epsilon, L, U, gradU);
+
   // 6. Metropolis acceptance step
-  const deltaH = H_proposed - H_initial;
+  const deltaH = proposal.H_proposed - proposal.H_initial;
   const acceptProb = Math.min(1, Math.exp(-deltaH));
   const accepted = Math.random() < acceptProb;
 
   // 7. Return result
   if (accepted) {
     return {
-      q: q_proposed,
-      p: p_proposed,
+      q: proposal.q_proposed,
+      p: proposal.p_proposed,
       accepted: true,
-      trajectory: trajectory,
+      trajectory: proposal.trajectory,
     };
   } else {
     // Rejected: return original position but still return the proposed trajectory
@@ -118,7 +135,7 @@ export function step(q, epsilon, L, U, gradU) {
       q: q,
       p: { x: 0, y: 0 },
       accepted: false,
-      trajectory: trajectory, // Return trajectory even for rejected steps
+      trajectory: proposal.trajectory, // Return trajectory even for rejected steps
     };
   }
 }
