@@ -3,6 +3,11 @@ import { Logp } from '../utils/mathEngine';
 import { hmcStep } from '../utils/hmcSampler';
 import { generateGrid, createContourTrace } from '../utils/plotConfig';
 
+/**
+ * Custom hook to control the HMC sampling process
+ * Manages state for parameters, sampling results, and visualization data
+ * @returns {Object} Controller interface and state
+ */
 export default function useHMCController() {
   const [logP, setLogPString] = useState('');
   const [params, setParamsState] = useState({ epsilon: 0.1, L: 10, steps: 1 });
@@ -71,6 +76,10 @@ export default function useHMCController() {
     }
   }, []);
 
+  /**
+   * Reset the sampler state (samples, trajectory, iteration count)
+   * Keeps the current parameters and logP function
+   */
   const reset = useCallback(() => {
     setSamples([]);
     setTrajectory([]);
@@ -87,6 +96,11 @@ export default function useHMCController() {
     setIsRunning(false);
   }, [initialPosition]);
 
+  /**
+   * Set the log probability function from a string expression
+   * Parses the string and updates the contour plot
+   * @param {string} str - Mathematical expression for log P(x, y)
+   */
   const setLogP = useCallback(
     (str) => {
       setLogPString(str);
@@ -111,10 +125,19 @@ export default function useHMCController() {
     [reset, computeContour]
   );
 
+  /**
+   * Update HMC parameters
+   * @param {Object} newParams - Partial parameters object { epsilon, L, steps }
+   */
   const setParams = useCallback((newParams) => {
     setParamsState((prev) => ({ ...prev, ...newParams }));
   }, []);
 
+  /**
+   * Run the sampler for N steps
+   * Uses requestAnimationFrame for non-blocking execution
+   * @param {number} n - Number of steps to run
+   */
   const sampleSteps = useCallback(
     (n) => {
       setIsRunning(true);
@@ -191,6 +214,10 @@ export default function useHMCController() {
   );
 
   // Expose single step for manual stepping
+  /**
+   * Perform a single HMC step
+   * Wrapper around sampleSteps(1)
+   */
   const stepAction = useCallback(() => {
     sampleSteps(1);
   }, [sampleSteps]);
