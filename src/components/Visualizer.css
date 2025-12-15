@@ -7,6 +7,7 @@
   background: var(--color-bg-primary);
   position: relative;
   overflow: hidden;
+  padding-top: 60px; /* Space for social buttons at the top */
 }
 
 /* Background pattern */
