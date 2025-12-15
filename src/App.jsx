@@ -16,12 +16,16 @@ function App() {
     contourData,
     trajectory,
     samples,
+    seed,
+    useSeededMode,
     setLogP,
     setParams,
     setInitialPosition,
     step,
     sampleSteps,
     reset,
+    setSeed,
+    setUseSeededMode,
   } = useHMCController();
 
   return (
@@ -36,12 +40,16 @@ function App() {
           rejectedCount={rejectedCount}
           isRunning={isRunning}
           error={error}
+          seed={seed}
+          useSeededMode={useSeededMode}
           setLogP={setLogP}
           setParams={setParams}
           setInitialPosition={setInitialPosition}
           step={step}
           sampleSteps={sampleSteps}
           reset={reset}
+          setSeed={setSeed}
+          setUseSeededMode={setUseSeededMode}
         />
       </div>
       <div className="App-main">

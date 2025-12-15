@@ -11,17 +11,22 @@ function Controls({
   rejectedCount,
   isRunning,
   error,
+  seed,
+  useSeededMode,
   setLogP,
   setParams,
   setInitialPosition,
   step,
   sampleSteps,
   reset,
+  setSeed,
+  setUseSeededMode,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
   const [localX, setLocalX] = useState(initialPosition.x);
   const [localY, setLocalY] = useState(initialPosition.y);
+  const [localSeed, setLocalSeed] = useState(seed || 42);
 
   // Sync draft with prop when it changes externally (e.g., on reset)
   useEffect(() => {
@@ -55,6 +60,32 @@ function Controls({
 
   const handleSampleSteps = () => {
     sampleSteps(nSteps);
+  };
+
+  const handleSeedToggle = (e) => {
+    const enabled = e.target.checked;
+    setUseSeededMode(enabled);
+    if (enabled && seed === null) {
+      // If enabling for the first time, set the local seed value
+      setSeed(localSeed);
+    } else if (!enabled) {
+      setSeed(null);
+    }
+  };
+
+  const handleSeedChange = (e) => {
+    const value = parseInt(e.target.value, 10);
+    setLocalSeed(value);
+    if (useSeededMode) {
+      setSeed(value);
+    }
+  };
+
+  const handleGenerateRandomSeed = () => {
+    const newSeed = Math.floor(Math.random() * 1000000);
+    setLocalSeed(newSeed);
+    setSeed(newSeed);
+    setUseSeededMode(true);
   };
 
   const acceptanceRate =
@@ -134,6 +165,49 @@ function Controls({
               onChange={(e) => handleParamChange('L', e.target.value)}
             />
           </div>
+
+          {/* Random Seed */}
+          <div className="control-group">
+            <div className="checkbox-group">
+              <input
+                id="seed-toggle"
+                type="checkbox"
+                checked={useSeededMode}
+                onChange={handleSeedToggle}
+              />
+              <label htmlFor="seed-toggle" className="control-label">
+                Use Random Seed (Reproducible)
+              </label>
+            </div>
+          </div>
+
+          {useSeededMode && (
+            <>
+              <div className="control-group">
+                <label htmlFor="seed-input" className="control-label">
+                  Seed Value
+                </label>
+                <input
+                  id="seed-input"
+                  type="number"
+                  className="control-input"
+                  step="1"
+                  value={localSeed}
+                  onChange={handleSeedChange}
+                />
+              </div>
+
+              <div className="control-group">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleGenerateRandomSeed}
+                  disabled={isRunning}
+                >
+                  🎲 Generate Random Seed
+                </button>
+              </div>
+            </>
+          )}
         </section>
 
         {/* Initial Position */}
@@ -324,12 +398,16 @@ Controls.propTypes = {
   rejectedCount: PropTypes.number,
   isRunning: PropTypes.bool.isRequired,
   error: PropTypes.string,
+  seed: PropTypes.number,
+  useSeededMode: PropTypes.bool.isRequired,
   setLogP: PropTypes.func.isRequired,
   setParams: PropTypes.func.isRequired,
   setInitialPosition: PropTypes.func.isRequired,
   step: PropTypes.func.isRequired,
   sampleSteps: PropTypes.func.isRequired,
   reset: PropTypes.func.isRequired,
+  setSeed: PropTypes.func.isRequired,
+  setUseSeededMode: PropTypes.func.isRequired,
 };
 
 export default Controls;

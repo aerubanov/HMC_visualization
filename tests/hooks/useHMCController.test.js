@@ -684,4 +684,256 @@ describe('useHMCController', () => {
       expect(result.current.acceptedCount).toBe(0);
     });
   });
+
+  describe('Seeded RNG Integration', () => {
+    it('should initialize with null seed (unseeded mode)', () => {
+      const { result } = renderHook(() => useHMCController());
+
+      expect(result.current.seed).toBeNull();
+      expect(result.current.useSeededMode).toBe(false);
+    });
+
+    it('should set seed and enable seeded mode', () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setSeed(42);
+      });
+
+      expect(result.current.seed).toBe(42);
+      expect(result.current.useSeededMode).toBe(true);
+    });
+
+    it('should disable seeded mode when seed is set to null', () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setSeed(42);
+      });
+
+      expect(result.current.useSeededMode).toBe(true);
+
+      act(() => {
+        result.current.setSeed(null);
+      });
+
+      expect(result.current.seed).toBeNull();
+      expect(result.current.useSeededMode).toBe(false);
+    });
+
+    it('should update seed when changed', () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setSeed(42);
+      });
+
+      expect(result.current.seed).toBe(42);
+
+      act(() => {
+        result.current.setSeed(100);
+      });
+
+      expect(result.current.seed).toBe(100);
+    });
+
+    it('should preserve seed after reset', () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        result.current.setSeed(42);
+      });
+
+      // Mock hmcStep to return accepted samples
+      vi.mocked(hmcStep).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      });
+
+      act(() => {
+        result.current.sampleSteps(1);
+      });
+
+      // Wait for step to complete
+      act(() => {
+        result.current.reset();
+      });
+
+      expect(result.current.seed).toBe(42);
+      expect(result.current.useSeededMode).toBe(true);
+    });
+
+    it('should reset RNG state after reset to produce same sequence', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        result.current.setSeed(42);
+      });
+
+      // Clear previous mocks
+      vi.mocked(hmcStep).mockClear();
+
+      // Mock hmcStep to capture RNG calls
+      const rngCallsFirstRun = [];
+      const rngCallsSecondRun = [];
+
+      vi.mocked(hmcStep).mockImplementation(
+        (_q, _epsilon, _L, _U, _gradU, rng) => {
+          if (rng) {
+            // Capture some random values to verify sequence
+            rngCallsFirstRun.push(rng.random());
+          }
+          return {
+            q: { x: 1, y: 1 },
+            p: { x: 0, y: 0 },
+            accepted: true,
+            trajectory: [{ x: 1, y: 1 }],
+          };
+        }
+      );
+
+      // First run: 3 steps
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Reset
+      act(() => {
+        result.current.reset();
+      });
+
+      // Second run: 3 steps with same seed
+      vi.mocked(hmcStep).mockImplementation(
+        (_q, _epsilon, _L, _U, _gradU, rng) => {
+          if (rng) {
+            rngCallsSecondRun.push(rng.random());
+          }
+          return {
+            q: { x: 1, y: 1 },
+            p: { x: 0, y: 0 },
+            accepted: true,
+            trajectory: [{ x: 1, y: 1 }],
+          };
+        }
+      );
+
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify that the RNG produced the same sequence
+      expect(rngCallsFirstRun.length).toBeGreaterThan(0);
+      expect(rngCallsSecondRun.length).toBeGreaterThan(0);
+      expect(rngCallsFirstRun).toEqual(rngCallsSecondRun);
+    });
+
+    it('should pass RNG to hmcStep when seeded mode is enabled', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        result.current.setSeed(42);
+      });
+
+      vi.mocked(hmcStep).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      });
+
+      act(() => {
+        result.current.sampleSteps(1);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify hmcStep was called with 6 arguments (including rng)
+      expect(hmcStep).toHaveBeenCalled();
+      const lastCall = vi.mocked(hmcStep).mock.calls[0];
+      expect(lastCall).toHaveLength(6); // q, epsilon, L, U, gradU, rng
+      expect(lastCall[5]).toBeDefined(); // rng parameter should be defined
+    });
+
+    it('should not pass RNG to hmcStep when unseeded mode', async () => {
+      const { result } = renderHook(() => useHMCController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        // Don't set seed - should remain in unseeded mode
+      });
+
+      vi.mocked(hmcStep).mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      });
+
+      act(() => {
+        result.current.sampleSteps(1);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify hmcStep was called with 5 arguments (no rng)
+      expect(hmcStep).toHaveBeenCalled();
+      const lastCall = vi.mocked(hmcStep).mock.calls[0];
+      // In unseeded mode, we should pass null or undefined as rng
+      expect(lastCall[5]).toBeNull();
+    });
+
+    it('should toggle seeded mode on/off', () => {
+      const { result } = renderHook(() => useHMCController());
+
+      // Enable seeded mode
+      act(() => {
+        result.current.setSeed(42);
+      });
+
+      expect(result.current.useSeededMode).toBe(true);
+
+      // Disable seeded mode
+      act(() => {
+        result.current.setUseSeededMode(false);
+      });
+
+      expect(result.current.useSeededMode).toBe(false);
+
+      // Enable again
+      act(() => {
+        result.current.setUseSeededMode(true);
+      });
+
+      expect(result.current.useSeededMode).toBe(true);
+    });
+  });
 });
