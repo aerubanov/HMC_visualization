@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { hmcStep } from '../utils/hmcSampler';
 import { generateGrid, createContourTrace } from '../utils/plotConfig';
+import { SeededRandom } from '../utils/seededRandom';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -22,9 +23,14 @@ export default function useHMCController() {
 
   const [rejectedCount, setRejectedCount] = useState(0);
 
+  // Seeded random state
+  const [seed, setSeedState] = useState(null);
+  const [useSeededMode, setUseSeededMode] = useState(false);
+
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
   const currentParticleRef = useRef(null); // { q, p }
+  const rngRef = useRef(null); // SeededRandom instance
 
   /**
    * Computes contour data for the current logp function
@@ -79,6 +85,7 @@ export default function useHMCController() {
   /**
    * Reset the sampler state (samples, trajectory, iteration count)
    * Keeps the current parameters and logP function
+   * Also resets the RNG to the initial seed if seeded mode is enabled
    */
   const reset = useCallback(() => {
     setSamples([]);
@@ -94,7 +101,12 @@ export default function useHMCController() {
     setCurrentParticle(startState);
     currentParticleRef.current = startState;
     setIsRunning(false);
-  }, [initialPosition]);
+
+    // Reset RNG to initial seed if seeded mode is enabled
+    if (useSeededMode && seed !== null && rngRef.current) {
+      rngRef.current.setSeed(seed);
+    }
+  }, [initialPosition, useSeededMode, seed]);
 
   /**
    * Set the log probability function from a string expression
@@ -167,12 +179,16 @@ export default function useHMCController() {
 
       const executeStep = () => {
         try {
+          // Use RNG if seeded mode is enabled
+          const rng = useSeededMode ? rngRef.current : null;
+
           const result = hmcStep(
             currentParticleRef.current.q,
             params.epsilon,
             params.L,
             U,
-            gradU
+            gradU,
+            rng
           );
 
           currentParticleRef.current = {
@@ -210,7 +226,7 @@ export default function useHMCController() {
 
       executeStep();
     },
-    [params, initialPosition]
+    [params, initialPosition, useSeededMode]
   );
 
   // Expose single step for manual stepping
@@ -221,6 +237,21 @@ export default function useHMCController() {
   const stepAction = useCallback(() => {
     sampleSteps(1);
   }, [sampleSteps]);
+
+  /**
+   * Set the random seed for reproducible sampling
+   * @param {number|null} newSeed - Seed value, or null to disable seeded mode
+   */
+  const setSeed = useCallback((newSeed) => {
+    setSeedState(newSeed);
+    if (newSeed !== null) {
+      rngRef.current = new SeededRandom(newSeed);
+      setUseSeededMode(true);
+    } else {
+      rngRef.current = null;
+      setUseSeededMode(false);
+    }
+  }, []);
 
   return {
     logP,
@@ -235,11 +266,15 @@ export default function useHMCController() {
     rejectedCount,
     error,
     contourData,
+    seed,
+    useSeededMode,
     setLogP,
     setParams,
     setInitialPosition,
     sampleSteps,
     step: stepAction,
     reset,
+    setSeed,
+    setUseSeededMode,
   };
 }

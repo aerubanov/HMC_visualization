@@ -457,4 +457,183 @@ describe('HMCSampler', () => {
       });
     });
   });
+
+  describe('Seeded RNG Integration', () => {
+    // Import will be added when SeededRandom is implemented
+    // For now, we'll create a mock
+    class MockSeededRandom {
+      constructor(seed) {
+        this.seed = seed;
+        this.state = seed;
+      }
+
+      random() {
+        // Simple Mulberry32 PRNG
+        let t = (this.state += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      }
+
+      randn() {
+        const u1 = this.random();
+        const u2 = this.random();
+        return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      }
+
+      setSeed(seed) {
+        this.seed = seed;
+        this.state = seed;
+      }
+
+      getSeed() {
+        return this.seed;
+      }
+    }
+
+    describe('generateProposal with RNG', () => {
+      it('should produce reproducible results with same seed', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const rng1 = new MockSeededRandom(42);
+        const result1 = generateProposal(q, epsilon, L, U, gradU, rng1);
+
+        const rng2 = new MockSeededRandom(42);
+        const result2 = generateProposal(q, epsilon, L, U, gradU, rng2);
+
+        expect(result1.q_proposed).toEqual(result2.q_proposed);
+        expect(result1.p_proposed).toEqual(result2.p_proposed);
+        expect(result1.H_initial).toEqual(result2.H_initial);
+        expect(result1.H_proposed).toEqual(result2.H_proposed);
+        expect(result1.trajectory).toEqual(result2.trajectory);
+      });
+
+      it('should produce different results with different seeds', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const rng1 = new MockSeededRandom(42);
+        const result1 = generateProposal(q, epsilon, L, U, gradU, rng1);
+
+        const rng2 = new MockSeededRandom(100);
+        const result2 = generateProposal(q, epsilon, L, U, gradU, rng2);
+
+        expect(result1.q_proposed).not.toEqual(result2.q_proposed);
+        expect(result1.p_proposed).not.toEqual(result2.p_proposed);
+      });
+
+      it('should work without RNG parameter (backward compatibility)', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const result = generateProposal(q, epsilon, L, U, gradU);
+
+        expect(result).toHaveProperty('q_proposed');
+        expect(result).toHaveProperty('p_proposed');
+        expect(result).toHaveProperty('H_initial');
+        expect(result).toHaveProperty('H_proposed');
+        expect(result).toHaveProperty('trajectory');
+      });
+
+      it('should use Math.random when rng is null', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const result = generateProposal(q, epsilon, L, U, gradU, null);
+
+        expect(result).toHaveProperty('q_proposed');
+        expect(result).toHaveProperty('p_proposed');
+      });
+    });
+
+    describe('hmcStep with RNG', () => {
+      it('should produce reproducible results with same seed', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const rng1 = new MockSeededRandom(42);
+        const result1 = hmcStep(q, epsilon, L, U, gradU, rng1);
+
+        const rng2 = new MockSeededRandom(42);
+        const result2 = hmcStep(q, epsilon, L, U, gradU, rng2);
+
+        expect(result1.q).toEqual(result2.q);
+        expect(result1.p).toEqual(result2.p);
+        expect(result1.accepted).toEqual(result2.accepted);
+        expect(result1.trajectory).toEqual(result2.trajectory);
+      });
+
+      it('should produce reproducible acceptance decisions', () => {
+        const q = { x: 1.0, y: 1.0 };
+        const epsilon = 0.1;
+        const L = 10;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        // Run multiple times with same seed
+        const results = [];
+        for (let i = 0; i < 5; i++) {
+          const rng = new MockSeededRandom(42);
+          const result = hmcStep(q, epsilon, L, U, gradU, rng);
+          results.push(result.accepted);
+        }
+
+        // All should be the same
+        expect(results.every((val) => val === results[0])).toBe(true);
+      });
+
+      it('should work without RNG parameter (backward compatibility)', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const result = hmcStep(q, epsilon, L, U, gradU);
+
+        expect(result).toHaveProperty('q');
+        expect(result).toHaveProperty('p');
+        expect(result).toHaveProperty('accepted');
+        expect(result).toHaveProperty('trajectory');
+      });
+
+      it('should produce different results with different seeds', () => {
+        const q = { x: 0.0, y: 0.0 };
+        const epsilon = 0.1;
+        const L = 5;
+        const U = (x, y) => 0.5 * (x * x + y * y);
+        const gradU = (x, y) => ({ x: x, y: y });
+
+        const rng1 = new MockSeededRandom(42);
+        const result1 = hmcStep(q, epsilon, L, U, gradU, rng1);
+
+        const rng2 = new MockSeededRandom(100);
+        const result2 = hmcStep(q, epsilon, L, U, gradU, rng2);
+
+        // At least one of these should be different
+        const isDifferent =
+          result1.q.x !== result2.q.x ||
+          result1.q.y !== result2.q.y ||
+          result1.accepted !== result2.accepted;
+
+        expect(isDifferent).toBe(true);
+      });
+    });
+  });
 });

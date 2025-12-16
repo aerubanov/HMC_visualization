@@ -144,6 +144,25 @@
   gap: var(--space-md);
 }
 
+/* Checkbox group */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.checkbox-group input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.checkbox-group .control-label {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
 /* Buttons */
 .btn {
   width: 100%;

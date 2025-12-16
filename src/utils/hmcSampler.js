@@ -3,11 +3,13 @@
 
 /**
  * Generate a standard normal random variable using Box-Muller transform
+ * @param {Object} [rng] - Optional seeded RNG with random() method
  * @returns {number} Sample from N(0, 1)
  */
-function randn() {
-  const u1 = Math.random();
-  const u2 = Math.random();
+function randn(rng = null) {
+  const randomFn = rng ? () => rng.random() : Math.random;
+  const u1 = randomFn();
+  const u2 = randomFn();
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
@@ -56,13 +58,14 @@ export function leapfrogStep(q, p, epsilon, gradU) {
  * @param {number} L - Number of leapfrog steps
  * @param {Function} U - Potential function (x, y) => number
  * @param {Function} gradU - Gradient function (x, y) => {x, y}
+ * @param {Object} [rng] - Optional seeded RNG. If not provided, uses Math.random()
  * @returns {Object} {q_proposed, p_proposed, H_initial, H_proposed, trajectory}
  */
-export function generateProposal(q, epsilon, L, U, gradU) {
+export function generateProposal(q, epsilon, L, U, gradU, rng = null) {
   // 1. Sample initial momentum from N(0, I)
   const p_initial = {
-    x: randn(),
-    y: randn(),
+    x: randn(rng),
+    y: randn(rng),
   };
 
   // 2. Compute initial Hamiltonian
@@ -111,15 +114,17 @@ export function generateProposal(q, epsilon, L, U, gradU) {
  * @param {number} L - Number of leapfrog steps
  * @param {Function} U - Potential function (x, y) => number
  * @param {Function} gradU - Gradient function (x, y) => {x, y}
+ * @param {Object} [rng] - Optional seeded RNG. If not provided, uses Math.random()
  * @returns {Object} {q: {x, y}, p: {x, y}, accepted: boolean, trajectory: Array<{x, y}>}
  */
-export function hmcStep(q, epsilon, L, U, gradU) {
-  const proposal = generateProposal(q, epsilon, L, U, gradU);
+export function hmcStep(q, epsilon, L, U, gradU, rng = null) {
+  const proposal = generateProposal(q, epsilon, L, U, gradU, rng);
 
   // 6. Metropolis acceptance step
   const deltaH = proposal.H_proposed - proposal.H_initial;
   const acceptProb = Math.min(1, Math.exp(-deltaH));
-  const accepted = Math.random() < acceptProb;
+  const randomFn = rng ? () => rng.random() : Math.random;
+  const accepted = randomFn() < acceptProb;
 
   // 7. Return result
   if (accepted) {
