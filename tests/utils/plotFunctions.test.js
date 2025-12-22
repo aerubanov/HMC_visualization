@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { HMC_SAMPLER } from '../../src/utils/plotConfig.json';
 import {
   createTrajectoryTrace,
   createSamplesTrace,
-  COLORS,
-} from '../../src/utils/plotConfig';
+} from '../../src/utils/plotFunctions';
 
 describe('createTrajectoryTrace', () => {
   describe('Valid Input', () => {
@@ -46,7 +46,7 @@ describe('createTrajectoryTrace', () => {
       const trace = createTrajectoryTrace(trajectory);
 
       expect(trace.line).toBeDefined();
-      expect(trace.line.color).toBe(COLORS.trajectory);
+      expect(trace.line.color).toBe(HMC_SAMPLER.styles.primaryColor);
       expect(trace.line.width).toBeGreaterThan(0);
       expect(trace.line.shape).toBe('linear');
     });
@@ -60,7 +60,7 @@ describe('createTrajectoryTrace', () => {
       const trace = createTrajectoryTrace(trajectory);
 
       expect(trace.marker).toBeDefined();
-      expect(trace.marker.color).toBe(COLORS.trajectory);
+      expect(trace.marker.color).toBe(HMC_SAMPLER.styles.primaryColor);
       expect(trace.marker.size).toBeGreaterThan(0);
       expect(trace.marker.symbol).toBe('circle');
     });
@@ -189,13 +189,13 @@ describe('createSamplesTrace', () => {
       const trace = createSamplesTrace(samples);
 
       expect(trace.marker).toBeDefined();
-      expect(trace.marker.color).toBe(COLORS.trajectory);
+      expect(trace.marker.color).toBe(HMC_SAMPLER.styles.primaryColor);
       expect(trace.marker.size).toBeGreaterThan(0);
       expect(trace.marker.symbol).toBe('circle');
       expect(trace.marker.opacity).toBeDefined();
 
       expect(trace.line).toBeDefined();
-      expect(trace.line.color).toBe(COLORS.trajectory);
+      expect(trace.line.color).toBe(HMC_SAMPLER.styles.primaryColor);
       expect(trace.line.dash).toBe('dash');
     });
   });

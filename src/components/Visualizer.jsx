@@ -1,12 +1,11 @@
 import './Visualizer.css';
 import Plot from 'react-plotly.js';
 import PropTypes from 'prop-types';
+import { GENERAL } from '../utils/plotConfig.json';
 import {
-  BASE_LAYOUT,
-  PLOT_CONFIG,
   createTrajectoryTrace,
   createSamplesTrace,
-} from '../utils/plotConfig';
+} from '../utils/plotFunctions';
 
 function Visualizer({ contourData, trajectory, acceptedSamples }) {
   // Show placeholder if no contour data is available
@@ -105,13 +104,13 @@ function Visualizer({ contourData, trajectory, acceptedSamples }) {
       <Plot
         data={traces}
         layout={{
-          ...BASE_LAYOUT,
+          ...GENERAL.layout,
           title: {
             text: 'Log Probability Density',
-            font: { size: 16, color: BASE_LAYOUT.font.color },
+            font: { size: 16, color: GENERAL.layout.font.color },
           },
         }}
-        config={PLOT_CONFIG}
+        config={GENERAL.config}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler={true}
       />
