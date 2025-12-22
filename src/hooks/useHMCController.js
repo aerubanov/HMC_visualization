@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { hmcStep } from '../utils/hmcSampler';
-import { generateGrid, createContourTrace } from '../utils/plotConfig';
+import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { SeededRandom } from '../utils/seededRandom';
 
 /**

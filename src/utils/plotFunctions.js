@@ -1,80 +1,4 @@
-/**
- * Plotly configuration and styling constants for HMC visualization
- */
-
-// Grid parameters for contour computation
-export const GRID_CONFIG = {
-  resolution: 50, // Number of points along each axis
-  xRange: [-5, 5], // X-axis bounds
-  yRange: [-5, 5], // Y-axis bounds
-};
-
-// Color scheme for light theme
-export const COLORS = {
-  background: '#ffffff',
-  paper: '#f8f9fa',
-  text: '#1a1a1a',
-  grid: '#e1e4e8',
-  contourLine: '#0366d6',
-  accent: '#d73a49',
-  // Trajectory visualization colors
-  trajectory: '#d73a49', // Vibrant red for active trajectory
-  sample: '#0366d6', // Blue for accepted sample points
-  currentParticle: '#28a745', // Green for current position
-};
-
-// Base layout configuration for all plots
-export const BASE_LAYOUT = {
-  autosize: true,
-  paper_bgcolor: COLORS.paper,
-  plot_bgcolor: COLORS.background,
-  font: {
-    color: COLORS.text,
-    family: 'Inter, system-ui, sans-serif',
-    size: 12,
-  },
-  xaxis: {
-    title: 'x',
-    gridcolor: COLORS.grid,
-    zeroline: true,
-    zerolinecolor: COLORS.grid,
-    showline: true,
-    mirror: true,
-    ticks: 'outside',
-    linecolor: COLORS.text,
-  },
-  yaxis: {
-    title: 'y',
-    gridcolor: COLORS.grid,
-    zeroline: true,
-    zerolinecolor: COLORS.grid,
-    showline: true,
-    mirror: true,
-    ticks: 'outside',
-    linecolor: COLORS.text,
-  },
-  margin: {
-    l: 60,
-    r: 40,
-    t: 40,
-    b: 60,
-  },
-};
-
-// Plotly configuration options
-export const PLOT_CONFIG = {
-  responsive: true,
-  displayModeBar: true,
-  displaylogo: false,
-  modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-  toImageButtonOptions: {
-    format: 'png',
-    filename: 'hmc_visualization',
-    height: 800,
-    width: 800,
-    scale: 2,
-  },
-};
+import { CONTOUR, HMC_SAMPLER } from './plotConfig.json';
 
 /**
  * Creates a Plotly contour trace configuration
@@ -104,7 +28,7 @@ export function createContourTrace(x, y, z) {
       showlabels: true,
       labelfont: {
         size: 10,
-        color: COLORS.text,
+        color: CONTOUR.styles.labelColor,
       },
     },
     colorbar: {
@@ -113,7 +37,7 @@ export function createContourTrace(x, y, z) {
         side: 'right',
       },
       tickfont: {
-        color: COLORS.text,
+        color: CONTOUR.styles.labelColor,
       },
       len: 0.75,
       thickness: 15,
@@ -129,7 +53,7 @@ export function createContourTrace(x, y, z) {
  * @returns {{x: number[], y: number[], xGrid: number[][], yGrid: number[][]}}
  */
 export function generateGrid() {
-  const { resolution, xRange, yRange } = GRID_CONFIG;
+  const { resolution, xRange, yRange } = CONTOUR.grid;
 
   // Create 1D arrays for each axis
   const xStep = (xRange[1] - xRange[0]) / (resolution - 1);
@@ -164,13 +88,13 @@ export function createTrajectoryTrace(trajectory) {
     x: trajectory.map((p) => p.x),
     y: trajectory.map((p) => p.y),
     line: {
-      color: COLORS.trajectory,
+      color: HMC_SAMPLER.styles.primaryColor,
       width: 2,
       shape: 'linear',
     },
     marker: {
       size: 4,
-      color: COLORS.trajectory,
+      color: HMC_SAMPLER.styles.primaryColor,
       symbol: 'circle',
     },
     name: 'Trajectory',
@@ -196,13 +120,13 @@ export function createSamplesTrace(samples) {
     x: samples.map((p) => p.x),
     y: samples.map((p) => p.y),
     line: {
-      color: COLORS.trajectory,
+      color: HMC_SAMPLER.styles.primaryColor, // Using trajectory color as per original config
       width: 1,
       dash: 'dash',
     },
     marker: {
       size: 6,
-      color: COLORS.trajectory,
+      color: HMC_SAMPLER.styles.primaryColor, // Using trajectory color as per original config
       symbol: 'circle',
       opacity: 0.8,
     },
