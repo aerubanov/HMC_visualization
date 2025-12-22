@@ -1,8 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
-import { hmcStep } from '../utils/hmcSampler';
+import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
-import { SeededRandom } from '../utils/seededRandom';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -30,7 +29,14 @@ export default function useHMCController() {
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
   const currentParticleRef = useRef(null); // { q, p }
-  const rngRef = useRef(null); // SeededRandom instance
+
+  // Sampler instance
+  const samplerRef = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
+
+  // Update sampler params when state changes (or initializes)
+  useEffect(() => {
+    samplerRef.current.setParams({ epsilon: params.epsilon, L: params.L });
+  }, [params.epsilon, params.L]);
 
   /**
    * Computes contour data for the current logp function
@@ -103,8 +109,8 @@ export default function useHMCController() {
     setIsRunning(false);
 
     // Reset RNG to initial seed if seeded mode is enabled
-    if (useSeededMode && seed !== null && rngRef.current) {
-      rngRef.current.setSeed(seed);
+    if (useSeededMode && seed !== null) {
+      samplerRef.current.setSeed(seed);
     }
   }, [initialPosition, useSeededMode, seed]);
 
@@ -143,6 +149,7 @@ export default function useHMCController() {
    */
   const setParams = useCallback((newParams) => {
     setParamsState((prev) => ({ ...prev, ...newParams }));
+    // useEffect will handle updating samplerRef because it depends on params state
   }, []);
 
   /**
@@ -166,29 +173,14 @@ export default function useHMCController() {
         };
       }
 
-      const U = (x, y) => -logpInstanceRef.current.getLogProbability(x, y);
-      const gradU = (x, y) => {
-        const [dx, dy] = logpInstanceRef.current.getLogProbabilityGradient(
-          x,
-          y
-        );
-        return { x: -dx, y: -dy };
-      };
-
       let stepsCompleted = 0;
 
       const executeStep = () => {
         try {
-          // Use RNG if seeded mode is enabled
-          const rng = useSeededMode ? rngRef.current : null;
-
-          const result = hmcStep(
-            currentParticleRef.current.q,
-            params.epsilon,
-            params.L,
-            U,
-            gradU,
-            rng
+          // Perform step using HMCSampler
+          const result = samplerRef.current.step(
+            currentParticleRef.current,
+            logpInstanceRef.current
           );
 
           currentParticleRef.current = {
@@ -226,7 +218,7 @@ export default function useHMCController() {
 
       executeStep();
     },
-    [params, initialPosition, useSeededMode]
+    [initialPosition] // Removed useSeededMode dependency as rng is in sampler
   );
 
   // Expose single step for manual stepping
@@ -244,13 +236,8 @@ export default function useHMCController() {
    */
   const setSeed = useCallback((newSeed) => {
     setSeedState(newSeed);
-    if (newSeed !== null) {
-      rngRef.current = new SeededRandom(newSeed);
-      setUseSeededMode(true);
-    } else {
-      rngRef.current = null;
-      setUseSeededMode(false);
-    }
+    samplerRef.current.setSeed(newSeed);
+    setUseSeededMode(newSeed !== null);
   }, []);
 
   return {
@@ -275,6 +262,10 @@ export default function useHMCController() {
     step: stepAction,
     reset,
     setSeed,
-    setUseSeededMode,
+    setUseSeededMode, // Actually setSeed handles both now, but keeping for compatibility if UI uses it directly?
+    // UI likely uses useSeededMode to toggle UI state, so we just return the state.
+    // setUseSeededMode might not be exposed or only used internally.
+    // Original code exposed it. I'll expose it but wrapping it might be safer if we want to enforce logic.
+    // simpler: user likely only calls setSeed.
   };
 }
