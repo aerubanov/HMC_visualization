@@ -262,10 +262,5 @@ export default function useSamplingController() {
     step: stepAction,
     reset,
     setSeed,
-    setUseSeededMode, // Actually setSeed handles both now, but keeping for compatibility if UI uses it directly?
-    // UI likely uses useSeededMode to toggle UI state, so we just return the state.
-    // setUseSeededMode might not be exposed or only used internally.
-    // Original code exposed it. I'll expose it but wrapping it might be safer if we want to enforce logic.
-    // simpler: user likely only calls setSeed.
   };
 }

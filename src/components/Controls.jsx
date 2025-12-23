@@ -20,7 +20,6 @@ function Controls({
   sampleSteps,
   reset,
   setSeed,
-  setUseSeededMode,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
@@ -64,11 +63,15 @@ function Controls({
 
   const handleSeedToggle = (e) => {
     const enabled = e.target.checked;
-    setUseSeededMode(enabled);
-    if (enabled && seed === null) {
-      // If enabling for the first time, set the local seed value
-      setSeed(localSeed);
-    } else if (!enabled) {
+
+    if (enabled) {
+      // If enabling, set the seed (if not already set, use localSeed)
+      if (seed === null) {
+        setSeed(localSeed);
+      }
+      // If seed is already set, no need to do anything, seeded mode is implied by seed != null
+    } else {
+      // If disabling, set seed to null
       setSeed(null);
     }
   };
@@ -85,7 +88,6 @@ function Controls({
     const newSeed = Math.floor(Math.random() * 1000000);
     setLocalSeed(newSeed);
     setSeed(newSeed);
-    setUseSeededMode(true);
   };
 
   const acceptanceRate =
@@ -407,7 +409,6 @@ Controls.propTypes = {
   sampleSteps: PropTypes.func.isRequired,
   reset: PropTypes.func.isRequired,
   setSeed: PropTypes.func.isRequired,
-  setUseSeededMode: PropTypes.func.isRequired,
 };
 
 export default Controls;

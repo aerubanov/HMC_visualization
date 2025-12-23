@@ -25,7 +25,6 @@ function App() {
     sampleSteps,
     reset,
     setSeed,
-    setUseSeededMode,
   } = useSamplingController();
 
   return (
@@ -49,7 +48,6 @@ function App() {
           sampleSteps={sampleSteps}
           reset={reset}
           setSeed={setSeed}
-          setUseSeededMode={setUseSeededMode}
         />
       </div>
       <div className="App-main">

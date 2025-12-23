@@ -835,14 +835,14 @@ describe('useSamplingController', () => {
       act(() => {
         result.current.setSeed(null); // original test used setUseSeededMode(false)?
         // Check implementation: setUseSeededMode is exposed.
-        result.current.setUseSeededMode(false);
+        result.current.setSeed(null);
       });
 
       expect(result.current.useSeededMode).toBe(false);
 
       // Enable again
       act(() => {
-        result.current.setUseSeededMode(true);
+        result.current.setSeed(42);
       });
 
       expect(result.current.useSeededMode).toBe(true);
