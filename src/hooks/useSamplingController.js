@@ -8,7 +8,7 @@ import { generateGrid, createContourTrace } from '../utils/plotFunctions';
  * Manages state for parameters, sampling results, and visualization data
  * @returns {Object} Controller interface and state
  */
-export default function useHMCController() {
+export default function useSamplingController() {
   const [logP, setLogPString] = useState('');
   const [params, setParamsState] = useState({ epsilon: 0.1, L: 10, steps: 1 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });

@@ -1,7 +1,7 @@
 import './App.css';
 import Controls from './components/Controls';
 import Visualizer from './components/Visualizer';
-import useHMCController from './hooks/useHMCController';
+import useSamplingController from './hooks/useSamplingController';
 
 function App() {
   const {
@@ -26,7 +26,7 @@ function App() {
     reset,
     setSeed,
     setUseSeededMode,
-  } = useHMCController();
+  } = useSamplingController();
 
   return (
     <div className="App">

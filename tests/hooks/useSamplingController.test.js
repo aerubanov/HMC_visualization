@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import useHMCController from '../../src/hooks/useHMCController';
+import useSamplingController from '../../src/hooks/useSamplingController';
 import { HMCSampler } from '../../src/samplers/HMCSampler';
 
 // Mock the HMCSampler class
@@ -12,7 +12,7 @@ vi.mock('../../src/samplers/HMCSampler', () => {
   return { HMCSampler: HMCSamplerMock };
 });
 
-describe('useHMCController', () => {
+describe('useSamplingController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset default mock implementation for each test
@@ -25,7 +25,7 @@ describe('useHMCController', () => {
   });
 
   it('should initialize with default state', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     expect(result.current.logP).toBe('');
     expect(result.current.params).toEqual({ epsilon: 0.1, L: 10, steps: 1 });
@@ -41,7 +41,7 @@ describe('useHMCController', () => {
   });
 
   it('should update logP and reset state', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     act(() => {
       result.current.setLogP('-(x^2)/2');
@@ -53,7 +53,7 @@ describe('useHMCController', () => {
   });
 
   it('should update parameters', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     act(() => {
       result.current.setParams({ epsilon: 0.05, L: 20, steps: 5 });
@@ -68,7 +68,7 @@ describe('useHMCController', () => {
   });
 
   it('should sample N steps', async () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     // Setup initial state
     act(() => {
@@ -117,7 +117,7 @@ describe('useHMCController', () => {
   });
 
   it('should perform a step and update state', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     act(() => {
       result.current.setLogP('-(x^2)/2');
@@ -145,7 +145,7 @@ describe('useHMCController', () => {
   });
 
   it('should update plot data (samples, trajectory) after each step', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     act(() => {
       result.current.setLogP('-(x^2)/2');
@@ -181,7 +181,7 @@ describe('useHMCController', () => {
   });
 
   it('should handle errors in logP parsing', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     act(() => {
       result.current.setLogP('invalid(');
@@ -189,7 +189,7 @@ describe('useHMCController', () => {
   });
 
   it('should reset state correctly', () => {
-    const { result } = renderHook(() => useHMCController());
+    const { result } = renderHook(() => useSamplingController());
 
     act(() => {
       result.current.setLogP('-(x^2)/2');
@@ -208,13 +208,13 @@ describe('useHMCController', () => {
 
   describe('Contour Data Computation', () => {
     it('should initialize with null contourData', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       expect(result.current.contourData).toBeNull();
     });
 
     it('should compute contourData when valid logP is set', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('exp(-(x^2 + y^2)/2)');
@@ -226,7 +226,7 @@ describe('useHMCController', () => {
     });
 
     it('should have correct contourData structure', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('exp(-(x^2 + y^2)/2)');
@@ -248,7 +248,7 @@ describe('useHMCController', () => {
     });
 
     it('should compute valid z values for Gaussian', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('exp(-(x^2 + y^2)/2)');
@@ -270,7 +270,7 @@ describe('useHMCController', () => {
     });
 
     it('should update contourData when logP changes', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Set first function
       act(() => {
@@ -291,7 +291,7 @@ describe('useHMCController', () => {
     });
 
     it('should set contourData to null when logP is cleared', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('exp(-(x^2 + y^2)/2)');
@@ -307,7 +307,7 @@ describe('useHMCController', () => {
     });
 
     it('should set contourData to null on invalid logP', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('invalid(((syntax');
@@ -318,7 +318,7 @@ describe('useHMCController', () => {
     });
 
     it('should preserve contourData during reset', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('exp(-(x^2 + y^2)/2)');
@@ -340,7 +340,7 @@ describe('useHMCController', () => {
 
   describe('Trajectory State Management', () => {
     it('should populate trajectory state when step is executed', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Setup
       act(() => {
@@ -381,7 +381,7 @@ describe('useHMCController', () => {
     });
 
     it('should use single trajectory mode (replace, not accumulate)', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Setup
       act(() => {
@@ -447,7 +447,7 @@ describe('useHMCController', () => {
     });
 
     it('should clear trajectory on reset', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Setup and execute step
       act(() => {
@@ -487,7 +487,7 @@ describe('useHMCController', () => {
     });
 
     it('should show trajectory even for rejected steps but not save sample', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Setup
       act(() => {
@@ -525,7 +525,7 @@ describe('useHMCController', () => {
     });
 
     it('should clear trajectory when logP function changes', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Setup and execute step
       act(() => {
@@ -569,7 +569,7 @@ describe('useHMCController', () => {
 
   describe('Accepted/Rejected Samples Tracking', () => {
     it('should track rejected samples correctly', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Setup
       act(() => {
@@ -645,14 +645,14 @@ describe('useHMCController', () => {
 
   describe('Seeded RNG Integration', () => {
     it('should initialize with null seed (unseeded mode)', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       expect(result.current.seed).toBeNull();
       expect(result.current.useSeededMode).toBe(false);
     });
 
     it('should set seed and enable seeded mode', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setSeed(42);
@@ -664,7 +664,7 @@ describe('useHMCController', () => {
     });
 
     it('should disable seeded mode when seed is set to null', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setSeed(42);
@@ -682,7 +682,7 @@ describe('useHMCController', () => {
     });
 
     it('should update seed when changed', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setSeed(42);
@@ -699,7 +699,7 @@ describe('useHMCController', () => {
     });
 
     it('should preserve seed after reset', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('-(x^2)/2');
@@ -730,7 +730,7 @@ describe('useHMCController', () => {
     });
 
     it('should reset RNG state after reset', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('-(x^2)/2');
@@ -749,7 +749,7 @@ describe('useHMCController', () => {
     });
 
     it('should reset RNG state after reset to produce same sequence', async () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('-(x^2)/2');
@@ -822,7 +822,7 @@ describe('useHMCController', () => {
     });
 
     it('should toggle seeded mode on/off', () => {
-      const { result } = renderHook(() => useHMCController());
+      const { result } = renderHook(() => useSamplingController());
 
       // Enable seeded mode
       act(() => {
