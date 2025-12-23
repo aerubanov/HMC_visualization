@@ -49,7 +49,6 @@ export default function useSamplingController() {
 
     try {
       const { x, y } = generateGrid();
-      console.log('Grid generated:', { xLen: x.length, yLen: y.length });
 
       // Compute z values (log probability) for each grid point
       const z = y.map((yVal) =>
@@ -63,24 +62,8 @@ export default function useSamplingController() {
         })
       );
 
-      console.log('Z values computed:', {
-        zRows: z.length,
-        zCols: z[0]?.length,
-        sampleValues: [z[0]?.[0], z[25]?.[25], z[49]?.[49]],
-        minZ: Math.min(...z.flat()),
-        maxZ: Math.max(...z.flat()),
-        hasNaN: z.flat().some((v) => isNaN(v)),
-      });
-
       // Create the contour trace
       const trace = createContourTrace(x, y, z);
-      console.log('Contour trace created:', {
-        type: trace.type,
-        xLength: trace.x.length,
-        yLength: trace.y.length,
-        zShape: [trace.z.length, trace.z[0]?.length],
-        trace: trace,
-      });
       setContourData(trace);
     } catch (e) {
       console.error('Error computing contour:', e);
