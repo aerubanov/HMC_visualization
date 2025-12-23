@@ -756,27 +756,12 @@ describe('useSamplingController', () => {
         result.current.setSeed(42);
       });
 
-      // First run: 3 steps
       HMCSampler.prototype.step.mockImplementation(() => {
-        // We can't easily capture internal RNG calls of the mocked class unless we mock the RNG inside it or trust the class behaves.
-        // But here we are mocking step completely.
-        // The original test tried to capture RNG calls passed to hmcStep.
         // With HMCSampler class, the randomness is internal.
         // IF we mock HMCSampler.step, then NO randomness happens unless we simulate it.
         // The test intent: ensure that valid setSeed(42) was called, which we already tested.
         // Truly verifying "same sequence" requires integration test or mocking RNG inside.
         // Since we mock HMCSampler entirely, we can only verify strict sequence of interaction.
-        // But let's simulate "step" doing something random based on seeded state if we wanted?
-        // Actually, if we mock step, we control the output.
-        // So this test as written in the original file (expecting rng calls) doesn't make sense if WE mock the step function.
-        // The original test mocked hmcStep which took rng as arg.
-        // Now HMCSampler.step takes no RNG arg (it uses internal).
-
-        // So, strictly speaking, this test concept needs to be adapted:
-        // "Verify that if we run, reset, and run again, we get same behavior if we assume sampler works?"
-        // NO. We assume Controller calls sampler.setSeed(42) on reset.
-        // We tested that in "should reset RNG state after reset".
-        // So this test is redundant if we only mock.
         // But let's keep a simplified version verifying we can run a sequence twice.
         return {
           q: { x: 1, y: 1 },
@@ -786,6 +771,7 @@ describe('useSamplingController', () => {
         };
       });
 
+      // First run: 3 steps
       act(() => {
         result.current.sampleSteps(3);
       });
@@ -833,8 +819,6 @@ describe('useSamplingController', () => {
 
       // Disable seeded mode (via setSeed(null))
       act(() => {
-        result.current.setSeed(null); // original test used setUseSeededMode(false)?
-        // Check implementation: setUseSeededMode is exposed.
         result.current.setSeed(null);
       });
 

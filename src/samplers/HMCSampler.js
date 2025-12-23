@@ -17,6 +17,10 @@ function randn(rng = null) {
 
 /**
  * Leapfrog integrator for Hamiltonian dynamics
+ * Implements symplectic integration:
+ *   p_{t+ε/2} = p_t - (ε/2) * ∇U(q_t)
+ *   q_{t+ε} = q_t + ε * p_{t+ε/2}
+ *   p_{t+ε} = p_{t+ε/2} - (ε/2) * ∇U(q_{t+ε})
  * @param {Object} q - Position {x, y}
  * @param {Object} p - Momentum {x, y}
  * @param {number} epsilon - Step size

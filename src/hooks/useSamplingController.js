@@ -218,7 +218,7 @@ export default function useSamplingController() {
 
       executeStep();
     },
-    [initialPosition] // Removed useSeededMode dependency as rng is in sampler
+    [initialPosition]
   );
 
   // Expose single step for manual stepping
