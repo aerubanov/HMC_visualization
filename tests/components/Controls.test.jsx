@@ -11,12 +11,15 @@ describe('Controls Component', () => {
     iterationCount: 0,
     isRunning: false,
     error: null,
+    seed: null,
+    useSeededMode: false,
     setLogP: vi.fn(),
     setParams: vi.fn(),
     setInitialPosition: vi.fn(),
     step: vi.fn(),
     sampleSteps: vi.fn(),
     reset: vi.fn(),
+    setSeed: vi.fn(),
   };
 
   beforeEach(() => {

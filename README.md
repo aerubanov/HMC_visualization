@@ -83,7 +83,7 @@ src/
 │   ├── Visualizer.jsx   # Plotly visualization wrapper
 │   └── Visualizer.css   # Styles for Visualizer
 ├── hooks/            # Custom React hooks
-│   └── useHMCController.js # HMC logic controller
+│   └── useSamplingController.js # HMC logic controller
 ├── utils/           # Core logic modules
 │   ├── mathEngine.js    # Math.js wrappers for parsing & gradients
 │   ├── hmcSampler.js    # HMC physics simulation
@@ -97,7 +97,7 @@ tests/
 ├── components/      # Component tests
 │   └── Controls.test.jsx
 ├── hooks/           # Hook tests
-│   └── useHMCController.test.js
+│   └── useSamplingController.test.js
 └── utils/           # Unit tests
     ├── mathEngine.test.js
     ├── hmcSampler.test.js

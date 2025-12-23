@@ -86,19 +86,6 @@ function Visualizer({ contourData, trajectory, acceptedSamples }) {
   }
 
   // Render the Plotly plot with multiple traces
-  console.log(
-    'Visualizer rendering with traces:',
-    traces.length,
-    'contour:',
-    !!contourData,
-    'contour:',
-    !!contourData,
-    'trajectory:',
-    trajectory?.length || 0,
-    'samples:',
-    acceptedSamples?.length || 0
-  );
-
   return (
     <div className="visualizer">
       <Plot

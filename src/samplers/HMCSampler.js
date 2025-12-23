@@ -1,5 +1,7 @@
-// HMC Sampler - Physics simulation
-// Implements leapfrog integration and Metropolis-Hastings acceptance
+/**
+ * HMCSampler class
+ * Encapsulates Hamiltonian Monte Carlo sampling logic
+ */
 
 /**
  * Generate a standard normal random variable using Box-Muller transform
@@ -19,7 +21,6 @@ function randn(rng = null) {
  *   p_{t+ε/2} = p_t - (ε/2) * ∇U(q_t)
  *   q_{t+ε} = q_t + ε * p_{t+ε/2}
  *   p_{t+ε} = p_{t+ε/2} - (ε/2) * ∇U(q_{t+ε})
- *
  * @param {Object} q - Position {x, y}
  * @param {Object} p - Momentum {x, y}
  * @param {number} epsilon - Step size
@@ -52,7 +53,6 @@ export function leapfrogStep(q, p, epsilon, gradU) {
 
 /**
  * Generate a proposal using HMC dynamics
- *
  * @param {Object} q - Current position {x, y}
  * @param {number} epsilon - Step size
  * @param {number} L - Number of leapfrog steps
@@ -108,7 +108,6 @@ export function generateProposal(q, epsilon, L, U, gradU, rng = null) {
 
 /**
  * Execute one full HMC step
- *
  * @param {Object} q - Current position {x, y}
  * @param {number} epsilon - Step size
  * @param {number} L - Number of leapfrog steps
@@ -142,5 +141,55 @@ export function hmcStep(q, epsilon, L, U, gradU, rng = null) {
       accepted: false,
       trajectory: proposal.trajectory, // Return trajectory even for rejected steps
     };
+  }
+}
+
+import { SeededRandom } from '../utils/seededRandom';
+
+export class HMCSampler {
+  /**
+   * Create a new HMC Sampler
+   * @param {Object} params - HMC parameters { epsilon, L }
+   * @param {number|null} [seed] - Random seed
+   */
+  constructor(params = {}, seed = null) {
+    this.epsilon = params.epsilon || 0.1;
+    this.L = params.L || 10;
+    this.seed = seed;
+    this.rng = seed !== null ? new SeededRandom(seed) : null;
+  }
+
+  /**
+   * Update sampler parameters
+   * @param {Object} params - Partial parameters { epsilon, L }
+   */
+  setParams(params) {
+    if (params.epsilon !== undefined) this.epsilon = params.epsilon;
+    if (params.L !== undefined) this.L = params.L;
+  }
+
+  /**
+   * Set the random seed
+   * @param {number|null} seed - New seed or null
+   */
+  setSeed(seed) {
+    this.seed = seed;
+    this.rng = seed !== null ? new SeededRandom(seed) : null;
+  }
+
+  /**
+   * Perform one sampling step
+   * @param {Object} currentState - Current particle state { q: {x, y}, ... }
+   * @param {Object} logPInstance - Log probability instance with getLogProbability and getLogProbabilityGradient
+   * @returns {Object} Result of hmcStep { q, p, accepted, trajectory }
+   */
+  step(currentState, logPInstance) {
+    const U = (x, y) => -logPInstance.getLogProbability(x, y);
+    const gradU = (x, y) => {
+      const [dx, dy] = logPInstance.getLogProbabilityGradient(x, y);
+      return { x: -dx, y: -dy };
+    };
+
+    return hmcStep(currentState.q, this.epsilon, this.L, U, gradU, this.rng);
   }
 }
