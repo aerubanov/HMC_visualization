@@ -9,5 +9,8 @@ export default defineConfig({
     environment: 'jsdom',
     css: true,
     setupFiles: ['./tests/setup.js'],
+    coverage: {
+      reporter: ['text', 'json-summary', 'json'],
+    },
   },
 });
