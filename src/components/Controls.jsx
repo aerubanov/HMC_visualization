@@ -20,12 +20,25 @@ function Controls({
   sampleSteps,
   reset,
   setSeed,
+  useSecondChain,
+  initialPosition2,
+  acceptedCount2,
+  rejectedCount2,
+  seed2,
+  setUseSecondChain,
+  setInitialPosition2,
+  setSeed2,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
   const [localX, setLocalX] = useState(initialPosition.x);
   const [localY, setLocalY] = useState(initialPosition.y);
   const [localSeed, setLocalSeed] = useState(seed || 42);
+
+  // Second chain local state
+  const [localX2, setLocalX2] = useState(initialPosition2?.x ?? 1);
+  const [localY2, setLocalY2] = useState(initialPosition2?.y ?? 1);
+  const [localSeed2, setLocalSeed2] = useState(seed2 || 43);
 
   // Sync draft with prop when it changes externally (e.g., on reset)
   useEffect(() => {
@@ -37,6 +50,14 @@ function Controls({
     setLocalX(initialPosition.x);
     setLocalY(initialPosition.y);
   }, [initialPosition]);
+
+  // Sync second chain position state with props
+  useEffect(() => {
+    if (initialPosition2) {
+      setLocalX2(initialPosition2.x);
+      setLocalY2(initialPosition2.y);
+    }
+  }, [initialPosition2]);
 
   const handleLogPChange = (e) => {
     setDraftLogP(e.target.value);
@@ -90,9 +111,40 @@ function Controls({
     setSeed(newSeed);
   };
 
+  // Second chain handlers
+  const handleSecondChainToggle = (e) => {
+    setUseSecondChain(e.target.checked);
+  };
+
+  const handlePosition2Change = (axis, value) => {
+    setInitialPosition2({
+      ...initialPosition2,
+      [axis]: parseFloat(value) || 0,
+    });
+  };
+
+  const handleSeed2Change = (e) => {
+    const value = parseInt(e.target.value, 10);
+    setLocalSeed2(value);
+    if (useSeededMode) {
+      setSeed2(value);
+    }
+  };
+
+  const handleGenerateRandomSeed2 = () => {
+    const newSeed = Math.floor(Math.random() * 1000000);
+    setLocalSeed2(newSeed);
+    setSeed2(newSeed);
+  };
+
   const acceptanceRate =
     iterationCount > 0
       ? ((acceptedCount / iterationCount) * 100).toFixed(1)
+      : '0.0';
+
+  const acceptanceRate2 =
+    useSecondChain && iterationCount > 0
+      ? ((acceptedCount2 / iterationCount) * 100).toFixed(1)
       : '0.0';
 
   return (
@@ -267,6 +319,109 @@ function Controls({
           </div>
         </section>
 
+        {/* Second Chain Toggle and Configuration */}
+        <section className="control-section">
+          <div className="control-group">
+            <div className="checkbox-group">
+              <input
+                id="second-chain-toggle"
+                type="checkbox"
+                checked={useSecondChain}
+                onChange={handleSecondChainToggle}
+              />
+              <label htmlFor="second-chain-toggle" className="control-label">
+                Enable Second Chain (Comparison)
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* Second Chain Initial Position */}
+        {useSecondChain && (
+          <section className="control-section">
+            <h3 className="section-title">Second Chain Initial Position</h3>
+
+            <div className="control-row">
+              <div className="control-group">
+                <label htmlFor="x2-input" className="control-label">
+                  X
+                </label>
+                <input
+                  id="x2-input"
+                  type="text"
+                  className="control-input"
+                  value={localX2}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLocalX2(val);
+                    if (val !== '' && val !== '-' && !isNaN(val)) {
+                      handlePosition2Change('x', val);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (localX2 === '' || localX2 === '-' || isNaN(localX2)) {
+                      setLocalX2(initialPosition2.x);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="control-group">
+                <label htmlFor="y2-input" className="control-label">
+                  Y
+                </label>
+                <input
+                  id="y2-input"
+                  type="text"
+                  className="control-input"
+                  value={localY2}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLocalY2(val);
+                    if (val !== '' && val !== '-' && !isNaN(val)) {
+                      handlePosition2Change('y', val);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (localY2 === '' || localY2 === '-' || isNaN(localY2)) {
+                      setLocalY2(initialPosition2.y);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Second chain seed controls (if seeded mode is enabled) */}
+            {useSeededMode && (
+              <>
+                <div className="control-group">
+                  <label htmlFor="seed2-input" className="control-label">
+                    Seed Value (Chain 2)
+                  </label>
+                  <input
+                    id="seed2-input"
+                    type="number"
+                    className="control-input"
+                    step="1"
+                    value={localSeed2}
+                    onChange={handleSeed2Change}
+                  />
+                </div>
+
+                <div className="control-group">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleGenerateRandomSeed2}
+                    disabled={isRunning}
+                  >
+                    🎲 Generate Random Seed (Chain 2)
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
         {/* Control Buttons */}
         <section className="control-section">
           <h3 className="section-title">Actions</h3>
@@ -308,24 +463,100 @@ function Controls({
 
         {/* Status Display */}
         <section className="control-section status-section">
-          <div className="status-grid">
-            <div className="status-item">
-              <span className="status-label">Iterations</span>
-              <span className="status-value">{iterationCount}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Accepted</span>
-              <span className="status-value text-success">{acceptedCount}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Rejected</span>
-              <span className="status-value text-error">{rejectedCount}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Rate</span>
-              <span className="status-value">{acceptanceRate}%</span>
-            </div>
-          </div>
+          {!useSecondChain ? (
+            // Single chain display
+            <>
+              <div className="status-grid">
+                <div className="status-item">
+                  <span className="status-label">Iterations</span>
+                  <span className="status-value">{iterationCount}</span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Accepted</span>
+                  <span className="status-value text-success">
+                    {acceptedCount}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Rejected</span>
+                  <span className="status-value text-error">
+                    {rejectedCount}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Rate</span>
+                  <span className="status-value">{acceptanceRate}%</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Dual chain display with separate stats
+            <>
+              <h3 className="section-title">Chain Statistics</h3>
+              <div className="status-grid">
+                <div className="status-item">
+                  <span className="status-label">Iterations</span>
+                  <span className="status-value">{iterationCount}</span>
+                </div>
+              </div>
+
+              <h4
+                style={{
+                  marginTop: '1rem',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Chain 1 (Red)
+              </h4>
+              <div className="status-grid">
+                <div className="status-item">
+                  <span className="status-label">Accepted</span>
+                  <span className="status-value text-success">
+                    {acceptedCount}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Rejected</span>
+                  <span className="status-value text-error">
+                    {rejectedCount}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Rate</span>
+                  <span className="status-value">{acceptanceRate}%</span>
+                </div>
+              </div>
+
+              <h4
+                style={{
+                  marginTop: '1rem',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Chain 2 (Blue)
+              </h4>
+              <div className="status-grid">
+                <div className="status-item">
+                  <span className="status-label">Accepted</span>
+                  <span className="status-value text-success">
+                    {acceptedCount2}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Rejected</span>
+                  <span className="status-value text-error">
+                    {rejectedCount2}
+                  </span>
+                </div>
+                <div className="status-item">
+                  <span className="status-label">Rate</span>
+                  <span className="status-value">{acceptanceRate2}%</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {isRunning && (
             <div className="status-running">
@@ -409,6 +640,18 @@ Controls.propTypes = {
   sampleSteps: PropTypes.func.isRequired,
   reset: PropTypes.func.isRequired,
   setSeed: PropTypes.func.isRequired,
+  // Second chain props
+  useSecondChain: PropTypes.bool.isRequired,
+  initialPosition2: PropTypes.shape({
+    x: PropTypes.number.isRequired,
+    y: PropTypes.number.isRequired,
+  }),
+  acceptedCount2: PropTypes.number,
+  rejectedCount2: PropTypes.number,
+  seed2: PropTypes.number,
+  setUseSecondChain: PropTypes.func.isRequired,
+  setInitialPosition2: PropTypes.func.isRequired,
+  setSeed2: PropTypes.func.isRequired,
 };
 
 export default Controls;

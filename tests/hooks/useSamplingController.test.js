@@ -1292,4 +1292,361 @@ describe('useSamplingController', () => {
       });
     });
   });
+
+  describe('Second Chain Integration', () => {
+    it('should initialize with second chain disabled', () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      expect(result.current.useSecondChain).toBe(false);
+      expect(result.current.initialPosition2).toEqual({ x: 1, y: 1 });
+      expect(result.current.samples2).toEqual([]);
+      expect(result.current.trajectory2).toEqual([]);
+      expect(result.current.acceptedCount2).toBe(0);
+      expect(result.current.rejectedCount2).toBe(0);
+      expect(result.current.seed2).toBeNull();
+    });
+
+    it('should enable and disable second chain', () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setUseSecondChain(true);
+      });
+
+      expect(result.current.useSecondChain).toBe(true);
+
+      act(() => {
+        result.current.setUseSecondChain(false);
+      });
+
+      expect(result.current.useSecondChain).toBe(false);
+    });
+
+    it('should have independent initial positions for both chains', () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setInitialPosition({ x: 2, y: 3 });
+        result.current.setInitialPosition2({ x: -1, y: -2 });
+      });
+
+      expect(result.current.initialPosition).toEqual({ x: 2, y: 3 });
+      expect(result.current.initialPosition2).toEqual({ x: -1, y: -2 });
+    });
+
+    it('should have independent seeds for both chains', () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      // Note: HMCSampler constructor is called twice (two instances)
+      expect(HMCSampler).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        result.current.setSeed(42);
+        result.current.setSeed2(100);
+      });
+
+      expect(result.current.seed).toBe(42);
+      expect(result.current.seed2).toBe(100);
+
+      // Verify both samplers received their respective seeds
+      expect(HMCSampler.prototype.setSeed).toHaveBeenCalledWith(42);
+      expect(HMCSampler.prototype.setSeed).toHaveBeenCalledWith(100);
+    });
+
+    it('should run both chains in parallel when second chain is enabled', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      // Setup
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+        result.current.setInitialPosition2({ x: 1, y: 1 });
+        result.current.setUseSecondChain(true);
+      });
+
+      // Mock step implementation that tracks which instance is calling
+      let chain1CallCount = 0;
+      let chain2CallCount = 0;
+
+      const mockStepImplementation = vi.fn(() => {
+        // Alternate between chains (step is called once per chain per iteration)
+        const isChain1 = HMCSampler.prototype.step.mock.calls.length % 2 === 1;
+        const count = isChain1 ? chain1CallCount++ : chain2CallCount++;
+
+        return {
+          q: { x: count, y: count },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: count, y: count }],
+        };
+      });
+
+      HMCSampler.prototype.step.mockImplementation(mockStepImplementation);
+
+      // Run sampling
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify both chains were sampled
+      expect(result.current.iterationCount).toBe(3);
+      expect(result.current.samples).toHaveLength(3);
+      expect(result.current.samples2).toHaveLength(3);
+
+      // step should be called 6 times total (3 steps × 2 chains)
+      expect(HMCSampler.prototype.step).toHaveBeenCalledTimes(6);
+    });
+
+    it('should track separate statistics for each chain', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setUseSecondChain(true);
+      });
+
+      // Mock: Chain 1 accepts all, Chain 2 rejects all
+      HMCSampler.prototype.step.mockImplementation(() => {
+        const callNum = HMCSampler.prototype.step.mock.calls.length;
+        const isChain1 = callNum % 2 === 1;
+
+        return {
+          q: { x: 0, y: 0 },
+          p: { x: 0, y: 0 },
+          accepted: isChain1, // Chain 1 accepts, Chain 2 rejects
+          trajectory: [{ x: 0, y: 0 }],
+        };
+      });
+
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Chain 1: 3 accepted, 0 rejected
+      expect(result.current.acceptedCount).toBe(3);
+      expect(result.current.rejectedCount).toBe(0);
+
+      // Chain 2: 0 accepted, 3 rejected
+      expect(result.current.acceptedCount2).toBe(0);
+      expect(result.current.rejectedCount2).toBe(3);
+    });
+
+    it('should reset both chains when reset is called', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setUseSecondChain(true);
+      });
+
+      HMCSampler.prototype.step.mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      });
+
+      // Run some steps
+      act(() => {
+        result.current.sampleSteps(2);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify both chains have data
+      expect(result.current.samples.length).toBeGreaterThan(0);
+      expect(result.current.samples2.length).toBeGreaterThan(0);
+
+      // Reset
+      act(() => {
+        result.current.reset();
+      });
+
+      // Verify both chains are reset
+      expect(result.current.samples).toEqual([]);
+      expect(result.current.samples2).toEqual([]);
+      expect(result.current.trajectory).toEqual([]);
+      expect(result.current.trajectory2).toEqual([]);
+      expect(result.current.iterationCount).toBe(0);
+      expect(result.current.rejectedCount).toBe(0);
+      expect(result.current.rejectedCount2).toBe(0);
+    });
+
+    it('should reset both chain RNGs when both are seeded', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setSeed(42);
+        result.current.setSeed2(100);
+        result.current.setUseSecondChain(true);
+      });
+
+      // Clear mock to track reset calls
+      HMCSampler.prototype.setSeed.mockClear();
+
+      act(() => {
+        result.current.reset();
+      });
+
+      // Verify both seeds were reset
+      expect(HMCSampler.prototype.setSeed).toHaveBeenCalledWith(42);
+      expect(HMCSampler.prototype.setSeed).toHaveBeenCalledWith(100);
+    });
+
+    it('should only sample chain 1 when second chain is disabled', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setUseSecondChain(false);
+      });
+
+      HMCSampler.prototype.step.mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      });
+
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Only chain 1 should have samples
+      expect(result.current.samples).toHaveLength(3);
+      expect(result.current.samples2).toHaveLength(0);
+
+      // step should be called 3 times (only chain 1)
+      expect(HMCSampler.prototype.step).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle same initial position for both chains', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+        result.current.setInitialPosition2({ x: 0, y: 0 }); // Same position
+        result.current.setUseSecondChain(true);
+      });
+
+      HMCSampler.prototype.step.mockReturnValue({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      });
+
+      act(() => {
+        result.current.sampleSteps(1);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Both chains should still work independently
+      expect(result.current.samples).toHaveLength(1);
+      expect(result.current.samples2).toHaveLength(1);
+    });
+
+    it('should preserve second chain trajectory on each step', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setUseSecondChain(true);
+      });
+
+      // Mock to return different trajectories for each chain
+      HMCSampler.prototype.step.mockImplementation(() => {
+        const callNum = HMCSampler.prototype.step.mock.calls.length;
+        const isChain1 = callNum % 2 === 1;
+
+        return {
+          q: { x: callNum, y: callNum },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: isChain1
+            ? [
+                { x: 0, y: 0 },
+                { x: 1, y: 1 },
+              ]
+            : [
+                { x: 2, y: 2 },
+                { x: 3, y: 3 },
+              ],
+        };
+      });
+
+      act(() => {
+        result.current.step();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Both chains should have their respective trajectories
+      expect(result.current.trajectory.length).toBeGreaterThan(0);
+      expect(result.current.trajectory2.length).toBeGreaterThan(0);
+    });
+
+    it('should clear second chain data when logP changes', () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.setUseSecondChain(true);
+      });
+
+      // Manually set some second chain data
+      act(() => {
+        result.current.step();
+      });
+
+      // Change logP (which calls reset)
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+      });
+
+      // Second chain data should be cleared
+      expect(result.current.samples2).toEqual([]);
+      expect(result.current.trajectory2).toEqual([]);
+      expect(result.current.rejectedCount2).toBe(0);
+    });
+  });
 });

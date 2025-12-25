@@ -74,9 +74,15 @@ export function generateGrid() {
 /**
  * Creates a Plotly scatter trace for HMC trajectory visualization
  * @param {Array<{x: number, y: number}>} trajectory - Array of trajectory points from leapfrog integrator
+ * @param {string} [color] - Optional color for the trajectory (defaults to primary color)
+ * @param {string} [name] - Optional name for the trace (defaults to 'Trajectory')
  * @returns {object|null} Plotly trace object or null if trajectory is empty
  */
-export function createTrajectoryTrace(trajectory) {
+export function createTrajectoryTrace(
+  trajectory,
+  color = HMC_SAMPLER.styles.primaryColor,
+  name = 'Trajectory'
+) {
   // Handle invalid or empty trajectory
   if (!trajectory || !Array.isArray(trajectory) || trajectory.length === 0) {
     return null;
@@ -88,16 +94,16 @@ export function createTrajectoryTrace(trajectory) {
     x: trajectory.map((p) => p.x),
     y: trajectory.map((p) => p.y),
     line: {
-      color: HMC_SAMPLER.styles.primaryColor,
+      color: color,
       width: 2,
       shape: 'linear',
     },
     marker: {
       size: 4,
-      color: HMC_SAMPLER.styles.primaryColor,
+      color: color,
       symbol: 'circle',
     },
-    name: 'Trajectory',
+    name: name,
     showlegend: true,
     hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
   };
@@ -106,9 +112,15 @@ export function createTrajectoryTrace(trajectory) {
 /**
  * Creates a Plotly scatter trace for accepted samples visualization
  * @param {Array<{x: number, y: number}>} samples - Array of accepted sample points
+ * @param {string} [color] - Optional color for the samples (defaults to primary color)
+ * @param {string} [name] - Optional name for the trace (defaults to 'Samples')
  * @returns {object|null} Plotly trace object or null if samples is empty
  */
-export function createSamplesTrace(samples) {
+export function createSamplesTrace(
+  samples,
+  color = HMC_SAMPLER.styles.primaryColor,
+  name = 'Samples'
+) {
   // Handle invalid or empty samples
   if (!samples || !Array.isArray(samples) || samples.length === 0) {
     return null;
@@ -120,17 +132,17 @@ export function createSamplesTrace(samples) {
     x: samples.map((p) => p.x),
     y: samples.map((p) => p.y),
     line: {
-      color: HMC_SAMPLER.styles.primaryColor, // Using trajectory color as per original config
+      color: color,
       width: 1,
       dash: 'dash',
     },
     marker: {
       size: 6,
-      color: HMC_SAMPLER.styles.primaryColor, // Using trajectory color as per original config
+      color: color,
       symbol: 'circle',
       opacity: 0.8,
     },
-    name: 'Samples',
+    name: name,
     showlegend: true,
     hovertemplate: 'Sample<br>x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
   };

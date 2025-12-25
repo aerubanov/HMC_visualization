@@ -1,13 +1,20 @@
 import './Visualizer.css';
 import Plot from 'react-plotly.js';
 import PropTypes from 'prop-types';
-import { GENERAL } from '../utils/plotConfig.json';
+import { GENERAL, HMC_SAMPLER } from '../utils/plotConfig.json';
 import {
   createTrajectoryTrace,
   createSamplesTrace,
 } from '../utils/plotFunctions';
 
-function Visualizer({ contourData, trajectory, acceptedSamples }) {
+function Visualizer({
+  contourData,
+  trajectory,
+  acceptedSamples,
+  trajectory2,
+  acceptedSamples2,
+  useSecondChain,
+}) {
   // Show placeholder if no contour data is available
   if (!contourData) {
     return (
@@ -77,11 +84,35 @@ function Visualizer({ contourData, trajectory, acceptedSamples }) {
     }
   }
 
+  // Add second chain samples trace if enabled and exists
+  if (useSecondChain && acceptedSamples2 && acceptedSamples2.length > 0) {
+    const samplesTrace2 = createSamplesTrace(
+      acceptedSamples2,
+      HMC_SAMPLER.styles.secondaryColor,
+      'Samples (Chain 2)'
+    );
+    if (samplesTrace2) {
+      traces.push(samplesTrace2);
+    }
+  }
+
   // Add trajectory trace if it exists
   if (trajectory && trajectory.length > 0) {
     const trajectoryTrace = createTrajectoryTrace(trajectory);
     if (trajectoryTrace) {
       traces.push(trajectoryTrace);
+    }
+  }
+
+  // Add second chain trajectory trace if enabled and exists
+  if (useSecondChain && trajectory2 && trajectory2.length > 0) {
+    const trajectoryTrace2 = createTrajectoryTrace(
+      trajectory2,
+      HMC_SAMPLER.styles.secondaryColor,
+      'Trajectory (Chain 2)'
+    );
+    if (trajectoryTrace2) {
+      traces.push(trajectoryTrace2);
     }
   }
 
@@ -124,6 +155,19 @@ Visualizer.propTypes = {
       y: PropTypes.number.isRequired,
     })
   ),
+  trajectory2: PropTypes.arrayOf(
+    PropTypes.shape({
+      x: PropTypes.number.isRequired,
+      y: PropTypes.number.isRequired,
+    })
+  ),
+  acceptedSamples2: PropTypes.arrayOf(
+    PropTypes.shape({
+      x: PropTypes.number.isRequired,
+      y: PropTypes.number.isRequired,
+    })
+  ),
+  useSecondChain: PropTypes.bool,
 };
 
 export default Visualizer;

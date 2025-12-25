@@ -11,7 +11,8 @@
   },
   "HMC_SAMPLER": {
     "styles": {
-      "primaryColor": "#d73a49"
+      "primaryColor": "#d73a49",
+      "secondaryColor": "#0366d6"
     }
   },
   "GENERAL": {

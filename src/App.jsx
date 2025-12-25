@@ -25,6 +25,17 @@ function App() {
     sampleSteps,
     reset,
     setSeed,
+    // Second chain
+    useSecondChain,
+    initialPosition2,
+    samples2,
+    trajectory2,
+    acceptedCount2,
+    rejectedCount2,
+    seed2,
+    setUseSecondChain,
+    setInitialPosition2,
+    setSeed2,
   } = useSamplingController();
 
   return (
@@ -48,6 +59,14 @@ function App() {
           sampleSteps={sampleSteps}
           reset={reset}
           setSeed={setSeed}
+          useSecondChain={useSecondChain}
+          initialPosition2={initialPosition2}
+          acceptedCount2={acceptedCount2}
+          rejectedCount2={rejectedCount2}
+          seed2={seed2}
+          setUseSecondChain={setUseSecondChain}
+          setInitialPosition2={setInitialPosition2}
+          setSeed2={setSeed2}
         />
       </div>
       <div className="App-main">
@@ -86,6 +105,9 @@ function App() {
           contourData={contourData}
           trajectory={trajectory}
           acceptedSamples={samples}
+          trajectory2={trajectory2}
+          acceptedSamples2={samples2}
+          useSecondChain={useSecondChain}
         />
       </div>
     </div>
