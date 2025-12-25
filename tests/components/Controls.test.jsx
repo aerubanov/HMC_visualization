@@ -20,6 +20,15 @@ describe('Controls Component', () => {
     sampleSteps: vi.fn(),
     reset: vi.fn(),
     setSeed: vi.fn(),
+    // Second chain props
+    useSecondChain: false,
+    initialPosition2: { x: 1, y: 1 },
+    acceptedCount2: 0,
+    rejectedCount2: 0,
+    seed2: null,
+    setUseSecondChain: vi.fn(),
+    setInitialPosition2: vi.fn(),
+    setSeed2: vi.fn(),
   };
 
   beforeEach(() => {
