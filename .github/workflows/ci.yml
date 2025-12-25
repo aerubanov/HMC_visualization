@@ -73,7 +73,7 @@ jobs:
           if_no_artifact_found: warn
 
       - name: Report Coverage
-        if: always() 
+        if: always() && github.event_name == 'pull_request'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-compare-path: coverage-base-summary/coverage-summary.json
