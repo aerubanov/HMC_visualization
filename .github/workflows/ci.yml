@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - main
+
     
 permissions:
   contents: read
@@ -70,13 +70,24 @@ jobs:
           workflow: ci.yml
           name: coverage-summary
           path: coverage-base-summary
+          branch: main
           if_no_artifact_found: warn
+
+      - name: Check if base coverage exists
+        id: base_coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -f "coverage-base-summary/coverage-summary.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Report Coverage
         if: always() && github.event_name == 'pull_request'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          json-summary-compare-path: coverage-base-summary/coverage-summary.json
+          json-summary-compare-path: ${{ steps.base_coverage.outputs.exists == 'true' && 'coverage-base-summary/coverage-summary.json' || '' }}
 
 
   build:
