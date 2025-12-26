@@ -26,16 +26,28 @@ export default function useSamplingController() {
   const [seed, setSeedState] = useState(null);
   const [useSeededMode, setUseSeededMode] = useState(false);
 
+  // Second chain state
+  const [useSecondChain, setUseSecondChain] = useState(false);
+  const [initialPosition2, setInitialPosition2] = useState({ x: 1, y: 1 });
+  const [samples2, setSamples2] = useState([]);
+  const [trajectory2, setTrajectory2] = useState([]);
+  const [currentParticle2, setCurrentParticle2] = useState(null);
+  const [rejectedCount2, setRejectedCount2] = useState(0);
+  const [seed2, setSeed2State] = useState(null);
+
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
   const currentParticleRef = useRef(null); // { q, p }
 
-  // Sampler instance
+  // Sampler instances
   const samplerRef = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
+  const samplerRef2 = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
+  const currentParticleRef2 = useRef(null); // Second chain particle state
 
   // Update sampler params when state changes (or initializes)
   useEffect(() => {
     samplerRef.current.setParams({ epsilon: params.epsilon, L: params.L });
+    samplerRef2.current.setParams({ epsilon: params.epsilon, L: params.L });
   }, [params.epsilon, params.L]);
 
   /**
@@ -95,7 +107,34 @@ export default function useSamplingController() {
     if (useSeededMode && seed !== null) {
       samplerRef.current.setSeed(seed);
     }
-  }, [initialPosition, useSeededMode, seed]);
+
+    // Reset second chain if enabled
+    if (useSecondChain) {
+      setSamples2([]);
+      setTrajectory2([]);
+      setRejectedCount2(0);
+
+      const startState2 = {
+        q: { ...initialPosition2 },
+        p: { x: 0, y: 0 },
+      };
+
+      setCurrentParticle2(startState2);
+      currentParticleRef2.current = startState2;
+
+      // Reset second chain RNG if seeded mode is enabled
+      if (useSeededMode && seed2 !== null) {
+        samplerRef2.current.setSeed(seed2);
+      }
+    }
+  }, [
+    initialPosition,
+    initialPosition2,
+    useSeededMode,
+    seed,
+    seed2,
+    useSecondChain,
+  ]);
 
   /**
    * Set the log probability function from a string expression
@@ -156,11 +195,19 @@ export default function useSamplingController() {
         };
       }
 
+      // Initialize second chain particle if enabled and not initialized
+      if (useSecondChain && !currentParticleRef2.current) {
+        currentParticleRef2.current = {
+          q: { ...initialPosition2 },
+          p: { x: 0, y: 0 },
+        };
+      }
+
       let stepsCompleted = 0;
 
       const executeStep = () => {
         try {
-          // Perform step using HMCSampler
+          // Perform step using HMCSampler for chain 1
           const result = samplerRef.current.step(
             currentParticleRef.current,
             logpInstanceRef.current
@@ -181,8 +228,31 @@ export default function useSamplingController() {
 
           // Always show trajectory (even for rejected steps for visualization)
           setTrajectory(result.trajectory || []);
-
           setCurrentParticle(currentParticleRef.current);
+
+          // Run second chain if enabled
+          if (useSecondChain) {
+            const result2 = samplerRef2.current.step(
+              currentParticleRef2.current,
+              logpInstanceRef.current
+            );
+
+            currentParticleRef2.current = {
+              q: result2.q,
+              p: result2.p || { x: 0, y: 0 },
+            };
+
+            // Update second chain state
+            if (result2.accepted) {
+              setSamples2((prev) => [...prev, result2.q]);
+            } else {
+              setRejectedCount2((prev) => prev + 1);
+            }
+
+            setTrajectory2(result2.trajectory || []);
+            setCurrentParticle2(currentParticleRef2.current);
+          }
+
           setIterationCount((prev) => prev + 1);
 
           stepsCompleted++;
@@ -201,7 +271,7 @@ export default function useSamplingController() {
 
       executeStep();
     },
-    [initialPosition]
+    [initialPosition, initialPosition2, useSecondChain]
   );
 
   // Expose single step for manual stepping
@@ -221,6 +291,15 @@ export default function useSamplingController() {
     setSeedState(newSeed);
     samplerRef.current.setSeed(newSeed);
     setUseSeededMode(newSeed !== null);
+  }, []);
+
+  /**
+   * Set the random seed for second chain
+   * @param {number|null} newSeed - Seed value, or null to disable seeded mode for chain 2
+   */
+  const setSeed2 = useCallback((newSeed) => {
+    setSeed2State(newSeed);
+    samplerRef2.current.setSeed(newSeed);
   }, []);
 
   return {
@@ -245,5 +324,17 @@ export default function useSamplingController() {
     step: stepAction,
     reset,
     setSeed,
+    // Second chain data and controls
+    useSecondChain,
+    initialPosition2,
+    samples2,
+    trajectory2,
+    currentParticle2,
+    acceptedCount2: samples2.length,
+    rejectedCount2,
+    seed2,
+    setUseSecondChain,
+    setInitialPosition2,
+    setSeed2,
   };
 }
