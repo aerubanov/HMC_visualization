@@ -95,13 +95,11 @@ export function createTrajectoryTrace(
     y: trajectory.map((p) => p.y),
     line: {
       color: color,
-      width: 2,
-      shape: 'linear',
+      ...HMC_SAMPLER.trajectory.line,
     },
     marker: {
-      size: 4,
       color: color,
-      symbol: 'circle',
+      ...HMC_SAMPLER.trajectory.marker,
     },
     name: name,
     showlegend: true,
@@ -133,14 +131,11 @@ export function createSamplesTrace(
     y: samples.map((p) => p.y),
     line: {
       color: color,
-      width: 1,
-      dash: 'dash',
+      ...HMC_SAMPLER.samples.line,
     },
     marker: {
-      size: 6,
       color: color,
-      symbol: 'circle',
-      opacity: 0.8,
+      ...HMC_SAMPLER.samples.marker,
     },
     name: name,
     showlegend: true,

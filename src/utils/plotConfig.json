@@ -13,6 +13,27 @@
     "styles": {
       "primaryColor": "#d73a49",
       "secondaryColor": "#0366d6"
+    },
+    "trajectory": {
+      "line": {
+        "width": 2,
+        "shape": "linear"
+      },
+      "marker": {
+        "size": 4,
+        "symbol": "circle"
+      }
+    },
+    "samples": {
+      "line": {
+        "width": 1,
+        "dash": "dash"
+      },
+      "marker": {
+        "size": 6,
+        "symbol": "circle",
+        "opacity": 0.8
+      }
     }
   },
   "GENERAL": {
