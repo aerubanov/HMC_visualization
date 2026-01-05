@@ -1681,9 +1681,9 @@ describe('useSamplingController', () => {
         };
       });
 
-      // Run 3 steps
+      // Run 15 steps (burnIn is 10, need >10 samples)
       act(() => {
-        result.current.sampleSteps(3);
+        result.current.sampleSteps(15);
       });
 
       await waitFor(
@@ -1723,6 +1723,58 @@ describe('useSamplingController', () => {
       await waitFor(() => expect(result.current.isRunning).toBe(false));
 
       expect(result.current.rHat).toBeNull();
+    });
+    it('should exclude burn-in samples from R-hat calculation', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        result.current.setUseSecondChain(true);
+      });
+
+      let callCount = 0;
+      HMCSampler.prototype.step.mockImplementation(() => {
+        // Implementation calls step() twice per loop iteration (once per chain).
+        // callCount 0: chain 1, iter 0
+        // callCount 1: chain 2, iter 0
+        // callCount 2: chain 1, iter 1
+        // ...
+        const iteration = Math.floor(callCount / 2);
+        const isChain2 = callCount % 2 !== 0;
+        callCount++;
+
+        // Burn-in is 10. So iterations 0-9 are burn-in.
+        let val;
+        if (iteration < 10) {
+          // Burn-in: Make them distinct.
+          // Chain 1 -> -100, Chain 2 -> 100
+          val = isChain2 ? 100 : -100;
+        } else {
+          // Valid: Both 0 (Perfect convergence)
+          val = 0;
+        }
+
+        return {
+          q: { x: val, y: val },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: val, y: val }],
+        };
+      });
+
+      // Run 20 steps (10 burn-in + 10 valid)
+      act(() => {
+        result.current.sampleSteps(20);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false));
+
+      // If burn-in (first 10) was included, we'd have -100 and 100, variance would be high (R-hat >> 1).
+      // With only valid samples (all 0), R-hat should be 1 (Converged).
+
+      expect(result.current.rHat).not.toBeNull();
+      // Since valid samples are identical (constant 0), W=0, B=0 => returns 1.
+      expect(result.current.rHat.x).toBe(1);
     });
   });
 });

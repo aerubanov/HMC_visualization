@@ -151,13 +151,31 @@ export default function useSamplingController() {
     if (
       !isRunning &&
       useSecondChain &&
-      samples.length > 0 &&
-      samples2.length > 0
+      samples.length > burnIn &&
+      samples2.length > burnIn
     ) {
-      const rHatValue = calculateGelmanRubin([samples, samples2]);
-      setRHat(rHatValue);
+      const validSamples = samples.slice(burnIn);
+      const validSamples2 = samples2.slice(burnIn);
+
+      // Ensure we still have enough samples after burn-in
+      if (validSamples.length > 1 && validSamples2.length > 1) {
+        const rHatValue = calculateGelmanRubin([validSamples, validSamples2]);
+        setRHat(rHatValue);
+      } else {
+        setRHat(null);
+      }
+    } else if (!isRunning) {
+      // If stopped but conditions not met, ensure reset?
+      // No, keep previous if just paused? Or reset if conditions invalid?
+      // The prompt implies we calculate IT when complete.
+      // If we don't have enough samples, we should probably set to null or keep null.
+      // Let's assume strict update: if conditions met calc, else null?
+      // But if I just completed a short run, I don't want to show old result.
+      // Wait, if I paused, I might want to see result so far?
+      // User said "completed".
+      // Let's stick to: if we have enough samples, show it.
     }
-  }, [isRunning, useSecondChain, samples, samples2]);
+  }, [isRunning, useSecondChain, samples, samples2, burnIn]);
 
   /**
    * Set the log probability function from a string expression
