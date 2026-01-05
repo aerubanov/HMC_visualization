@@ -1,4 +1,4 @@
-import { CONTOUR, HMC_SAMPLER } from './plotConfig.json';
+import { CONTOUR, HMC_SAMPLER, TRACE_PLOT } from './plotConfig.json';
 
 /**
  * Creates a Plotly contour trace configuration
@@ -141,4 +141,74 @@ export function createSamplesTrace(
     showlegend: true,
     hovertemplate: 'Sample<br>x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
   };
+}
+
+/**
+ * Creates Plotly traces for trace plots (iteration vs value)
+ * @param {Array<{x: number, y: number}>} samples - Array of accepted sample points
+ * @param {string} axis - 'x' or 'y' to plot
+ * @param {number} burnIn - Number of samples to treat as burn-in
+ * @param {string} [color] - Color for the valid samples
+ * @param {string} [name] - Name for the valid samples trace
+ * @returns {object[]} Array of Plotly trace objects (burn-in and valid)
+ */
+export function createTracePlotTrace(
+  samples,
+  axis,
+  burnIn = 0,
+  color = HMC_SAMPLER.styles.primaryColor,
+  name = 'Trace'
+) {
+  if (!samples || !Array.isArray(samples) || samples.length === 0) {
+    return [];
+  }
+
+  const traces = [];
+  const validOpacity = 1.0;
+  const burnInOpacity = TRACE_PLOT.styles.burnInOpacity;
+
+  // Split samples into burn-in and valid
+  const burnInSamples = samples.slice(0, burnIn);
+  const validSamples = samples.slice(burnIn);
+
+  // Helper to create a single trace part
+  const createSubTrace = (data, startIndex, opacity, traceName, showLegend) => {
+    const iterations = data.map((_, i) => i + startIndex);
+    const values = data.map((p) => p[axis]);
+
+    return {
+      type: 'scatter',
+      mode: 'lines',
+      x: iterations,
+      y: values,
+      line: {
+        color: color,
+        width: 1,
+      },
+      opacity: opacity,
+      name: traceName,
+      showlegend: showLegend,
+      hovertemplate: `Iter: %{x}<br>${axis}: %{y:.2f}<extra></extra>`,
+    };
+  };
+
+  // Add burn-in trace
+  if (burnInSamples.length > 0) {
+    traces.push(
+      createSubTrace(burnInSamples, 0, burnInOpacity, `${name} (Burn-in)`, true)
+    );
+  }
+
+  // Add valid samples trace
+  // Note: if we have burn-in, we might want to connect the last burn-in point to first valid point
+  // For simplicity, we keep them separate or just let them be disjoint.
+  // Visual continuity is handled by including the last burn-in point in valid samples?
+  // No, strictly disjoint is better for "ignoring" logic, but visually disjoint lines might look odd.
+  // Standard trace plots often just change color.
+  // Let's stick to simple disjoint for now or disjoint segments.
+  if (validSamples.length > 0) {
+    traces.push(createSubTrace(validSamples, burnIn, validOpacity, name, true));
+  }
+
+  return traces;
 }

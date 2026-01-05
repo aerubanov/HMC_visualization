@@ -1,6 +1,7 @@
 import './App.css';
 import Controls from './components/Controls';
 import Visualizer from './components/Visualizer';
+import TracePlots from './components/TracePlots';
 import useSamplingController from './hooks/useSamplingController';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
     setUseSecondChain,
     setInitialPosition2,
     setSeed2,
+    burnIn,
   } = useSamplingController();
 
   return (
@@ -109,6 +111,16 @@ function App() {
           acceptedSamples2={samples2}
           useSecondChain={useSecondChain}
         />
+        <div className="trace-plots-section">
+          {contourData && (
+            <TracePlots
+              samples={samples}
+              samples2={samples2}
+              burnIn={burnIn}
+              useSecondChain={useSecondChain}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
