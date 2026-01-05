@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
+import { calculateGelmanRubin } from '../utils/statistics';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -34,6 +35,9 @@ export default function useSamplingController() {
   const [currentParticle2, setCurrentParticle2] = useState(null);
   const [rejectedCount2, setRejectedCount2] = useState(0);
   const [seed2, setSeed2State] = useState(null);
+
+  // Statistics
+  const [rHat, setRHat] = useState(null);
 
   // Visualization params
   const [burnIn] = useState(10);
@@ -111,6 +115,8 @@ export default function useSamplingController() {
       samplerRef.current.setSeed(seed);
     }
 
+    setRHat(null);
+
     // Reset second chain if enabled
     if (useSecondChain) {
       setSamples2([]);
@@ -138,6 +144,20 @@ export default function useSamplingController() {
     seed2,
     useSecondChain,
   ]);
+
+  // Calculate R-hat when sampling finishes
+  useEffect(() => {
+    // Only calculate if not running, using second chain, and we have samples
+    if (
+      !isRunning &&
+      useSecondChain &&
+      samples.length > 0 &&
+      samples2.length > 0
+    ) {
+      const rHatValue = calculateGelmanRubin([samples, samples2]);
+      setRHat(rHatValue);
+    }
+  }, [isRunning, useSecondChain, samples, samples2]);
 
   /**
    * Set the log probability function from a string expression
@@ -340,5 +360,6 @@ export default function useSamplingController() {
     setInitialPosition2,
     setSeed2,
     burnIn,
+    rHat,
   };
 }

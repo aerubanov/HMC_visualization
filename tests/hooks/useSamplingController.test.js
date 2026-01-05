@@ -1649,4 +1649,80 @@ describe('useSamplingController', () => {
       expect(result.current.rejectedCount2).toBe(0);
     });
   });
+
+  describe('R-hat Statistics', () => {
+    it('should calculate rHat after sampling finishes with second chain', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      // Setup: Enable second chain and set positions
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        result.current.setInitialPosition({ x: 0, y: 0 });
+        result.current.setUseSecondChain(true);
+        result.current.setInitialPosition2({ x: 10, y: 10 });
+      });
+
+      // Mock step behavior for distinct chains
+      HMCSampler.prototype.step.mockImplementation((particle) => {
+        // Distinguish chains by checking current position or just alternate logic?
+        // Since we know initial positions are 0 and 10.
+        // If particle is near 0, return 0. If 10, return 10.
+        // But mockImplementation receives the particle passed in step(currentParticle).
+
+        const x = particle.q.x;
+        // Simple heuristic for test
+        const nextX = Math.abs(x) < 5 ? 0 : 10;
+
+        return {
+          q: { x: nextX, y: nextX },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: nextX, y: nextX }],
+        };
+      });
+
+      // Run 3 steps
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 1000 }
+      );
+
+      // Verify rHat
+      // We expect it to be calculated because we have samples and finished running
+      expect(result.current.rHat).not.toBeNull();
+      expect(result.current.rHat).toHaveProperty('x');
+      expect(result.current.rHat).toHaveProperty('y');
+    });
+
+    it('should not calculate rHat if second chain is disabled', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+        result.current.setUseSecondChain(false);
+      });
+
+      // Mock step
+      HMCSampler.prototype.step.mockReturnValue({
+        q: { x: 0, y: 0 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [],
+      });
+
+      act(() => {
+        result.current.sampleSteps(3);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false));
+
+      expect(result.current.rHat).toBeNull();
+    });
+  });
 });
