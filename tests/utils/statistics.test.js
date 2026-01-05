@@ -89,4 +89,23 @@ describe('calculateGelmanRubin', () => {
     // R_hat_y = sqrt(1/2) = 0.707
     expect(result.y).toBeCloseTo(Math.sqrt(0.5));
   });
+
+  it('handles chains of different lengths', () => {
+    const n = 10;
+    const chain1 = Array(n)
+      .fill(0)
+      .map((_, i) => ({ x: i, y: i }));
+    // Chain 2 is longer (15 items), but identical in the first 10
+    const chain2 = Array(n + 5)
+      .fill(0)
+      .map((_, i) => ({ x: i, y: i }));
+
+    // Function should use min length (10)
+    const result = calculateGelmanRubin([chain1, chain2]);
+
+    // Since first 10 match, it should be treated as identical chains of length 10
+    const expected = Math.sqrt((n - 1) / n);
+    expect(result.x).toBeCloseTo(expected);
+    expect(result.y).toBeCloseTo(expected);
+  });
 });
