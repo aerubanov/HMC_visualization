@@ -38,7 +38,8 @@
   },
   "TRACE_PLOT": {
     "styles": {
-      "burnInOpacity": 0.3
+      "burnInOpacity": 0.3,
+      "lineWidth": 2
     },
     "layout": {
       "font": {

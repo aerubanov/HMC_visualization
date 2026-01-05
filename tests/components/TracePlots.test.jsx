@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, test, expect } from 'vitest';
-import TracePlots from './TracePlots';
+import TracePlots from '../../src/components/TracePlots';
 
 // Mock Plot component
 vi.mock('react-plotly.js', () => ({
@@ -74,11 +74,14 @@ describe('TracePlots', () => {
 
     // Burn-in trace
     expect(xPlotData[0].name).toBe('Chain 1 (Burn-in)');
-    expect(xPlotData[0].y).toEqual([0.1]);
+    expect(xPlotData[0].y).toEqual([0.1, 0.3]);
+    // Opacity should be handled via rgba color now
+    expect(xPlotData[0].line.color).toMatch(/^rgba\(\d+, \d+, \d+, 0\.3\)$/);
 
     // Valid trace
     expect(xPlotData[1].name).toBe('Chain 1');
     expect(xPlotData[1].y).toEqual([0.3, 0.5]);
+    expect(xPlotData[1].line.color).toBe('#d73a49');
   });
 
   test('handles second chain correctly', () => {

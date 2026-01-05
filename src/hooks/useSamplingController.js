@@ -36,7 +36,7 @@ export default function useSamplingController() {
   const [seed2, setSeed2State] = useState(null);
 
   // Visualization params
-  const [burnIn] = useState(0);
+  const [burnIn] = useState(10);
 
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
