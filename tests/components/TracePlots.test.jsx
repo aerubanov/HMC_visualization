@@ -106,4 +106,44 @@ describe('TracePlots', () => {
 
     expect(xPlotData[1].y).toEqual([1.1, 1.3]);
   });
+
+  test('handles chains of different lengths correctly', () => {
+    const longSamples = [
+      { x: 1, y: 1 },
+      { x: 2, y: 2 },
+      { x: 3, y: 3 },
+      { x: 4, y: 4 },
+    ];
+    const shortSamples = [
+      { x: 10, y: 10 },
+      { x: 20, y: 20 },
+    ];
+
+    render(
+      <TracePlots
+        samples={longSamples}
+        samples2={shortSamples}
+        useSecondChain={true}
+        burnIn={0}
+      />
+    );
+    const plots = screen.getAllByTestId('plotly-plot');
+
+    // Check X trace plot
+    const xPlotData = JSON.parse(
+      plots[0].querySelector('[data-testid="plot-data"]').textContent
+    );
+
+    expect(xPlotData).toHaveLength(2);
+
+    // Chain 1 (Long)
+    expect(xPlotData[0].name).toBe('Chain 1');
+    expect(xPlotData[0].x).toEqual([0, 1, 2, 3]);
+    expect(xPlotData[0].y).toEqual([1, 2, 3, 4]);
+
+    // Chain 2 (Short)
+    expect(xPlotData[1].name).toBe('Chain 2');
+    expect(xPlotData[1].x).toEqual([0, 1]);
+    expect(xPlotData[1].y).toEqual([10, 20]);
+  });
 });
