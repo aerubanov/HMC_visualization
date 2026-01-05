@@ -36,6 +36,34 @@
       }
     }
   },
+  "TRACE_PLOT": {
+    "styles": {
+      "burnInOpacity": 0.3,
+      "lineWidth": 2
+    },
+    "layout": {
+      "font": {
+        "color": "#1a1a1a",
+        "family": "Inter, system-ui, sans-serif",
+        "size": 10
+      },
+      "xaxis": {
+        "title": "Iteration",
+        "showgrid": false,
+        "zeroline": false
+      },
+      "yaxis": {
+        "showgrid": true,
+        "zeroline": false
+      },
+      "margin": {
+        "l": 50,
+        "r": 20,
+        "t": 30,
+        "b": 40
+      }
+    }
+  },
   "GENERAL": {
     "layout": {
       "autosize": true,

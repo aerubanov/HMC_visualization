@@ -1,4 +1,4 @@
-import { CONTOUR, HMC_SAMPLER } from './plotConfig.json';
+import { CONTOUR, HMC_SAMPLER, TRACE_PLOT } from './plotConfig.json';
 
 /**
  * Creates a Plotly contour trace configuration
@@ -141,4 +141,95 @@ export function createSamplesTrace(
     showlegend: true,
     hovertemplate: 'Sample<br>x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>',
   };
+}
+
+/**
+ * Converts a hex color to rgba string
+ * @param {string} hex - Hex color string (e.g., "#ff0000")
+ * @param {number} alpha - Alpha value (0-1)
+ * @returns {string} Rgba color string
+ */
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Creates Plotly traces for trace plots (iteration vs value)
+ * @param {Array<{x: number, y: number}>} samples - Array of accepted sample points
+ * @param {string} axis - 'x' or 'y' to plot
+ * @param {number} burnIn - Number of samples to treat as burn-in
+ * @param {string} [color] - Color for the valid samples
+ * @param {string} [name] - Name for the valid samples trace
+ * @returns {object[]} Array of Plotly trace objects (burn-in and valid)
+ */
+export function createTracePlotTrace(
+  samples,
+  axis,
+  burnIn = 0,
+  color = HMC_SAMPLER.styles.primaryColor,
+  name = 'Trace'
+) {
+  if (!samples || !Array.isArray(samples) || samples.length === 0) {
+    return [];
+  }
+
+  const traces = [];
+  const validOpacity = 1.0;
+  const burnInOpacity = TRACE_PLOT.styles.burnInOpacity;
+  const lineWidth = TRACE_PLOT.styles.lineWidth;
+
+  // Split samples into burn-in and valid
+  let burnInSamples = [];
+  let validSamples = [];
+
+  if (burnIn > 0) {
+    // If we have valid samples after burn-in, include the first one in burn-in set to connect lines
+    const endIndex = samples.length > burnIn ? burnIn + 1 : burnIn;
+    burnInSamples = samples.slice(0, endIndex);
+    validSamples = samples.slice(burnIn);
+  } else {
+    validSamples = samples;
+  }
+
+  // Helper to create a single trace part
+  const createSubTrace = (data, startIndex, opacity, traceName, showLegend) => {
+    const iterations = data.map((_, i) => i + startIndex);
+    const values = data.map((p) => p[axis]);
+
+    // Use RGBA for color to ensure opacity works reliably on lines
+    const traceColor = opacity < 1 ? hexToRgba(color, opacity) : color;
+
+    return {
+      type: 'scatter',
+      mode: 'lines',
+      x: iterations,
+      y: values,
+      line: {
+        color: traceColor,
+        width: lineWidth,
+      },
+      // Remove top-level opacity to rely on rgba color
+      // opacity: opacity,
+      name: traceName,
+      showlegend: showLegend,
+      hovertemplate: `Iter: %{x}<br>${axis}: %{y:.2f}<extra></extra>`,
+    };
+  };
+
+  // Add burn-in trace
+  if (burnInSamples.length > 0) {
+    traces.push(
+      createSubTrace(burnInSamples, 0, burnInOpacity, `${name} (Burn-in)`, true)
+    );
+  }
+
+  // Add valid samples trace
+  if (validSamples.length > 0) {
+    traces.push(createSubTrace(validSamples, burnIn, validOpacity, name, true));
+  }
+
+  return traces;
 }

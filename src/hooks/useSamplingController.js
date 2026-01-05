@@ -35,6 +35,9 @@ export default function useSamplingController() {
   const [rejectedCount2, setRejectedCount2] = useState(0);
   const [seed2, setSeed2State] = useState(null);
 
+  // Visualization params
+  const [burnIn] = useState(10);
+
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
   const currentParticleRef = useRef(null); // { q, p }
@@ -336,5 +339,6 @@ export default function useSamplingController() {
     setUseSecondChain,
     setInitialPosition2,
     setSeed2,
+    burnIn,
   };
 }

@@ -16,7 +16,7 @@
 
 .App-main {
   background: var(--color-bg-primary);
-  overflow: hidden;
+  overflow-y: auto;
   position: relative;
 }
 
