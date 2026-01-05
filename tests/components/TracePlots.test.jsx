@@ -146,4 +146,27 @@ describe('TracePlots', () => {
     expect(xPlotData[1].x).toEqual([0, 1]);
     expect(xPlotData[1].y).toEqual([10, 20]);
   });
+
+  test('displays R-hat values when provided', () => {
+    const rHat = { x: 1.05, y: 1.1 };
+    render(<TracePlots samples={mockSamples} rHat={rHat} />);
+
+    expect(screen.getByText('X Trace (R̂ = 1.05)')).toBeInTheDocument();
+    expect(screen.getByText('Y Trace (R̂ = 1.10)')).toBeInTheDocument();
+  });
+
+  test('does not display R-hat values when null', () => {
+    render(<TracePlots samples={mockSamples} rHat={null} />);
+
+    expect(screen.getByText('X Trace')).toBeInTheDocument();
+    expect(screen.queryByText(/R̂/)).not.toBeInTheDocument();
+  });
+
+  test('displays infinity symbol for infinite R-hat', () => {
+    const rHat = { x: Infinity, y: Infinity };
+    render(<TracePlots samples={mockSamples} rHat={rHat} />);
+
+    expect(screen.getByText('X Trace (R̂ = ∞)')).toBeInTheDocument();
+    expect(screen.getByText('Y Trace (R̂ = ∞)')).toBeInTheDocument();
+  });
 });

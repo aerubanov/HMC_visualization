@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
+import { calculateGelmanRubin } from '../utils/statistics';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -34,6 +35,9 @@ export default function useSamplingController() {
   const [currentParticle2, setCurrentParticle2] = useState(null);
   const [rejectedCount2, setRejectedCount2] = useState(0);
   const [seed2, setSeed2State] = useState(null);
+
+  // Statistics
+  const [rHat, setRHat] = useState(null);
 
   // Visualization params
   const [burnIn] = useState(10);
@@ -111,6 +115,8 @@ export default function useSamplingController() {
       samplerRef.current.setSeed(seed);
     }
 
+    setRHat(null);
+
     // Reset second chain if enabled
     if (useSecondChain) {
       setSamples2([]);
@@ -138,6 +144,28 @@ export default function useSamplingController() {
     seed2,
     useSecondChain,
   ]);
+
+  // Calculate R-hat when sampling finishes
+  // Calculate R-hat when sampling finishes
+  useEffect(() => {
+    // If running, do not update
+    if (isRunning) return;
+
+    if (useSecondChain && samples.length > burnIn && samples2.length > burnIn) {
+      const validSamples = samples.slice(burnIn);
+      const validSamples2 = samples2.slice(burnIn);
+
+      // Ensure we still have enough samples after burn-in
+      if (validSamples.length > 1 && validSamples2.length > 1) {
+        const rHatValue = calculateGelmanRubin([validSamples, validSamples2]);
+        setRHat(rHatValue);
+        return;
+      }
+    }
+
+    // Fallback: if conditions not met (e.g. disabled second chain, not enough samples), clear R-hat
+    setRHat(null);
+  }, [isRunning, useSecondChain, samples, samples2, burnIn]);
 
   /**
    * Set the log probability function from a string expression
@@ -340,5 +368,6 @@ export default function useSamplingController() {
     setInitialPosition2,
     setSeed2,
     burnIn,
+    rHat,
   };
 }
