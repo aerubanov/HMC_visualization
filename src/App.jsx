@@ -38,6 +38,7 @@ function App() {
     setInitialPosition2,
     setSeed2,
     burnIn,
+    rHat,
   } = useSamplingController();
 
   return (
@@ -118,6 +119,7 @@ function App() {
               samples2={samples2}
               burnIn={burnIn}
               useSecondChain={useSecondChain}
+              rHat={rHat}
             />
           )}
         </div>

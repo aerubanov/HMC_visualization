@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
 import { createTracePlotTrace } from '../utils/plotFunctions';
 
-function TracePlots({ samples, samples2, burnIn, useSecondChain }) {
+function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat }) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
@@ -71,10 +71,17 @@ function TracePlots({ samples, samples2, burnIn, useSecondChain }) {
     );
   }
 
+  const formatRHat = (val) => {
+    if (val === undefined || val === null) return '';
+    // If val is Infinity, show symbol
+    if (!isFinite(val)) return ' (R̂ = ∞)';
+    return ` (R̂ = ${val.toFixed(2)})`;
+  };
+
   return (
     <div className="trace-plots-container">
       <div className="trace-plot-wrapper">
-        <h4 className="trace-title">X Trace</h4>
+        <h4 className="trace-title">X Trace{rHat && formatRHat(rHat.x)}</h4>
         <Plot
           data={xTraces}
           layout={{ ...commonLayout, title: '' }} // Remove title from Plotly, use HTML headers
@@ -84,7 +91,7 @@ function TracePlots({ samples, samples2, burnIn, useSecondChain }) {
         />
       </div>
       <div className="trace-plot-wrapper">
-        <h4 className="trace-title">Y Trace</h4>
+        <h4 className="trace-title">Y Trace{rHat && formatRHat(rHat.y)}</h4>
         <Plot
           data={yTraces}
           layout={{ ...commonLayout, title: '' }}
@@ -112,6 +119,10 @@ TracePlots.propTypes = {
   ),
   burnIn: PropTypes.number,
   useSecondChain: PropTypes.bool,
+  rHat: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number,
+  }),
 };
 
 export default TracePlots;
