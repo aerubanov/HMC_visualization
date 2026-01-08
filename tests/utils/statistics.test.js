@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateGelmanRubin } from '../../src/utils/statistics';
+import { calculateGelmanRubin, calculateESS } from '../../src/utils/statistics';
 
 describe('calculateGelmanRubin', () => {
   it('returns null for insufficient chains', () => {
@@ -107,5 +107,64 @@ describe('calculateGelmanRubin', () => {
     const expected = Math.sqrt((n - 1) / n);
     expect(result.x).toBeCloseTo(expected);
     expect(result.y).toBeCloseTo(expected);
+  });
+});
+
+describe('calculateESS', () => {
+  it('returns null for insufficient chains or samples', () => {
+    expect(calculateESS(null)).toBeNull();
+    expect(calculateESS([])).toBeNull();
+    // Single chain is valid if m=1 is supported, but guide says "m = number of chains (here m = 2)".
+    // However proper ESS calc handles m>=1.
+    expect(calculateESS([[]])).toBeNull();
+  });
+
+  it('calculates ESS for IID samples (ESS approx equal to N)', () => {
+    // Generate IID samples
+    const n = 1000;
+    const chain1 = Array(n)
+      .fill(0)
+      .map(() => ({ x: Math.random(), y: Math.random() }));
+    // Ideally ESS should be close to n for IID
+    const result = calculateESS([chain1]);
+
+    // We expect result to be close to n
+    // Allow some margin of error for random samples (0.7 * n is safer than 0.8)
+    expect(result.x).toBeGreaterThan(n * 0.7);
+    expect(result.x).toBeLessThan(n * 1.2);
+  });
+
+  it('calculates lower ESS for highly correlated samples', () => {
+    // Generate AR(1) process: x_t = 0.9 * x_{t-1} + e_t
+    const n = 1000;
+    const chain = [];
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < n; i++) {
+      x = 0.9 * x + (Math.random() - 0.5);
+      y = 0.9 * y + (Math.random() - 0.5);
+      chain.push({ x, y });
+    }
+
+    const result = calculateESS([chain]);
+    // For AR(1) with rho=0.9, ESS should be roughly n * (1-rho)/(1+rho) = 1000 * 0.1/1.9 approx 52
+    expect(result.x).toBeLessThan(200);
+    expect(result.y).toBeLessThan(200);
+  });
+
+  it('handles multiple chains correctly', () => {
+    const n = 500;
+    // two independent chains
+    const chain1 = Array(n)
+      .fill(0)
+      .map(() => ({ x: Math.random(), y: Math.random() }));
+    const chain2 = Array(n)
+      .fill(0)
+      .map(() => ({ x: Math.random(), y: Math.random() }));
+
+    const result = calculateESS([chain1, chain2]);
+    // Total samples = 1000. ESS should be close to 1000 for IID.
+    // Randomness can drop it. 0.7 * 1000 = 700.
+    expect(result.x).toBeGreaterThan(700);
   });
 });

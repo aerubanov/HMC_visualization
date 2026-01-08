@@ -151,8 +151,9 @@ describe('TracePlots', () => {
     const rHat = { x: 1.05, y: 1.1 };
     render(<TracePlots samples={mockSamples} rHat={rHat} />);
 
-    expect(screen.getByText('X Trace (R̂ = 1.05)')).toBeInTheDocument();
-    expect(screen.getByText('Y Trace (R̂ = 1.10)')).toBeInTheDocument();
+    // Since text is split into spans, we check for presence of the formatted value
+    expect(screen.getByText('(R̂ = 1.05)')).toBeInTheDocument();
+    expect(screen.getByText('(R̂ = 1.10)')).toBeInTheDocument();
   });
 
   test('does not display R-hat values when null', () => {
@@ -166,7 +167,15 @@ describe('TracePlots', () => {
     const rHat = { x: Infinity, y: Infinity };
     render(<TracePlots samples={mockSamples} rHat={rHat} />);
 
-    expect(screen.getByText('X Trace (R̂ = ∞)')).toBeInTheDocument();
-    expect(screen.getByText('Y Trace (R̂ = ∞)')).toBeInTheDocument();
+    expect(screen.getAllByText('(R̂ = ∞)')).toHaveLength(2);
+  });
+
+  test('displays ESS values when provided', () => {
+    const rHat = { x: 1.1, y: 1.1 };
+    const ess = { x: 100, y: 200 };
+    render(<TracePlots samples={mockSamples} rHat={rHat} ess={ess} />);
+
+    expect(screen.getByText('(ESS = 100)')).toBeInTheDocument();
+    expect(screen.getByText('(ESS = 200)')).toBeInTheDocument();
   });
 });

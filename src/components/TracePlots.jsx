@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
 import { createTracePlotTrace } from '../utils/plotFunctions';
 
-function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat }) {
+function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat, ess }) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
@@ -78,10 +78,19 @@ function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat }) {
     return ` (R̂ = ${val.toFixed(2)})`;
   };
 
+  const formatESS = (val) => {
+    if (val === undefined || val === null) return '';
+    return ` (ESS = ${Math.round(val)})`;
+  };
+
   return (
     <div className="trace-plots-container">
       <div className="trace-plot-wrapper">
-        <h4 className="trace-title">X Trace{rHat && formatRHat(rHat.x)}</h4>
+        <h4 className="trace-title">
+          X Trace
+          {rHat && <span className="stat-label">{formatRHat(rHat.x)}</span>}
+          {ess && <span className="stat-label">{formatESS(ess.x)}</span>}
+        </h4>
         <Plot
           data={xTraces}
           layout={{ ...commonLayout, title: '' }} // Remove title from Plotly, use HTML headers
@@ -91,7 +100,11 @@ function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat }) {
         />
       </div>
       <div className="trace-plot-wrapper">
-        <h4 className="trace-title">Y Trace{rHat && formatRHat(rHat.y)}</h4>
+        <h4 className="trace-title">
+          Y Trace
+          {rHat && <span className="stat-label">{formatRHat(rHat.y)}</span>}
+          {ess && <span className="stat-label">{formatESS(ess.y)}</span>}
+        </h4>
         <Plot
           data={yTraces}
           layout={{ ...commonLayout, title: '' }}
@@ -120,6 +133,10 @@ TracePlots.propTypes = {
   burnIn: PropTypes.number,
   useSecondChain: PropTypes.bool,
   rHat: PropTypes.shape({
+    x: PropTypes.number,
+    y: PropTypes.number,
+  }),
+  ess: PropTypes.shape({
     x: PropTypes.number,
     y: PropTypes.number,
   }),
