@@ -28,6 +28,8 @@ function Controls({
   setUseSecondChain,
   setInitialPosition2,
   setSeed2,
+  burnIn,
+  setBurnIn,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
@@ -39,6 +41,9 @@ function Controls({
   const [localX2, setLocalX2] = useState(initialPosition2?.x ?? 1);
   const [localY2, setLocalY2] = useState(initialPosition2?.y ?? 1);
   const [localSeed2, setLocalSeed2] = useState(seed2 || 43);
+
+  // Burn-in local state
+  const [localBurnIn, setLocalBurnIn] = useState(burnIn);
 
   // Sync draft with prop when it changes externally (e.g., on reset)
   useEffect(() => {
@@ -58,6 +63,11 @@ function Controls({
       setLocalY2(initialPosition2.y);
     }
   }, [initialPosition2]);
+
+  // Sync burn-in state with props
+  useEffect(() => {
+    setLocalBurnIn(burnIn);
+  }, [burnIn]);
 
   const handleLogPChange = (e) => {
     setDraftLogP(e.target.value);
@@ -135,6 +145,14 @@ function Controls({
     const newSeed = Math.floor(Math.random() * 1000000);
     setLocalSeed2(newSeed);
     setSeed2(newSeed);
+  };
+
+  const handleBurnInChange = (e) => {
+    const value = parseInt(e.target.value, 10);
+    setLocalBurnIn(value);
+    if (!isNaN(value) && value >= 0) {
+      setBurnIn(value);
+    }
   };
 
   const acceptanceRate =
@@ -217,6 +235,21 @@ function Controls({
               min="1"
               value={params.L}
               onChange={(e) => handleParamChange('L', e.target.value)}
+            />
+          </div>
+
+          <div className="control-group">
+            <label htmlFor="burnin-input" className="control-label">
+              Burn-in Samples
+            </label>
+            <input
+              id="burnin-input"
+              type="number"
+              className="control-input"
+              step="1"
+              min="0"
+              value={localBurnIn}
+              onChange={handleBurnInChange}
             />
           </div>
 
@@ -652,6 +685,8 @@ Controls.propTypes = {
   setUseSecondChain: PropTypes.func.isRequired,
   setInitialPosition2: PropTypes.func.isRequired,
   setSeed2: PropTypes.func.isRequired,
+  burnIn: PropTypes.number.isRequired,
+  setBurnIn: PropTypes.func.isRequired,
 };
 
 export default Controls;

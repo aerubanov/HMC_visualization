@@ -29,6 +29,8 @@ describe('Controls Component', () => {
     setUseSecondChain: vi.fn(),
     setInitialPosition2: vi.fn(),
     setSeed2: vi.fn(),
+    burnIn: 10,
+    setBurnIn: vi.fn(),
   };
 
   beforeEach(() => {
@@ -273,6 +275,65 @@ describe('Controls Component', () => {
         screen.getByRole('button', { name: /sample n steps/i })
       ).toBeDisabled();
       expect(screen.getByRole('button', { name: /reset/i })).toBeDisabled();
+    });
+  });
+
+  describe('Burn-in Parameter Input', () => {
+    it('should render burn-in input with correct initial value', () => {
+      const props = { ...mockProps, burnIn: 10, setBurnIn: vi.fn() };
+      render(<Controls {...props} />);
+
+      const burnInInput = screen.getByLabelText(/burn-in samples/i);
+      expect(burnInInput).toBeInTheDocument();
+      expect(burnInInput.value).toBe('10');
+    });
+
+    it('should call setBurnIn when burn-in value changes', () => {
+      const setBurnIn = vi.fn();
+      const props = { ...mockProps, burnIn: 10, setBurnIn };
+      render(<Controls {...props} />);
+
+      const burnInInput = screen.getByLabelText(/burn-in samples/i);
+      fireEvent.change(burnInInput, { target: { value: '15' } });
+
+      expect(setBurnIn).toHaveBeenCalledWith(15);
+    });
+
+    it('should have correct input attributes for validation', () => {
+      const props = { ...mockProps, burnIn: 10, setBurnIn: vi.fn() };
+      render(<Controls {...props} />);
+
+      const burnInInput = screen.getByLabelText(/burn-in samples/i);
+      expect(burnInInput).toHaveAttribute('type', 'number');
+      expect(burnInInput).toHaveAttribute('min', '0');
+      expect(burnInInput).toHaveAttribute('step', '1');
+    });
+
+    it('should sync local state when burnIn prop changes', () => {
+      const props = { ...mockProps, burnIn: 10, setBurnIn: vi.fn() };
+      const { rerender } = render(<Controls {...props} />);
+
+      const burnInInput = screen.getByLabelText(/burn-in samples/i);
+      expect(burnInInput.value).toBe('10');
+
+      // External change (e.g., from hook state update)
+      rerender(<Controls {...props} burnIn={20} />);
+
+      expect(burnInInput.value).toBe('20');
+    });
+
+    it('should not call setBurnIn with invalid values', () => {
+      const setBurnIn = vi.fn();
+      const props = { ...mockProps, burnIn: 10, setBurnIn };
+      render(<Controls {...props} />);
+
+      const burnInInput = screen.getByLabelText(/burn-in samples/i);
+
+      // Try to set non-numeric value
+      fireEvent.change(burnInInput, { target: { value: 'abc' } });
+
+      // setBurnIn should not be called with NaN
+      expect(setBurnIn).not.toHaveBeenCalled();
     });
   });
 });

@@ -1791,3 +1791,235 @@ describe('Statistics Calculation (R-hat and ESS)', () => {
   // However, calculateESS is imported in the hook.
   // If we want to test that 'setEss' is called, we need to inspect the state changes.
 });
+
+describe('Burn-in Parameter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 0, y: 0 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [{ x: 0, y: 0 }],
+    });
+  });
+
+  it('should initialize with default burn-in value of 10', () => {
+    const { result } = renderHook(() => useSamplingController());
+    expect(result.current.burnIn).toBe(10);
+  });
+
+  it('should expose setBurnIn function', () => {
+    const { result } = renderHook(() => useSamplingController());
+    expect(result.current.setBurnIn).toBeDefined();
+    expect(typeof result.current.setBurnIn).toBe('function');
+  });
+
+  it('should update burn-in value when setBurnIn is called', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setBurnIn(20);
+    });
+
+    expect(result.current.burnIn).toBe(20);
+  });
+
+  it('should recalculate R-hat when burn-in changes with dual chains', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Setup: Enable second chain
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+      result.current.setUseSecondChain(true);
+    });
+
+    // Mock step to return consistent values
+    let callCount = 0;
+    HMCSampler.prototype.step.mockImplementation(() => {
+      const val = callCount++;
+      return {
+        q: { x: val, y: val },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: val, y: val }],
+      };
+    });
+
+    // Run 30 steps
+    act(() => {
+      result.current.sampleSteps(30);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Initial R-hat with burn-in = 10 (20 valid samples)
+    const initialRHat = result.current.rHat;
+    expect(initialRHat).not.toBeNull();
+
+    // Change burn-in to 5
+    act(() => {
+      result.current.setBurnIn(5);
+    });
+
+    // R-hat should recalculate with new burn-in (25 valid samples)
+    const newRHat = result.current.rHat;
+    expect(newRHat).not.toBeNull();
+    // Values should be different because we're using different sample ranges
+    expect(newRHat).not.toBe(initialRHat);
+  });
+
+  it('should recalculate ESS when burn-in changes', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Setup
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+    });
+
+    // Mock step
+    let callCount = 0;
+    HMCSampler.prototype.step.mockImplementation(() => {
+      const val = callCount++;
+      return {
+        q: { x: val, y: val },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: val, y: val }],
+      };
+    });
+
+    // Run 30 steps
+    act(() => {
+      result.current.sampleSteps(30);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Initial ESS with burn-in = 10
+    const initialESS = result.current.ess;
+    expect(initialESS).not.toBeNull();
+
+    // Change burn-in to 15
+    act(() => {
+      result.current.setBurnIn(15);
+    });
+
+    // ESS should recalculate
+    const newESS = result.current.ess;
+    expect(newESS).not.toBeNull();
+    // Values should be different
+    expect(newESS).not.toBe(initialESS);
+  });
+
+  it('should handle burn-in = 0 (all samples valid)', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Setup
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+      result.current.setBurnIn(0);
+    });
+
+    // Mock step
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 0, y: 0 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [{ x: 0, y: 0 }],
+    });
+
+    // Run 20 steps
+    act(() => {
+      result.current.sampleSteps(20);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // All 20 samples should be valid, ESS should be calculated
+    expect(result.current.samples).toHaveLength(20);
+    expect(result.current.ess).not.toBeNull();
+  });
+
+  it('should clear statistics when burn-in > sample count', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Setup
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+    });
+
+    // Mock step
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 0, y: 0 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [{ x: 0, y: 0 }],
+    });
+
+    // Run 15 steps
+    act(() => {
+      result.current.sampleSteps(15);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Should have ESS with burn-in = 10
+    expect(result.current.ess).not.toBeNull();
+
+    // Set burn-in > sample count
+    act(() => {
+      result.current.setBurnIn(20);
+    });
+
+    // Statistics should be null (no valid samples)
+    expect(result.current.rHat).toBeNull();
+    expect(result.current.ess).toBeNull();
+  });
+
+  it('should clear statistics when burn-in leaves insufficient samples for dual chains', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Setup: Enable second chain
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+      result.current.setUseSecondChain(true);
+    });
+
+    // Mock step
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 0, y: 0 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [{ x: 0, y: 0 }],
+    });
+
+    // Run 12 steps (12 samples per chain)
+    act(() => {
+      result.current.sampleSteps(12);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // With burn-in = 10, we have 2 valid samples per chain, R-hat should be calculated
+    expect(result.current.rHat).not.toBeNull();
+
+    // Set burn-in to 11 (only 1 valid sample per chain)
+    act(() => {
+      result.current.setBurnIn(11);
+    });
+
+    // Statistics should be null (need >1 sample per chain)
+    expect(result.current.rHat).toBeNull();
+    expect(result.current.ess).toBeNull();
+  });
+});
