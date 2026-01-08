@@ -233,3 +233,66 @@ export function createTracePlotTrace(
 
   return traces;
 }
+
+/**
+ * Creates a Plotly histogram2d trace for joint distribution visualization
+ * @param {Array<{x: number, y: number}>} samples - Array of sample points
+ * @param {string} [colorscale] - Plotly colorscale name (defaults to 'Blues')
+ * @param {string} [name] - Name for the trace (defaults to '2D Histogram')
+ * @returns {object|null} Plotly trace object or null if samples is empty
+ */
+export function createHistogram2DTrace(
+  samples,
+  colorscale = 'Blues',
+  name = '2D Histogram'
+) {
+  if (!samples || !Array.isArray(samples) || samples.length === 0) {
+    return null;
+  }
+
+  return {
+    type: 'histogram2d',
+    x: samples.map((p) => p.x),
+    y: samples.map((p) => p.y),
+    colorscale: colorscale,
+    name: name,
+    showscale: false,
+    hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>Count: %{z}<extra></extra>',
+  };
+}
+
+/**
+ * Creates a Plotly histogram trace for marginal distribution visualization
+ * @param {Array<{x: number, y: number}>} samples - Array of sample points
+ * @param {string} dimension - 'x' or 'y' to plot
+ * @param {string} [color] - Color for the histogram bars
+ * @param {string} [name] - Name for the trace
+ * @param {string} [orientation] - 'v' for vertical (default) or 'h' for horizontal
+ * @returns {object|null} Plotly trace object or null if samples is empty
+ */
+export function createMarginalHistogramTrace(
+  samples,
+  dimension,
+  color = HMC_SAMPLER.styles.primaryColor,
+  name = 'Histogram',
+  orientation = 'v'
+) {
+  if (!samples || !Array.isArray(samples) || samples.length === 0) {
+    return null;
+  }
+
+  const values = samples.map((p) => p[dimension]);
+
+  return {
+    type: 'histogram',
+    [orientation === 'v' ? 'x' : 'y']: values,
+    name: name,
+    marker: {
+      color: color,
+      opacity: 0.7,
+    },
+    orientation: orientation,
+    showlegend: false,
+    hovertemplate: `${dimension}: %{${orientation === 'v' ? 'x' : 'y'}:.2f}<br>Count: %{${orientation === 'v' ? 'y' : 'x'}}<extra></extra>`,
+  };
+}

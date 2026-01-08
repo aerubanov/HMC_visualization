@@ -114,5 +114,28 @@
         "scale": 2
       }
     }
+  },
+  "HISTOGRAM": {
+    "styles": {
+      "nbinsx": 30,
+      "nbinsy": 30,
+      "colorscale": "Blues",
+      "showscale": false,
+      "opacity": 0.75
+    },
+    "layout": {
+      "font": {
+        "color": "#1a1a1a",
+        "family": "Inter, system-ui, sans-serif",
+        "size": 10
+      },
+      "margin": {
+        "l": 40,
+        "r": 10,
+        "t": 10,
+        "b": 30
+      },
+      "showlegend": false
+    }
   }
 }
