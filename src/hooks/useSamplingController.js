@@ -41,7 +41,7 @@ export default function useSamplingController() {
   const [ess, setEss] = useState(null);
 
   // Visualization params
-  const [burnIn] = useState(10);
+  const [burnIn, setBurnIn] = useState(10);
 
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
@@ -382,6 +382,7 @@ export default function useSamplingController() {
     setInitialPosition2,
     setSeed2,
     burnIn,
+    setBurnIn,
     rHat,
     ess,
   };
