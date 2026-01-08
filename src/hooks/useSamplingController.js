@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
-import { calculateGelmanRubin } from '../utils/statistics';
+import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -38,6 +38,7 @@ export default function useSamplingController() {
 
   // Statistics
   const [rHat, setRHat] = useState(null);
+  const [ess, setEss] = useState(null);
 
   // Visualization params
   const [burnIn] = useState(10);
@@ -159,12 +160,25 @@ export default function useSamplingController() {
       if (validSamples.length > 1 && validSamples2.length > 1) {
         const rHatValue = calculateGelmanRubin([validSamples, validSamples2]);
         setRHat(rHatValue);
+
+        const essValue = calculateESS([validSamples, validSamples2]);
+        setEss(essValue);
+        return;
+      }
+    } else if (!useSecondChain && samples.length > burnIn) {
+      // Calculate ESS even for single chain
+      const validSamples = samples.slice(burnIn);
+      if (validSamples.length > 1) {
+        setRHat(null); // R-hat needs multiple chains
+        const essValue = calculateESS([validSamples]);
+        setEss(essValue);
         return;
       }
     }
 
     // Fallback: if conditions not met (e.g. disabled second chain, not enough samples), clear R-hat
     setRHat(null);
+    setEss(null);
   }, [isRunning, useSecondChain, samples, samples2, burnIn]);
 
   /**
@@ -369,5 +383,6 @@ export default function useSamplingController() {
     setSeed2,
     burnIn,
     rHat,
+    ess,
   };
 }

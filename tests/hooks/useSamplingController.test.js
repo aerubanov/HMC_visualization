@@ -1778,3 +1778,16 @@ describe('useSamplingController', () => {
     });
   });
 });
+
+describe('Statistics Calculation (R-hat and ESS)', () => {
+  it('should initialize statistics as null', () => {
+    const { result } = renderHook(() => useSamplingController());
+    expect(result.current.rHat).toBeNull();
+    expect(result.current.ess).toBeNull();
+  });
+
+  // Validating that ESS updates would require mocking calculateESS or simulating enough samples
+  // Since we mock HMCSampler, we can simulate samples accumulation.
+  // However, calculateESS is imported in the hook.
+  // If we want to test that 'setEss' is called, we need to inspect the state changes.
+});
