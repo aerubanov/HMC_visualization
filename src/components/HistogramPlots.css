@@ -1,0 +1,55 @@
+.histogram-plots-container {
+  width: 100%;
+  padding: 1rem;
+  background: var(--color-bg-primary);
+}
+
+.histogram-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 1fr 200px;
+  gap: 0.5rem;
+  width: 100%;
+  height: 600px;
+}
+
+.histogram-y-marginal {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.histogram-2d {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.histogram-empty {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.histogram-x-marginal {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .histogram-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    height: auto;
+  }
+
+  .histogram-y-marginal,
+  .histogram-2d,
+  .histogram-empty,
+  .histogram-x-marginal {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .histogram-empty {
+    display: none;
+  }
+}
