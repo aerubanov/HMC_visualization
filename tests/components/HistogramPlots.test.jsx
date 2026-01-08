@@ -27,14 +27,11 @@ describe('HistogramPlots', () => {
   ];
 
   it('should render without crashing with valid data', () => {
-    render(
-      <HistogramPlots
-        samples={mockSamples}
-        samples2={null}
-        burnIn={0}
-        useSecondChain={false}
-      />
-    );
+    const histogramData = {
+      chain1: mockSamples,
+      chain2: null,
+    };
+    render(<HistogramPlots histogramData={histogramData} />);
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
     const plots = screen.getAllByTestId('plotly-plot');
@@ -42,14 +39,11 @@ describe('HistogramPlots', () => {
   });
 
   it('should render with dual chains', () => {
-    render(
-      <HistogramPlots
-        samples={mockSamples}
-        samples2={mockSamples2}
-        burnIn={0}
-        useSecondChain={true}
-      />
-    );
+    const histogramData = {
+      chain1: mockSamples,
+      chain2: mockSamples2,
+    };
+    render(<HistogramPlots histogramData={histogramData} />);
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
     const plots = screen.getAllByTestId('plotly-plot');
@@ -59,10 +53,10 @@ describe('HistogramPlots', () => {
   it('should handle null samples gracefully', () => {
     const { container } = render(
       <HistogramPlots
-        samples={null}
-        samples2={null}
-        burnIn={0}
-        useSecondChain={false}
+        histogramData={{
+          chain1: null,
+          chain2: null,
+        }}
       />
     );
 
@@ -72,37 +66,37 @@ describe('HistogramPlots', () => {
   it('should handle empty samples array', () => {
     const { container } = render(
       <HistogramPlots
-        samples={[]}
-        samples2={[]}
-        burnIn={0}
-        useSecondChain={false}
+        histogramData={{
+          chain1: [],
+          chain2: [],
+        }}
       />
     );
 
     expect(container.firstChild).toBeNull();
   });
 
-  it('should apply burn-in filtering', () => {
-    render(
-      <HistogramPlots
-        samples={mockSamples}
-        samples2={null}
-        burnIn={2} // Only 1 sample left (5, 6)
-        useSecondChain={false}
-      />
-    );
+  it('should render the filtered samples provided in histogramData', () => {
+    // In the new flow, filtering happens before passing to HistogramPlots
+    const filteredSamples = [mockSamples[2]]; // { x: 5, y: 6 }
+    const histogramData = {
+      chain1: filteredSamples,
+      chain2: null,
+    };
+
+    render(<HistogramPlots histogramData={histogramData} />);
 
     const plots = screen.getAllByTestId('plotly-plot');
     const xPlotData = JSON.parse(
       plots[2].querySelector('[data-testid="plot-data"]').textContent
     );
-    // Since X is horizontal, it uses 'x' property in my implementation (wait, let me check)
-    // Actually in my implementation for orientation='v', it uses 'x'
     expect(xPlotData[0].x).toEqual([5]);
   });
 
   it('should handle missing optional props', () => {
-    render(<HistogramPlots samples={mockSamples} />);
+    render(
+      <HistogramPlots histogramData={{ chain1: mockSamples, chain2: null }} />
+    );
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
   });

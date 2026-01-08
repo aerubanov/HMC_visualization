@@ -3,6 +3,7 @@ import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
+import { prepareHistogramData } from '../utils/histogramUtils';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -39,6 +40,10 @@ export default function useSamplingController() {
   // Statistics
   const [rHat, setRHat] = useState(null);
   const [ess, setEss] = useState(null);
+  const [histogramData, setHistogramData] = useState({
+    chain1: [],
+    chain2: null,
+  });
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
@@ -117,6 +122,8 @@ export default function useSamplingController() {
     }
 
     setRHat(null);
+    setEss(null);
+    setHistogramData({ chain1: [], chain2: null });
 
     // Reset second chain if enabled
     if (useSecondChain) {
@@ -146,11 +153,19 @@ export default function useSamplingController() {
     useSecondChain,
   ]);
 
-  // Calculate R-hat when sampling finishes
-  // Calculate R-hat when sampling finishes
+  // Calculate R-hat and Histogram data when sampling finishes
   useEffect(() => {
     // If running, do not update
     if (isRunning) return;
+
+    // Prepare histogram data whenever sampling stops
+    const hData = prepareHistogramData(
+      samples,
+      samples2,
+      burnIn,
+      useSecondChain
+    );
+    setHistogramData(hData);
 
     if (useSecondChain && samples.length > burnIn && samples2.length > burnIn) {
       const validSamples = samples.slice(burnIn);
@@ -385,5 +400,6 @@ export default function useSamplingController() {
     setBurnIn,
     rHat,
     ess,
+    histogramData,
   };
 }

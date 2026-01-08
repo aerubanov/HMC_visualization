@@ -42,6 +42,7 @@ function App() {
     setBurnIn,
     rHat,
     ess,
+    histogramData,
   } = useSamplingController();
 
   return (
@@ -128,12 +129,7 @@ function App() {
                 rHat={rHat}
                 ess={ess}
               />
-              <HistogramPlots
-                samples={samples}
-                samples2={samples2}
-                burnIn={burnIn}
-                useSecondChain={useSecondChain}
-              />
+              <HistogramPlots histogramData={histogramData} />
             </>
           )}
         </div>

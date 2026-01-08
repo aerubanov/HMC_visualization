@@ -6,20 +6,15 @@ import {
   createHistogram2DTrace,
   createMarginalHistogramTrace,
 } from '../utils/plotFunctions';
-import { prepareHistogramData } from '../utils/histogramUtils';
 
 /**
  * HistogramPlots component displays 2D histogram and marginal distributions
  * Layout: Y marginal (left, vertical) | 2D histogram (center)
  *         Empty (bottom-left)         | X marginal (bottom, horizontal)
  */
-function HistogramPlots({ samples, samples2, burnIn, useSecondChain }) {
-  const { chain1, chain2 } = prepareHistogramData(
-    samples,
-    samples2,
-    burnIn,
-    useSecondChain
-  );
+function HistogramPlots({ histogramData }) {
+  const { chain1, chain2 } = histogramData;
+  const useSecondChain = chain2 !== null;
 
   if (!chain1 || chain1.length === 0) {
     return null;
@@ -151,20 +146,20 @@ function HistogramPlots({ samples, samples2, burnIn, useSecondChain }) {
 }
 
 HistogramPlots.propTypes = {
-  samples: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  samples2: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  burnIn: PropTypes.number,
-  useSecondChain: PropTypes.bool,
+  histogramData: PropTypes.shape({
+    chain1: PropTypes.arrayOf(
+      PropTypes.shape({
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+      })
+    ),
+    chain2: PropTypes.arrayOf(
+      PropTypes.shape({
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+      })
+    ),
+  }).isRequired,
 };
 
 export default HistogramPlots;
