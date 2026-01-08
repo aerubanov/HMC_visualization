@@ -41,8 +41,7 @@ export default function useSamplingController() {
   const [rHat, setRHat] = useState(null);
   const [ess, setEss] = useState(null);
   const [histogramData, setHistogramData] = useState({
-    chain1: [],
-    chain2: null,
+    samples: [],
   });
 
   // Visualization params
@@ -123,7 +122,7 @@ export default function useSamplingController() {
 
     setRHat(null);
     setEss(null);
-    setHistogramData({ chain1: [], chain2: null });
+    setHistogramData({ samples: [] });
 
     // Reset second chain if enabled
     if (useSecondChain) {

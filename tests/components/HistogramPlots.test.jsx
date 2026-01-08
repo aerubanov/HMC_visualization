@@ -28,8 +28,7 @@ describe('HistogramPlots', () => {
 
   it('should render without crashing with valid data', () => {
     const histogramData = {
-      chain1: mockSamples,
-      chain2: null,
+      samples: mockSamples,
     };
     render(<HistogramPlots histogramData={histogramData} />);
 
@@ -38,10 +37,10 @@ describe('HistogramPlots', () => {
     expect(plots).toHaveLength(3); // X marginal, Y marginal, 2D joint
   });
 
-  it('should render with dual chains', () => {
+  it('should render with combined dual chains', () => {
+    // In actual app, these would be combined by the controller
     const histogramData = {
-      chain1: mockSamples,
-      chain2: mockSamples2,
+      samples: [...mockSamples, ...mockSamples2],
     };
     render(<HistogramPlots histogramData={histogramData} />);
 
@@ -54,8 +53,7 @@ describe('HistogramPlots', () => {
     const { container } = render(
       <HistogramPlots
         histogramData={{
-          chain1: null,
-          chain2: null,
+          samples: null,
         }}
       />
     );
@@ -67,8 +65,7 @@ describe('HistogramPlots', () => {
     const { container } = render(
       <HistogramPlots
         histogramData={{
-          chain1: [],
-          chain2: [],
+          samples: [],
         }}
       />
     );
@@ -77,16 +74,15 @@ describe('HistogramPlots', () => {
   });
 
   it('should render the filtered samples provided in histogramData', () => {
-    // In the new flow, filtering happens before passing to HistogramPlots
-    const filteredSamples = [mockSamples[2]]; // { x: 5, y: 6 }
+    const filteredSamples = [{ x: 5, y: 6 }];
     const histogramData = {
-      chain1: filteredSamples,
-      chain2: null,
+      samples: filteredSamples,
     };
 
     render(<HistogramPlots histogramData={histogramData} />);
 
     const plots = screen.getAllByTestId('plotly-plot');
+    // Check X marginal or 2D joint
     const xPlotData = JSON.parse(
       plots[2].querySelector('[data-testid="plot-data"]').textContent
     );
@@ -94,9 +90,7 @@ describe('HistogramPlots', () => {
   });
 
   it('should handle missing optional props', () => {
-    render(
-      <HistogramPlots histogramData={{ chain1: mockSamples, chain2: null }} />
-    );
+    render(<HistogramPlots histogramData={{ samples: mockSamples }} />);
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
   });

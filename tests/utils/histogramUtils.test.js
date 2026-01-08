@@ -17,34 +17,31 @@ describe('histogramUtils', () => {
 
       const result = prepareHistogramData(samples, null, burnIn, false);
 
-      expect(result.chain1).toHaveLength(2);
-      expect(result.chain1[0]).toEqual({ x: 5, y: 6 });
-      expect(result.chain1[1]).toEqual({ x: 7, y: 8 });
-      expect(result.chain2).toBeNull();
+      expect(result.samples).toHaveLength(2);
+      expect(result.samples[0]).toEqual({ x: 5, y: 6 });
+      expect(result.samples[1]).toEqual({ x: 7, y: 8 });
     });
 
-    it('should handle dual chains with burn-in', () => {
+    it('should combine and filter dual chains', () => {
       const samples = [
         { x: 1, y: 2 },
         { x: 3, y: 4 },
-        { x: 5, y: 6 },
       ];
       const samples2 = [
         { x: 10, y: 20 },
         { x: 30, y: 40 },
-        { x: 50, y: 60 },
       ];
       const burnIn = 1;
 
       const result = prepareHistogramData(samples, samples2, burnIn, true);
 
-      expect(result.chain1).toHaveLength(2);
-      expect(result.chain1[0]).toEqual({ x: 3, y: 4 });
-      expect(result.chain2).toHaveLength(2);
-      expect(result.chain2[0]).toEqual({ x: 30, y: 40 });
+      // (3, 4) from chain 1 + (30, 40) from chain 2
+      expect(result.samples).toHaveLength(2);
+      expect(result.samples[0]).toEqual({ x: 3, y: 4 });
+      expect(result.samples[1]).toEqual({ x: 30, y: 40 });
     });
 
-    it('should return empty arrays when burnIn >= sample length', () => {
+    it('should return empty samples array when burnIn >= sample length', () => {
       const samples = [
         { x: 1, y: 2 },
         { x: 3, y: 4 },
@@ -53,15 +50,12 @@ describe('histogramUtils', () => {
 
       const result = prepareHistogramData(samples, null, burnIn, false);
 
-      expect(result.chain1).toHaveLength(0);
-      expect(result.chain2).toBeNull();
+      expect(result.samples).toHaveLength(0);
     });
 
     it('should handle null/undefined samples gracefully', () => {
       const result = prepareHistogramData(null, null, 0, false);
-
-      expect(result.chain1).toHaveLength(0);
-      expect(result.chain2).toBeNull();
+      expect(result.samples).toHaveLength(0);
     });
 
     it('should ignore second chain when useSecondChain is false', () => {
@@ -70,8 +64,8 @@ describe('histogramUtils', () => {
 
       const result = prepareHistogramData(samples, samples2, 0, false);
 
-      expect(result.chain1).toHaveLength(1);
-      expect(result.chain2).toBeNull();
+      expect(result.samples).toHaveLength(1);
+      expect(result.samples[0]).toEqual({ x: 1, y: 2 });
     });
 
     it('should handle zero burn-in', () => {
@@ -82,8 +76,8 @@ describe('histogramUtils', () => {
 
       const result = prepareHistogramData(samples, null, 0, false);
 
-      expect(result.chain1).toHaveLength(2);
-      expect(result.chain1).toEqual(samples);
+      expect(result.samples).toHaveLength(2);
+      expect(result.samples).toEqual(samples);
     });
   });
 

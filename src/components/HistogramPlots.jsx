@@ -12,74 +12,43 @@ import {
  * Layout: Y marginal (left, vertical) | 2D histogram (center)
  *         Empty (bottom-left)         | X marginal (bottom, horizontal)
  */
+/**
+ * HistogramPlots component displays 2D histogram and marginal distributions
+ * Layout: Y marginal (left, vertical) | 2D histogram (center)
+ *         Empty (bottom-left)         | X marginal (bottom, horizontal)
+ */
 function HistogramPlots({ histogramData }) {
-  const { chain1, chain2 } = histogramData;
-  const useSecondChain = chain2 !== null;
+  const { samples } = histogramData;
 
-  if (!chain1 || chain1.length === 0) {
+  if (!samples || samples.length === 0) {
     return null;
   }
 
-  // 2D Joint Histogram Traces
+  // 2D Joint Histogram Trace
   const traces2D = [];
-  const h2d1 = createHistogram2DTrace(
-    chain1,
-    'Blues',
-    useSecondChain ? 'Chain 1' : 'Samples'
-  );
-  if (h2d1) traces2D.push(h2d1);
+  const h2d = createHistogram2DTrace(samples, 'Blues', 'Posterior');
+  if (h2d) traces2D.push(h2d);
 
-  if (useSecondChain && chain2 && chain2.length > 0) {
-    const h2d2 = createHistogram2DTrace(chain2, 'Reds', 'Chain 2');
-    if (h2d2) {
-      // Adjust opacity if multiple chains
-      h2d2.opacity = 0.6;
-      h2d1.opacity = 0.6;
-      traces2D.push(h2d2);
-    }
-  }
-
-  // X Marginal Traces
+  // X Marginal Trace
   const tracesX = [];
-  const hx1 = createMarginalHistogramTrace(
-    chain1,
+  const hx = createMarginalHistogramTrace(
+    samples,
     'x',
     HMC_SAMPLER.styles.primaryColor,
-    'Chain 1'
+    'X Distribution'
   );
-  if (hx1) tracesX.push(hx1);
+  if (hx) tracesX.push(hx);
 
-  if (useSecondChain && chain2 && chain2.length > 0) {
-    const hx2 = createMarginalHistogramTrace(
-      chain2,
-      'x',
-      HMC_SAMPLER.styles.secondaryColor,
-      'Chain 2'
-    );
-    if (hx2) tracesX.push(hx2);
-  }
-
-  // Y Marginal Traces (Vertical/Rotated)
+  // Y Marginal Trace (Vertical/Rotated)
   const tracesY = [];
-  const hy1 = createMarginalHistogramTrace(
-    chain1,
+  const hy = createMarginalHistogramTrace(
+    samples,
     'y',
     HMC_SAMPLER.styles.primaryColor,
-    'Chain 1',
+    'Y Distribution',
     'h' // horizontal orientation makes it vertical when y-axis is data
   );
-  if (hy1) tracesY.push(hy1);
-
-  if (useSecondChain && chain2 && chain2.length > 0) {
-    const hy2 = createMarginalHistogramTrace(
-      chain2,
-      'y',
-      HMC_SAMPLER.styles.secondaryColor,
-      'Chain 2',
-      'h'
-    );
-    if (hy2) tracesY.push(hy2);
-  }
+  if (hy) tracesY.push(hy);
 
   const commonLayout = {
     ...HISTOGRAM.layout,
@@ -147,13 +116,7 @@ function HistogramPlots({ histogramData }) {
 
 HistogramPlots.propTypes = {
   histogramData: PropTypes.shape({
-    chain1: PropTypes.arrayOf(
-      PropTypes.shape({
-        x: PropTypes.number.isRequired,
-        y: PropTypes.number.isRequired,
-      })
-    ),
-    chain2: PropTypes.arrayOf(
+    samples: PropTypes.arrayOf(
       PropTypes.shape({
         x: PropTypes.number.isRequired,
         y: PropTypes.number.isRequired,

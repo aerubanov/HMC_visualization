@@ -8,7 +8,7 @@
  * @param {Array<{x: number, y: number}>} samples2 - Array of sample objects from chain 2 (optional)
  * @param {number} burnIn - Number of samples to exclude as burn-in
  * @param {boolean} useSecondChain - Whether to include second chain data
- * @returns {{chain1: Array<{x: number, y: number}>, chain2: Array<{x: number, y: number}>|null}} Filtered samples
+ * @returns {{samples: Array<{x: number, y: number}>}} Combined filtered samples
  */
 export function prepareHistogramData(
   samples,
@@ -16,33 +16,24 @@ export function prepareHistogramData(
   burnIn,
   useSecondChain
 ) {
-  const result = {
-    chain1: [],
-    chain2: null,
-  };
+  let combinedSamples = [];
 
-  // Handle null/undefined samples
-  if (!samples || !Array.isArray(samples)) {
-    return result;
+  // Handle chain 1
+  if (samples && Array.isArray(samples) && burnIn < samples.length) {
+    combinedSamples = samples.slice(burnIn);
   }
 
-  // Filter burn-in from chain 1
-  if (burnIn >= samples.length) {
-    result.chain1 = [];
-  } else {
-    result.chain1 = samples.slice(burnIn);
+  // Handle chain 2 if enabled
+  if (
+    useSecondChain &&
+    samples2 &&
+    Array.isArray(samples2) &&
+    burnIn < samples2.length
+  ) {
+    combinedSamples = combinedSamples.concat(samples2.slice(burnIn));
   }
 
-  // Handle second chain if enabled
-  if (useSecondChain && samples2 && Array.isArray(samples2)) {
-    if (burnIn >= samples2.length) {
-      result.chain2 = [];
-    } else {
-      result.chain2 = samples2.slice(burnIn);
-    }
-  }
-
-  return result;
+  return { samples: combinedSamples };
 }
 
 /**
