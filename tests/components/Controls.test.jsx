@@ -89,6 +89,31 @@ describe('Controls Component', () => {
     });
   });
 
+  describe('Pre-defined Functions Selection', () => {
+    it('should update draft state when a pre-defined function is selected', () => {
+      render(<Controls {...mockProps} />);
+
+      // Find by combobox role or label
+      const select = screen.getByLabelText(/pre-defined/i);
+
+      // Select Gaussian
+      fireEvent.change(select, { target: { value: 'exp(-(x^2 + y^2)/2)' } });
+
+      const textarea = screen.getByPlaceholderText(/e.g., exp/i);
+      expect(textarea.value).toBe('exp(-(x^2 + y^2)/2)');
+    });
+
+    it('should enable Apply button after selecting a pre-defined function', () => {
+      render(<Controls {...mockProps} />);
+
+      const select = screen.getByLabelText(/pre-defined/i);
+      fireEvent.change(select, { target: { value: 'exp(-(x^2 + y^2)/2)' } });
+
+      const applyButton = screen.getByRole('button', { name: /✓ apply/i });
+      expect(applyButton).not.toBeDisabled();
+    });
+  });
+
   describe('Apply Button State', () => {
     it('should disable Apply button when draft equals applied value', () => {
       const props = { ...mockProps, logP: 'exp(-x^2)' };
