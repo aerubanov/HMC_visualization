@@ -1,6 +1,7 @@
 import './Controls.css';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
+import { PREDEFINED_FUNCTIONS } from '../utils/predefinedFunctions';
 
 function Controls({
   logP,
@@ -216,6 +217,50 @@ function Controls({
               onChange={handleLogPChange}
               rows={3}
             />
+
+            <div
+              className="predefined-select-container"
+              style={{ marginTop: '0.5rem' }}
+            >
+              <label
+                htmlFor="predefined-select"
+                className="control-sublabel"
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#666',
+                  marginRight: '0.5rem',
+                }}
+              >
+                Pre-defined:
+              </label>
+              <select
+                id="predefined-select"
+                className="control-select"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setDraftLogP(e.target.value);
+                  }
+                }}
+                defaultValue=""
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid #ddd',
+                  fontSize: '0.9rem',
+                  maxWidth: '200px',
+                }}
+              >
+                <option value="" disabled>
+                  Select a function...
+                </option>
+                {PREDEFINED_FUNCTIONS.map((func) => (
+                  <option key={func.label} value={func.value}>
+                    {func.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               className="btn btn-apply"
               onClick={handleApplyLogP}
