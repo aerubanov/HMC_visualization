@@ -10,7 +10,9 @@ export default defineConfig({
     css: true,
     setupFiles: ['./tests/setup.js'],
     coverage: {
+      provider: 'v8',
       reporter: ['text', 'json-summary', 'json'],
+      reportOnFailure: true,
     },
   },
 });

@@ -3,6 +3,7 @@ import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
+import { prepareHistogramData } from '../utils/histogramUtils';
 
 /**
  * Custom hook to control the HMC sampling process
@@ -39,6 +40,9 @@ export default function useSamplingController() {
   // Statistics
   const [rHat, setRHat] = useState(null);
   const [ess, setEss] = useState(null);
+  const [histogramData, setHistogramData] = useState({
+    samples: [],
+  });
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
@@ -48,8 +52,14 @@ export default function useSamplingController() {
   const currentParticleRef = useRef(null); // { q, p }
 
   // Sampler instances
-  const samplerRef = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
-  const samplerRef2 = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
+  const samplerRef = useRef(null);
+  if (!samplerRef.current) {
+    samplerRef.current = new HMCSampler({ epsilon: 0.1, L: 10 });
+  }
+  const samplerRef2 = useRef(null);
+  if (!samplerRef2.current) {
+    samplerRef2.current = new HMCSampler({ epsilon: 0.1, L: 10 });
+  }
   const currentParticleRef2 = useRef(null); // Second chain particle state
 
   // Update sampler params when state changes (or initializes)
@@ -117,6 +127,8 @@ export default function useSamplingController() {
     }
 
     setRHat(null);
+    setEss(null);
+    setHistogramData({ samples: [] });
 
     // Reset second chain if enabled
     if (useSecondChain) {
@@ -146,11 +158,19 @@ export default function useSamplingController() {
     useSecondChain,
   ]);
 
-  // Calculate R-hat when sampling finishes
-  // Calculate R-hat when sampling finishes
+  // Calculate R-hat and Histogram data when sampling finishes
   useEffect(() => {
     // If running, do not update
     if (isRunning) return;
+
+    // Prepare histogram data whenever sampling stops
+    const hData = prepareHistogramData(
+      samples,
+      samples2,
+      burnIn,
+      useSecondChain
+    );
+    setHistogramData(hData);
 
     if (useSecondChain && samples.length > burnIn && samples2.length > burnIn) {
       const validSamples = samples.slice(burnIn);
@@ -385,5 +405,6 @@ export default function useSamplingController() {
     setBurnIn,
     rHat,
     ess,
+    histogramData,
   };
 }
