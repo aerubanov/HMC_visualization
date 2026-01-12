@@ -30,12 +30,18 @@ function Controls({
   setSeed2,
   burnIn,
   setBurnIn,
+  axisLimits,
+  setAxisLimits,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
   const [localX, setLocalX] = useState(initialPosition.x);
   const [localY, setLocalY] = useState(initialPosition.y);
   const [localSeed, setLocalSeed] = useState(seed || 42);
+
+  const [localAxisLimits, setLocalAxisLimits] = useState(
+    axisLimits || { xMin: -5, xMax: 5, yMin: -5, yMax: 5 }
+  );
 
   // Second chain local state
   const [localX2, setLocalX2] = useState(initialPosition2?.x ?? 1);
@@ -68,6 +74,13 @@ function Controls({
   useEffect(() => {
     setLocalBurnIn(burnIn);
   }, [burnIn]);
+
+  // Sync axis limits with props
+  useEffect(() => {
+    if (axisLimits) {
+      setLocalAxisLimits(axisLimits);
+    }
+  }, [axisLimits]);
 
   const handleLogPChange = (e) => {
     setDraftLogP(e.target.value);
@@ -152,6 +165,20 @@ function Controls({
     setLocalBurnIn(value);
     if (!isNaN(value) && value >= 0) {
       setBurnIn(value);
+    }
+  };
+
+  const handleAxisLimitChange = (key, value) => {
+    setLocalAxisLimits((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleAxisLimitBlur = (key) => {
+    const val = parseFloat(localAxisLimits[key]);
+    if (!isNaN(val)) {
+      setAxisLimits({ [key]: val });
+    } else {
+      // Revert to valid prop value if invalid
+      setLocalAxisLimits((prev) => ({ ...prev, [key]: axisLimits[key] }));
     }
   };
 
@@ -455,6 +482,93 @@ function Controls({
           </section>
         )}
 
+        {/* Plot Configuration */}
+        <section className="control-section">
+          <details style={{ width: '100%' }}>
+            <summary
+              className="section-title"
+              style={{ cursor: 'pointer', outline: 'none' }}
+            >
+              Plot Configuration
+            </summary>
+            <div style={{ marginTop: '1rem' }}>
+              <h4
+                style={{
+                  marginBottom: '0.5rem',
+                  fontSize: '0.9em',
+                  color: '#666',
+                }}
+              >
+                Axis Limits
+              </h4>
+              <div className="control-row">
+                <div className="control-group">
+                  <label htmlFor="xmin-input" className="control-label">
+                    X Min
+                  </label>
+                  <input
+                    id="xmin-input"
+                    type="number"
+                    className="control-input"
+                    value={localAxisLimits.xMin}
+                    onChange={(e) =>
+                      handleAxisLimitChange('xMin', e.target.value)
+                    }
+                    onBlur={() => handleAxisLimitBlur('xMin')}
+                  />
+                </div>
+                <div className="control-group">
+                  <label htmlFor="xmax-input" className="control-label">
+                    X Max
+                  </label>
+                  <input
+                    id="xmax-input"
+                    type="number"
+                    className="control-input"
+                    value={localAxisLimits.xMax}
+                    onChange={(e) =>
+                      handleAxisLimitChange('xMax', e.target.value)
+                    }
+                    onBlur={() => handleAxisLimitBlur('xMax')}
+                  />
+                </div>
+              </div>
+              <div className="control-row">
+                <div className="control-group">
+                  <label htmlFor="ymin-input" className="control-label">
+                    Y Min
+                  </label>
+                  <input
+                    id="ymin-input"
+                    type="number"
+                    className="control-input"
+                    value={localAxisLimits.yMin}
+                    onChange={(e) =>
+                      handleAxisLimitChange('yMin', e.target.value)
+                    }
+                    onBlur={() => handleAxisLimitBlur('yMin')}
+                  />
+                </div>
+                <div className="control-group">
+                  <label htmlFor="ymax-input" className="control-label">
+                    Y Max
+                  </label>
+                  <input
+                    id="ymax-input"
+                    type="number"
+                    className="control-input"
+                    value={localAxisLimits.yMax}
+                    onChange={(e) =>
+                      handleAxisLimitChange('yMax', e.target.value)
+                    }
+                    onBlur={() => handleAxisLimitBlur('yMax')}
+                  />
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
         {/* Control Buttons */}
         <section className="control-section">
           <h3 className="section-title">Actions</h3>
@@ -687,6 +801,13 @@ Controls.propTypes = {
   setSeed2: PropTypes.func.isRequired,
   burnIn: PropTypes.number.isRequired,
   setBurnIn: PropTypes.func.isRequired,
+  axisLimits: PropTypes.shape({
+    xMin: PropTypes.number,
+    xMax: PropTypes.number,
+    yMin: PropTypes.number,
+    yMax: PropTypes.number,
+  }),
+  setAxisLimits: PropTypes.func,
 };
 
 export default Controls;

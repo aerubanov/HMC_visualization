@@ -17,7 +17,7 @@ import {
  * Layout: Y marginal (left, vertical) | 2D histogram (center)
  *         Empty (bottom-left)         | X marginal (bottom, horizontal)
  */
-function HistogramPlots({ histogramData }) {
+function HistogramPlots({ histogramData, axisLimits }) {
   const { samples } = histogramData;
 
   if (!samples || samples.length === 0) {
@@ -68,7 +68,13 @@ function HistogramPlots({ histogramData }) {
             data={tracesY}
             layout={{
               ...commonLayout,
-              yaxis: { title: 'y', showgrid: true },
+              yaxis: {
+                title: 'y',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.yMin, axisLimits.yMax]
+                  : undefined,
+              },
               xaxis: { showgrid: false, showticklabels: false },
             }}
             config={xConfig}
@@ -83,8 +89,20 @@ function HistogramPlots({ histogramData }) {
             data={traces2D}
             layout={{
               ...commonLayout,
-              xaxis: { title: 'x', showgrid: true },
-              yaxis: { title: 'y', showgrid: true },
+              xaxis: {
+                title: 'x',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.xMin, axisLimits.xMax]
+                  : undefined,
+              },
+              yaxis: {
+                title: 'y',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.yMin, axisLimits.yMax]
+                  : undefined,
+              },
             }}
             config={xConfig}
             style={{ width: '100%', height: '100%' }}
@@ -101,7 +119,13 @@ function HistogramPlots({ histogramData }) {
             data={tracesX}
             layout={{
               ...commonLayout,
-              xaxis: { title: 'x', showgrid: true },
+              xaxis: {
+                title: 'x',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.xMin, axisLimits.xMax]
+                  : undefined,
+              },
               yaxis: { showgrid: false, showticklabels: false },
             }}
             config={xConfig}
@@ -123,6 +147,12 @@ HistogramPlots.propTypes = {
       })
     ),
   }).isRequired,
+  axisLimits: PropTypes.shape({
+    xMin: PropTypes.number,
+    xMax: PropTypes.number,
+    yMin: PropTypes.number,
+    yMax: PropTypes.number,
+  }),
 };
 
 export default HistogramPlots;

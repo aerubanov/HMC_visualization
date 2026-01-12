@@ -14,6 +14,7 @@ function Visualizer({
   trajectory2,
   acceptedSamples2,
   useSecondChain,
+  axisLimits,
 }) {
   // Show placeholder if no contour data is available
   if (!contourData) {
@@ -126,6 +127,18 @@ function Visualizer({
           title: {
             text: 'Log Probability Density',
             font: { size: 16, color: GENERAL.layout.font.color },
+            xaxis: {
+              ...GENERAL.layout.xaxis,
+              range: axisLimits
+                ? [axisLimits.xMin, axisLimits.xMax]
+                : GENERAL.layout.xaxis.range,
+            },
+            yaxis: {
+              ...GENERAL.layout.yaxis,
+              range: axisLimits
+                ? [axisLimits.yMin, axisLimits.yMax]
+                : GENERAL.layout.yaxis.range,
+            },
           },
         }}
         config={GENERAL.config}
@@ -168,6 +181,12 @@ Visualizer.propTypes = {
     })
   ),
   useSecondChain: PropTypes.bool,
+  axisLimits: PropTypes.shape({
+    xMin: PropTypes.number,
+    xMax: PropTypes.number,
+    yMin: PropTypes.number,
+    yMax: PropTypes.number,
+  }),
 };
 
 export default Visualizer;

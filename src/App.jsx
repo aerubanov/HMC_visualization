@@ -43,6 +43,8 @@ function App() {
     rHat,
     ess,
     histogramData,
+    axisLimits,
+    setAxisLimits,
   } = useSamplingController();
 
   return (
@@ -76,6 +78,8 @@ function App() {
           setSeed2={setSeed2}
           burnIn={burnIn}
           setBurnIn={setBurnIn}
+          axisLimits={axisLimits}
+          setAxisLimits={setAxisLimits}
         />
       </div>
       <div className="App-main">
@@ -117,6 +121,7 @@ function App() {
           trajectory2={trajectory2}
           acceptedSamples2={samples2}
           useSecondChain={useSecondChain}
+          axisLimits={axisLimits}
         />
         <div className="trace-plots-section">
           {contourData && (
@@ -129,7 +134,10 @@ function App() {
                 rHat={rHat}
                 ess={ess}
               />
-              <HistogramPlots histogramData={histogramData} />
+              <HistogramPlots
+                histogramData={histogramData}
+                axisLimits={axisLimits}
+              />
             </>
           )}
         </div>
