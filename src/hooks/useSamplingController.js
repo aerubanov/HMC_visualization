@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
+import { CONTOUR } from '../utils/plotConfig.json';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
 import { prepareHistogramData } from '../utils/histogramUtils';
 
@@ -46,6 +47,12 @@ export default function useSamplingController() {
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
+  const [axisLimits, setAxisLimitsState] = useState({
+    xMin: CONTOUR.grid.xRange[0],
+    xMax: CONTOUR.grid.xRange[1],
+    yMin: CONTOUR.grid.yRange[0],
+    yMax: CONTOUR.grid.yRange[1],
+  });
 
   // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
@@ -78,7 +85,10 @@ export default function useSamplingController() {
     }
 
     try {
-      const { x, y } = generateGrid();
+      const { x, y } = generateGrid(
+        [axisLimits.xMin, axisLimits.xMax],
+        [axisLimits.yMin, axisLimits.yMax]
+      );
 
       // Compute z values (log probability) for each grid point
       const z = y.map((yVal) =>
@@ -99,7 +109,12 @@ export default function useSamplingController() {
       console.error('Error computing contour:', e);
       setContourData(null);
     }
-  }, []);
+  }, [axisLimits]);
+
+  // Re-compute contour when axis limits change
+  useEffect(() => {
+    computeContour();
+  }, [computeContour]);
 
   /**
    * Reset the sampler state (samples, trajectory, iteration count)
@@ -229,6 +244,14 @@ export default function useSamplingController() {
     },
     [reset, computeContour]
   );
+
+  /**
+   * Update axis limits for visualization
+   * @param {Object} newLimits - Partial limits { xMin, xMax, yMin, yMax }
+   */
+  const setAxisLimits = useCallback((newLimits) => {
+    setAxisLimitsState((prev) => ({ ...prev, ...newLimits }));
+  }, []);
 
   /**
    * Update HMC parameters
@@ -403,6 +426,8 @@ export default function useSamplingController() {
     setSeed2,
     burnIn,
     setBurnIn,
+    axisLimits,
+    setAxisLimits,
     rHat,
     ess,
     histogramData,

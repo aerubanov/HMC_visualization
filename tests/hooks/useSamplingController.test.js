@@ -2023,3 +2023,53 @@ describe('Burn-in Parameter', () => {
     expect(result.current.ess).toBeNull();
   });
 });
+
+describe('Axis Limits', () => {
+  it('should initialize with default axis limits', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    expect(result.current.axisLimits).toEqual({
+      xMin: -5,
+      xMax: 5,
+      yMin: -5,
+      yMax: 5,
+    });
+  });
+
+  it('should update axis limits', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setAxisLimits({
+        xMin: -10,
+        xMax: 10,
+        yMin: -10,
+        yMax: 10,
+      });
+    });
+
+    expect(result.current.axisLimits).toEqual({
+      xMin: -10,
+      xMax: 10,
+      yMin: -10,
+      yMax: 10,
+    });
+  });
+
+  it('should allow partial updates to axis limits', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setAxisLimits({
+        xMin: -20,
+      });
+    });
+
+    expect(result.current.axisLimits).toEqual({
+      xMin: -20,
+      xMax: 5,
+      yMin: -5,
+      yMax: 5,
+    });
+  });
+});

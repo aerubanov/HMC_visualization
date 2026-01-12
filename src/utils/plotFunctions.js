@@ -50,10 +50,14 @@ export function createContourTrace(x, y, z) {
 
 /**
  * Generates a meshgrid of points for contour computation
+ * @param {number[]} [xR] - Optional x-axis range [min, max]
+ * @param {number[]} [yR] - Optional y-axis range [min, max]
  * @returns {{x: number[], y: number[], xGrid: number[][], yGrid: number[][]}}
  */
-export function generateGrid() {
-  const { resolution, xRange, yRange } = CONTOUR.grid;
+export function generateGrid(xR, yR) {
+  const { resolution, xRange: defaultX, yRange: defaultY } = CONTOUR.grid;
+  const xRange = xR || defaultX;
+  const yRange = yR || defaultY;
 
   // Create 1D arrays for each axis
   const xStep = (xRange[1] - xRange[0]) / (resolution - 1);

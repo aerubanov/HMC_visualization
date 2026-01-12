@@ -94,4 +94,33 @@ describe('HistogramPlots', () => {
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
   });
+  it('should respect axisLimits prop', () => {
+    const axisLimits = { xMin: -10, xMax: 10, yMin: -20, yMax: 20 };
+    render(
+      <HistogramPlots
+        histogramData={{ samples: mockSamples }}
+        axisLimits={axisLimits}
+      />
+    );
+
+    const plots = screen.getAllByTestId('plotly-plot');
+    const yLayout = JSON.parse(
+      plots[0].querySelector('[data-testid="plot-layout"]').textContent
+    );
+    // Y Marginal (first plot) -> yaxis.range
+    expect(yLayout.yaxis.range).toEqual([-20, 20]);
+
+    const jointLayout = JSON.parse(
+      plots[1].querySelector('[data-testid="plot-layout"]').textContent
+    );
+    // 2D Joint (second plot) -> xaxis.range, yaxis.range
+    expect(jointLayout.xaxis.range).toEqual([-10, 10]);
+    expect(jointLayout.yaxis.range).toEqual([-20, 20]);
+
+    const xLayout = JSON.parse(
+      plots[2].querySelector('[data-testid="plot-layout"]').textContent
+    );
+    // X Marginal (third plot) -> xaxis.range
+    expect(xLayout.xaxis.range).toEqual([-10, 10]);
+  });
 });
