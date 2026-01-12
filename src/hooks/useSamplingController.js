@@ -52,8 +52,14 @@ export default function useSamplingController() {
   const currentParticleRef = useRef(null); // { q, p }
 
   // Sampler instances
-  const samplerRef = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
-  const samplerRef2 = useRef(new HMCSampler({ epsilon: 0.1, L: 10 }));
+  const samplerRef = useRef(null);
+  if (!samplerRef.current) {
+    samplerRef.current = new HMCSampler({ epsilon: 0.1, L: 10 });
+  }
+  const samplerRef2 = useRef(null);
+  if (!samplerRef2.current) {
+    samplerRef2.current = new HMCSampler({ epsilon: 0.1, L: 10 });
+  }
   const currentParticleRef2 = useRef(null); // Second chain particle state
 
   // Update sampler params when state changes (or initializes)
