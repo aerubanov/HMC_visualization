@@ -127,18 +127,18 @@ function Visualizer({
           title: {
             text: 'Log Probability Density',
             font: { size: 16, color: GENERAL.layout.font.color },
-            xaxis: {
-              ...GENERAL.layout.xaxis,
-              range: axisLimits
-                ? [axisLimits.xMin, axisLimits.xMax]
-                : GENERAL.layout.xaxis.range,
-            },
-            yaxis: {
-              ...GENERAL.layout.yaxis,
-              range: axisLimits
-                ? [axisLimits.yMin, axisLimits.yMax]
-                : GENERAL.layout.yaxis.range,
-            },
+          },
+          xaxis: {
+            ...GENERAL.layout.xaxis,
+            range: axisLimits
+              ? [axisLimits.xMin, axisLimits.xMax]
+              : GENERAL.layout.xaxis.range,
+          },
+          yaxis: {
+            ...GENERAL.layout.yaxis,
+            range: axisLimits
+              ? [axisLimits.yMin, axisLimits.yMax]
+              : GENERAL.layout.yaxis.range,
           },
         }}
         config={GENERAL.config}
