@@ -1,6 +1,21 @@
 # HMC Visualization
 
 Interactive web application to visualize the Hamiltonian Monte Carlo (HMC) sampling algorithm.
+Run simulations, explore phase space trajectories, and analyze convergence with real-time diagnostics.
+
+## Features
+
+- **Interactive Simulation**: Tunable parameters for Step Size (epsilon), Integration Time (L), and Mass (m).
+- **Target Distributions**: Choose from predefined distributions (Gaussian, Rosenbrock, Donut, etc.) or define your own custom potential function.
+- **Dual Chain Support**: Run two independent chains in parallel to assess convergence and explore multi-modal distributions.
+- **Visualizations**:
+  - **2D Trajectory**: Real-time visualization of the particle's path in phase space.
+  - **Trace Plots**: Monitor X and Y coordinates over time to detect mixing issues.
+  - **Histograms**: Marginal (1D) and Joint (2D) histograms to visualize the estimated posterior distribution.
+- **Diagnostics**:
+  - **Gelman-Rubin (R-hat)**: Real-time convergence diagnostic for multi-chain simulations.
+  - **Burn-in Control**: Specify initial samples to discard to ensure analysis on the stationary distribution.
+- **Reproducibility**: Seeded random number generation for consistent results.
 
 ## Prerequisites
 
@@ -39,12 +54,17 @@ The application will be available at `http://localhost:5173`
 npm run test -- --run
 ```
 
+To run with coverage:
+
+```bash
+npm run test:coverage
+```
+
 ### Code Quality
 
 ```bash
 npm run lint
 npm run format
-
 ```
 
 **Pre-commit Hooks**:
@@ -77,39 +97,40 @@ Preview the production build locally before deployment.
 
 ```
 src/
-├── components/       # React components
-│   ├── Controls.jsx     # HMC parameter controls
-│   ├── Controls.css     # Styles for Controls
-│   ├── Visualizer.jsx   # Plotly visualization wrapper
-│   └── Visualizer.css   # Styles for Visualizer
-├── hooks/            # Custom React hooks
-│   └── useSamplingController.js # HMC logic controller
-├── utils/           # Core logic modules
+├── components/          # React components
+│   ├── Controls.jsx     # HMC parameter and simulation controls
+│   ├── Visualizer.jsx   # Main visualization layout
+│   ├── TracePlots.jsx   # X/Y trace plots with burn-in visualization
+│   └── HistogramPlots.jsx # Marginal and 2D histograms
+├── hooks/               # Custom React hooks
+│   └── useSamplingController.js # Central logic for HMC simulation state
+├── samplers/            # Sampling algorithms
+│   └── HMCSampler.js    # Core HMC physics simulation class
+├── utils/               # Core logic modules
 │   ├── mathEngine.js    # Math.js wrappers for parsing & gradients
-│   ├── hmcSampler.js    # HMC physics simulation
-│   └── plotConfig.js    # Plotly configuration helpers
-├── App.jsx          # Main application component
-├── App.css          # App-level styles
-├── main.jsx         # React entry point
-└── index.css        # Global styles
+│   ├── plotConfig.json  # Centralized Plotly configuration
+│   ├── plotFunctions.js # Plotly trace generation helpers
+│   ├── statistics.js    # Statistical functions (R-hat, ESS)
+│   ├── seededRandom.js  # PRNG for reproducible simulations
+│   ├── predefinedFunctions.js # Library of target distributions
+│   └── histogramUtils.js # Helpers for histogram data processing
+├── App.jsx              # Main application component
+├── main.jsx             # React entry point
+└── index.css            # Global styles
 
 tests/
-├── components/      # Component tests
-│   └── Controls.test.jsx
-├── hooks/           # Hook tests
-│   └── useSamplingController.test.js
-└── utils/           # Unit tests
-    ├── mathEngine.test.js
-    ├── hmcSampler.test.js
-    └── plotConfig.test.js
+├── components/          # Component tests
+├── hooks/               # Hook tests
+├── samplers/            # Sampler tests
+└── utils/               # Unit tests
 ```
 
 ## Technology Stack
 
 - **Framework**: React with Vite
 - **Math Engine**: math.js (symbolic differentiation)
-- **Visualization**: plotly.js
-- **Testing**: Vitest with jsdom
+- **Visualization**: plotly.js (react-plotly.js)
+- **Testing**: Vitest with jsdom (via React Testing Library)
 - **Styling**: Vanilla CSS
 - **Code Quality**: ESLint, Prettier
 - **Pre-commit Hooks**: Husky, lint-staged
@@ -117,7 +138,7 @@ tests/
 
 ## CI/CD
 
-This project uses [GitHub Actions](./.github/workflows/ci.yml) for continuous integration. The CI pipeline runs automatically on:
+This project uses [GitHub Actions](./.github/workflows/deploy.yml) for continuous integration. The CI pipeline runs automatically on:
 
 - All pull requests
 - Pushes to the `main` branch
