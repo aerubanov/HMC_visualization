@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useSamplingController from '../../src/hooks/useSamplingController';
 import { HMCSampler } from '../../src/samplers/HMCSampler';
+import { createContourTrace } from '../../src/utils/plotFunctions';
+
+// Mock plotFunctions
+vi.mock('../../src/utils/plotFunctions', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    createContourTrace: vi.fn(actual.createContourTrace),
+  };
+});
 
 // Mock the HMCSampler class
 vi.mock('../../src/samplers/HMCSampler', () => {
@@ -757,12 +767,11 @@ describe('useSamplingController', () => {
       });
 
       HMCSampler.prototype.step.mockImplementation(() => {
-        // With HMCSampler class, the randomness is internal.
-        // IF we mock HMCSampler.step, then NO randomness happens unless we simulate it.
-        // The test intent: ensure that valid setSeed(42) was called, which we already tested.
-        // Truly verifying "same sequence" requires integration test or mocking RNG inside.
-        // Since we mock HMCSampler entirely, we can only verify strict sequence of interaction.
-        // But let's keep a simplified version verifying we can run a sequence twice.
+        // We can't test if the 'randomness' is identical between runs
+        //  because we removed the randomness by mocking the sampler.
+        // The mock returns the same thing no matter what the seed is. We just check
+        // that setSeed was called with the correct seed and test sampler behavior with seed
+        // separatly.
         return {
           q: { x: 1, y: 1 },
           p: { x: 0, y: 0 },
@@ -892,16 +901,24 @@ describe('useSamplingController', () => {
           .spyOn(console, 'error')
           .mockImplementation(() => {});
 
-        // Set a logP that will cause an error during contour computation
-        // We'll use a string that creates a valid Logp but might fail during grid evaluation
-        act(() => {
-          // Use a function that evaluates successfully but might have issues
-          result.current.setLogP('exp(-(x^2 + y^2)/2)');
+        // Set a logP - doesn't matter what it is as we'll mock the failure
+        // Mock createContourTrace to throw an error
+        createContourTrace.mockImplementationOnce(() => {
+          throw new Error('Contour generation failed');
         });
 
-        // The contour should be computed successfully for this simple function
-        // To truly test error handling, we'd need to mock generateGrid or createContourTrace
-        // For now, verify that valid functions don't set error
+        act(() => {
+          result.current.setLogP('-(x^2 + y^2)/2');
+        });
+
+        // Verify that the error was caught and logged
+        // The hook logic catches the error, logs it, and sets contourData to null
+        // It intentionally does NOT set result.current.error (which is for parsing errors)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Error computing contour:',
+          expect.any(Error)
+        );
+        expect(result.current.contourData).toBeNull();
         expect(result.current.error).toBeNull();
 
         consoleErrorSpy.mockRestore();
@@ -1662,15 +1679,13 @@ describe('useSamplingController', () => {
         result.current.setInitialPosition2({ x: 10, y: 10 });
       });
 
-      // Mock step behavior for distinct chains
+      // Mock step behavior for distinct chains.
+      // Since the mock is shared, we distinguish chains based on the input particle's position.
+      // Chain 1 starts at 0, Chain 2 starts at 10.
       HMCSampler.prototype.step.mockImplementation((particle) => {
-        // Distinguish chains by checking current position or just alternate logic?
-        // Since we know initial positions are 0 and 10.
-        // If particle is near 0, return 0. If 10, return 10.
-        // But mockImplementation receives the particle passed in step(currentParticle).
-
         const x = particle.q.x;
-        // Simple heuristic for test
+        // If particle is near 0, treat as Chain 1 (return 0).
+        // If near 10, treat as Chain 2 (return 10).
         const nextX = Math.abs(x) < 5 ? 0 : 10;
 
         return {
