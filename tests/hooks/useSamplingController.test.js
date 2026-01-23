@@ -2174,4 +2174,53 @@ describe('Fast Sampling Mode', () => {
 
     expect(result.current.isRunning).toBe(false);
   });
+
+  it('should execute batch sampling with dual chains in fast mode', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+      result.current.setUseFastMode(true);
+      result.current.setUseSecondChain(true);
+      result.current.setInitialPosition2({ x: 1, y: 1 });
+    });
+
+    // Mock step implementation
+    // Since we mock the prototype, both chains use the same mock
+    // We can just count total calls: 5 steps * 2 chains = 10 calls
+    // Mock step implementation with mixed results
+    let callCount = 0;
+    HMCSampler.prototype.step.mockImplementation(() => {
+      callCount++;
+      // Reject every 2nd step (Chain 2 steps)
+      const isAccepted = callCount % 2 !== 0;
+      return {
+        q: { x: 0, y: 0 },
+        p: { x: 0, y: 0 },
+        accepted: isAccepted,
+        trajectory: [{ x: 0, y: 0 }],
+      };
+    });
+
+    HMCSampler.prototype.step.mockClear();
+
+    act(() => {
+      result.current.sampleSteps(5);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isRunning).toBe(false);
+    });
+
+    // 5 steps for chain 1 + 5 steps for chain 2 = 10 calls
+    expect(HMCSampler.prototype.step).toHaveBeenCalledTimes(10);
+
+    // Verify samples update
+    // Chain 1 (odd calls): Accepted
+    // Chain 2 (even calls): Rejected
+    expect(result.current.samples).toHaveLength(5);
+    expect(result.current.samples2).toHaveLength(0);
+    expect(result.current.rejectedCount2).toBe(5);
+    expect(result.current.iterationCount).toBe(5);
+  });
 });
