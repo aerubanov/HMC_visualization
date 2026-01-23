@@ -29,6 +29,9 @@ export default function useSamplingController() {
   const [seed, setSeedState] = useState(null);
   const [useSeededMode, setUseSeededMode] = useState(false);
 
+  // Fast sampling mode
+  const [useFastMode, setUseFastMode] = useState(false);
+
   // Second chain state
   const [useSecondChain, setUseSecondChain] = useState(false);
   const [initialPosition2, setInitialPosition2] = useState({ x: 1, y: 1 });
@@ -272,6 +275,7 @@ export default function useSamplingController() {
       setIsRunning(true);
 
       if (!logpInstanceRef.current) {
+        console.warn('No logP function set');
         setIsRunning(false);
         return;
       }
@@ -289,6 +293,76 @@ export default function useSamplingController() {
           q: { ...initialPosition2 },
           p: { x: 0, y: 0 },
         };
+      }
+
+      if (useFastMode) {
+        // Fast mode: execute all steps in a loop then update state once
+        setTimeout(() => {
+          try {
+            const newSamples = [];
+            const newSamples2 = [];
+            let newRejectedCount = 0;
+            let newRejectedCount2 = 0;
+            let finalTrajectory = [];
+            let finalTrajectory2 = [];
+
+            for (let i = 0; i < n; i++) {
+              // Chain 1
+              const result = samplerRef.current.step(
+                currentParticleRef.current,
+                logpInstanceRef.current
+              );
+              currentParticleRef.current = {
+                q: result.q,
+                p: result.p || { x: 0, y: 0 },
+              };
+              if (result.accepted) {
+                newSamples.push(result.q);
+              } else {
+                newRejectedCount++;
+              }
+              finalTrajectory = result.trajectory;
+
+              // Chain 2
+              if (useSecondChain) {
+                const result2 = samplerRef2.current.step(
+                  currentParticleRef2.current,
+                  logpInstanceRef.current
+                );
+                currentParticleRef2.current = {
+                  q: result2.q,
+                  p: result2.p || { x: 0, y: 0 },
+                };
+                if (result2.accepted) {
+                  newSamples2.push(result2.q);
+                } else {
+                  newRejectedCount2++;
+                }
+                finalTrajectory2 = result2.trajectory;
+              }
+            }
+
+            // Batch update state
+            setSamples((prev) => [...prev, ...newSamples]);
+            setRejectedCount((prev) => prev + newRejectedCount);
+            setTrajectory(finalTrajectory || []);
+            setCurrentParticle(currentParticleRef.current);
+
+            if (useSecondChain) {
+              setSamples2((prev) => [...prev, ...newSamples2]);
+              setRejectedCount2((prev) => prev + newRejectedCount2);
+              setTrajectory2(finalTrajectory2 || []);
+              setCurrentParticle2(currentParticleRef2.current);
+            }
+
+            setIterationCount((prev) => prev + n);
+            setIsRunning(false);
+          } catch (e) {
+            setError(e.message);
+            setIsRunning(false);
+          }
+        }, 0); // Use timeout to allow UI to render "Generating..." state
+        return;
       }
 
       let stepsCompleted = 0;
@@ -359,7 +433,7 @@ export default function useSamplingController() {
 
       executeStep();
     },
-    [initialPosition, initialPosition2, useSecondChain]
+    [initialPosition, initialPosition2, useSecondChain, useFastMode]
   );
 
   // Expose single step for manual stepping
@@ -412,6 +486,9 @@ export default function useSamplingController() {
     step: stepAction,
     reset,
     setSeed,
+    // Fast mode
+    useFastMode,
+    setUseFastMode,
     // Second chain data and controls
     useSecondChain,
     initialPosition2,

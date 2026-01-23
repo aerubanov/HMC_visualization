@@ -14,6 +14,7 @@ function Controls({
   error,
   seed,
   useSeededMode,
+  useFastMode,
   setLogP,
   setParams,
   setInitialPosition,
@@ -33,6 +34,7 @@ function Controls({
   setBurnIn,
   axisLimits,
   setAxisLimits,
+  setUseFastMode,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
@@ -621,10 +623,33 @@ function Controls({
           <button
             className="btn btn-primary"
             onClick={step}
-            disabled={isRunning || !logP}
+            disabled={isRunning || !logP || useFastMode}
           >
             Step Once
           </button>
+
+          <div className="control-group" style={{ marginBottom: '0.5rem' }}>
+            <div className="checkbox-group">
+              <input
+                id="fast-mode-toggle-action"
+                type="checkbox"
+                checked={useFastMode || false}
+                onChange={(e) =>
+                  setUseFastMode && setUseFastMode(e.target.checked)
+                }
+              />
+              <label
+                htmlFor="fast-mode-toggle-action"
+                className="control-label"
+                style={{
+                  fontWeight: 'bold',
+                  color: useFastMode ? 'var(--color-primary)' : 'inherit',
+                }}
+              >
+                🚀 Fast Sampling Mode
+              </label>
+            </div>
+          </div>
 
           <div className="sample-steps-group">
             <input
@@ -753,7 +778,11 @@ function Controls({
           {isRunning && (
             <div className="status-running">
               <span className="status-indicator running"></span>
-              <span className="status-text">Running...</span>
+              <span className="status-text">
+                {useFastMode
+                  ? 'Generating samples in fast mode...'
+                  : 'Running...'}
+              </span>
             </div>
           )}
         </section>
@@ -825,6 +854,8 @@ Controls.propTypes = {
   error: PropTypes.string,
   seed: PropTypes.number,
   useSeededMode: PropTypes.bool.isRequired,
+  useFastMode: PropTypes.bool,
+  setUseFastMode: PropTypes.func,
   setLogP: PropTypes.func.isRequired,
   setParams: PropTypes.func.isRequired,
   setInitialPosition: PropTypes.func.isRequired,
