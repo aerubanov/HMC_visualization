@@ -283,22 +283,6 @@ function Controls({
           <h3 className="section-title">Sampler Parameters</h3>
 
           <div className="control-group">
-            <div className="checkbox-group">
-              <input
-                id="fast-mode-toggle"
-                type="checkbox"
-                checked={useFastMode || false}
-                onChange={(e) =>
-                  setUseFastMode && setUseFastMode(e.target.checked)
-                }
-              />
-              <label htmlFor="fast-mode-toggle" className="control-label">
-                Fast Sampling Mode {useFastMode ? '(ON)' : '(OFF)'}
-              </label>
-            </div>
-          </div>
-
-          <div className="control-group">
             <label htmlFor="epsilon-input" className="control-label">
               Epsilon (ε) - Step Size
             </label>
@@ -643,6 +627,29 @@ function Controls({
           >
             Step Once
           </button>
+
+          <div className="control-group" style={{ marginBottom: '0.5rem' }}>
+            <div className="checkbox-group">
+              <input
+                id="fast-mode-toggle-action"
+                type="checkbox"
+                checked={useFastMode || false}
+                onChange={(e) =>
+                  setUseFastMode && setUseFastMode(e.target.checked)
+                }
+              />
+              <label
+                htmlFor="fast-mode-toggle-action"
+                className="control-label"
+                style={{
+                  fontWeight: 'bold',
+                  color: useFastMode ? 'var(--color-primary)' : 'inherit',
+                }}
+              >
+                🚀 Fast Sampling Mode
+              </label>
+            </div>
+          </div>
 
           <div className="sample-steps-group">
             <input
