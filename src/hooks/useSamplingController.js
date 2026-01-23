@@ -280,8 +280,6 @@ export default function useSamplingController() {
         return;
       }
 
-      console.log('Starting sampling. Fast mode:', useFastMode, 'Steps:', n);
-
       if (!currentParticleRef.current) {
         currentParticleRef.current = {
           q: { ...initialPosition },
@@ -385,7 +383,6 @@ export default function useSamplingController() {
           // Update state after each step - UI will render between steps
           // Only save accepted samples
           if (result.accepted) {
-            console.log('Sample accepted:', result.q);
             setSamples((prev) => [...prev, result.q]);
           } else {
             setRejectedCount((prev) => prev + 1);
