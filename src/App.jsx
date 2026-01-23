@@ -45,6 +45,8 @@ function App() {
     histogramData,
     axisLimits,
     setAxisLimits,
+    useFastMode,
+    setUseFastMode,
   } = useSamplingController();
 
   return (
@@ -80,6 +82,8 @@ function App() {
           setBurnIn={setBurnIn}
           axisLimits={axisLimits}
           setAxisLimits={setAxisLimits}
+          useFastMode={useFastMode}
+          setUseFastMode={setUseFastMode}
         />
       </div>
       <div className="App-main">

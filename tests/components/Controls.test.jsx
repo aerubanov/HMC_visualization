@@ -361,4 +361,38 @@ describe('Controls Component', () => {
       expect(setBurnIn).not.toHaveBeenCalled();
     });
   });
+  describe('Fast Sampling Mode Controls', () => {
+    it('should render fast mode checkbox', () => {
+      render(<Controls {...mockProps} />);
+      const fastModeCheckbox = screen.getByLabelText(/fast sampling mode/i);
+      expect(fastModeCheckbox).toBeInTheDocument();
+      expect(fastModeCheckbox).not.toBeChecked();
+    });
+
+    it('should call setUseFastMode when toggled', () => {
+      const setUseFastMode = vi.fn();
+      const props = { ...mockProps, setUseFastMode };
+      render(<Controls {...props} />);
+
+      const fastModeCheckbox = screen.getByLabelText(/fast sampling mode/i);
+      fireEvent.click(fastModeCheckbox);
+
+      expect(setUseFastMode).toHaveBeenCalledWith(true);
+    });
+
+    it('should disable "Step Once" button when fast mode is enabled', () => {
+      const props = { ...mockProps, useFastMode: true, logP: 'exp(-x^2)' };
+      render(<Controls {...props} />);
+
+      const stepButton = screen.getByRole('button', { name: /step once/i });
+      expect(stepButton).toBeDisabled();
+    });
+
+    it('should show running indicator with fast mode message', () => {
+      const props = { ...mockProps, isRunning: true, useFastMode: true };
+      render(<Controls {...props} />);
+
+      expect(screen.getByText(/generating samples/i)).toBeInTheDocument();
+    });
+  });
 });
