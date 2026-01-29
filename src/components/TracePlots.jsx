@@ -4,7 +4,18 @@ import PropTypes from 'prop-types';
 import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
 import { createTracePlotTrace } from '../utils/plotFunctions';
 
-function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat, ess }) {
+function TracePlots({
+  samples,
+  samples2,
+  burnIn,
+  useSecondChain,
+  rHat,
+  ess,
+  acceptedCount,
+  rejectedCount,
+  acceptedCount2,
+  rejectedCount2,
+}) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
@@ -83,8 +94,51 @@ function TracePlots({ samples, samples2, burnIn, useSecondChain, rHat, ess }) {
     return ` (ESS = ${Math.round(val)})`;
   };
 
+  const formatRate = (acc, rej) => {
+    const total = acc + rej;
+    if (total === 0) return '0.0%';
+    return `${((acc / total) * 100).toFixed(1)}%`;
+  };
+
   return (
     <div className="trace-plots-container">
+      <div className="trace-stats-header">
+        <div className="chain-stat">
+          <span
+            className="chain-label"
+            style={{
+              color: HMC_SAMPLER.styles.primaryColor,
+              fontWeight: 'bold',
+            }}
+          >
+            Chain 1:
+          </span>
+          <span className="stat-item">Acc: {acceptedCount || 0}</span>
+          <span className="stat-item">Rej: {rejectedCount || 0}</span>
+          <span className="stat-item">
+            Rate: {formatRate(acceptedCount || 0, rejectedCount || 0)}
+          </span>
+        </div>
+        {useSecondChain && (
+          <div className="chain-stat">
+            <span
+              className="chain-label"
+              style={{
+                color: HMC_SAMPLER.styles.secondaryColor,
+                fontWeight: 'bold',
+              }}
+            >
+              Chain 2:
+            </span>
+            <span className="stat-item">Acc: {acceptedCount2 || 0}</span>
+            <span className="stat-item">Rej: {rejectedCount2 || 0}</span>
+            <span className="stat-item">
+              Rate: {formatRate(acceptedCount2 || 0, rejectedCount2 || 0)}
+            </span>
+          </div>
+        )}
+      </div>
+
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
           X Trace
@@ -140,6 +194,10 @@ TracePlots.propTypes = {
     x: PropTypes.number,
     y: PropTypes.number,
   }),
+  acceptedCount: PropTypes.number,
+  rejectedCount: PropTypes.number,
+  acceptedCount2: PropTypes.number,
+  rejectedCount2: PropTypes.number,
 };
 
 export default TracePlots;

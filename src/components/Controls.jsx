@@ -8,8 +8,8 @@ function Controls({
   params,
   initialPosition,
   iterationCount,
-  acceptedCount,
-  rejectedCount,
+  // acceptedCount,
+  // rejectedCount,
   isRunning,
   error,
   seed,
@@ -24,8 +24,8 @@ function Controls({
   setSeed,
   useSecondChain,
   initialPosition2,
-  acceptedCount2,
-  rejectedCount2,
+  // acceptedCount2,
+  // rejectedCount2,
   seed2,
   setUseSecondChain,
   setInitialPosition2,
@@ -185,15 +185,15 @@ function Controls({
     }
   };
 
-  const acceptanceRate =
-    iterationCount > 0
-      ? ((acceptedCount / iterationCount) * 100).toFixed(1)
-      : '0.0';
+  // const acceptanceRate =
+  //   iterationCount > 0
+  //     ? ((acceptedCount / iterationCount) * 100).toFixed(1)
+  //     : '0.0';
 
-  const acceptanceRate2 =
-    useSecondChain && iterationCount > 0
-      ? ((acceptedCount2 / iterationCount) * 100).toFixed(1)
-      : '0.0';
+  // const acceptanceRate2 =
+  //   useSecondChain && iterationCount > 0
+  //     ? ((acceptedCount2 / iterationCount) * 100).toFixed(1)
+  //     : '0.0';
 
   return (
     <div className="controls">
@@ -688,22 +688,6 @@ function Controls({
                   <span className="status-label">Iterations</span>
                   <span className="status-value">{iterationCount}</span>
                 </div>
-                <div className="status-item">
-                  <span className="status-label">Accepted</span>
-                  <span className="status-value text-success">
-                    {acceptedCount}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Rejected</span>
-                  <span className="status-value text-error">
-                    {rejectedCount}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Rate</span>
-                  <span className="status-value">{acceptanceRate}%</span>
-                </div>
               </div>
             </>
           ) : (
@@ -714,62 +698,6 @@ function Controls({
                 <div className="status-item">
                   <span className="status-label">Iterations</span>
                   <span className="status-value">{iterationCount}</span>
-                </div>
-              </div>
-
-              <h4
-                style={{
-                  marginTop: '1rem',
-                  marginBottom: '0.5rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Chain 1 (Red)
-              </h4>
-              <div className="status-grid">
-                <div className="status-item">
-                  <span className="status-label">Accepted</span>
-                  <span className="status-value text-success">
-                    {acceptedCount}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Rejected</span>
-                  <span className="status-value text-error">
-                    {rejectedCount}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Rate</span>
-                  <span className="status-value">{acceptanceRate}%</span>
-                </div>
-              </div>
-
-              <h4
-                style={{
-                  marginTop: '1rem',
-                  marginBottom: '0.5rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Chain 2 (Blue)
-              </h4>
-              <div className="status-grid">
-                <div className="status-item">
-                  <span className="status-label">Accepted</span>
-                  <span className="status-value text-success">
-                    {acceptedCount2}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Rejected</span>
-                  <span className="status-value text-error">
-                    {rejectedCount2}
-                  </span>
-                </div>
-                <div className="status-item">
-                  <span className="status-label">Rate</span>
-                  <span className="status-value">{acceptanceRate2}%</span>
                 </div>
               </div>
             </>
@@ -848,8 +776,8 @@ Controls.propTypes = {
     y: PropTypes.number.isRequired,
   }).isRequired,
   iterationCount: PropTypes.number.isRequired,
-  acceptedCount: PropTypes.number,
-  rejectedCount: PropTypes.number,
+  // acceptedCount: PropTypes.number,
+  // rejectedCount: PropTypes.number,
   isRunning: PropTypes.bool.isRequired,
   error: PropTypes.string,
   seed: PropTypes.number,
@@ -869,8 +797,8 @@ Controls.propTypes = {
     x: PropTypes.number.isRequired,
     y: PropTypes.number.isRequired,
   }),
-  acceptedCount2: PropTypes.number,
-  rejectedCount2: PropTypes.number,
+  // acceptedCount2: PropTypes.number,
+  // rejectedCount2: PropTypes.number,
   seed2: PropTypes.number,
   setUseSecondChain: PropTypes.func.isRequired,
   setInitialPosition2: PropTypes.func.isRequired,

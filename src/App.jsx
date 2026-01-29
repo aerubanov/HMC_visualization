@@ -57,8 +57,8 @@ function App() {
           params={params}
           initialPosition={initialPosition}
           iterationCount={iterationCount}
-          acceptedCount={acceptedCount}
-          rejectedCount={rejectedCount}
+          // acceptedCount={acceptedCount}
+          // rejectedCount={rejectedCount}
           isRunning={isRunning}
           error={error}
           seed={seed}
@@ -72,8 +72,8 @@ function App() {
           setSeed={setSeed}
           useSecondChain={useSecondChain}
           initialPosition2={initialPosition2}
-          acceptedCount2={acceptedCount2}
-          rejectedCount2={rejectedCount2}
+          // acceptedCount2={acceptedCount2}
+          // rejectedCount2={rejectedCount2}
           seed2={seed2}
           setUseSecondChain={setUseSecondChain}
           setInitialPosition2={setInitialPosition2}
@@ -137,6 +137,10 @@ function App() {
                 useSecondChain={useSecondChain}
                 rHat={rHat}
                 ess={ess}
+                acceptedCount={acceptedCount}
+                rejectedCount={rejectedCount}
+                acceptedCount2={acceptedCount2}
+                rejectedCount2={rejectedCount2}
               />
               <HistogramPlots
                 histogramData={histogramData}
