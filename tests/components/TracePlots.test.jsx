@@ -178,4 +178,42 @@ describe('TracePlots', () => {
     expect(screen.getByText('(ESS = 100)')).toBeInTheDocument();
     expect(screen.getByText('(ESS = 200)')).toBeInTheDocument();
   });
+
+  test('displays acceptance and rejection counts for single chain', () => {
+    render(
+      <TracePlots
+        samples={mockSamples}
+        acceptedCount={100}
+        rejectedCount={50}
+        iterationCount={150}
+      />
+    );
+
+    // Header/Summary section should contain these values
+    // Exact formatting depends on implementation, but searching for the numbers/text is good
+    expect(screen.getByText(/Acc: 100/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rej: 50/i)).toBeInTheDocument();
+  });
+
+  test('displays acceptance and rejection counts for second chain', () => {
+    render(
+      <TracePlots
+        samples={mockSamples}
+        samples2={mockSamples2}
+        useSecondChain={true}
+        acceptedCount={100}
+        rejectedCount={50}
+        iterationCount={150}
+        acceptedCount2={80}
+        rejectedCount2={70}
+      />
+    );
+
+    // Chain 1 stats
+    expect(screen.getByText(/Acc: 100/i)).toBeInTheDocument();
+
+    // Chain 2 stats
+    expect(screen.getByText(/Acc: 80/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rej: 70/i)).toBeInTheDocument();
+  });
 });

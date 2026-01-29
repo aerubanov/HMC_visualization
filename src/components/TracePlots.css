@@ -10,6 +10,30 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.trace-stats-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  width: 100%;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.chain-stat {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  align-items: center;
+}
+
+.stat-item {
+  color: #555;
+  font-family: monospace;
+}
+
 .trace-plot-wrapper {
   width: 100%;
   display: flex;
@@ -24,4 +48,11 @@
   font-weight: 600;
   align-self: flex-start;
   padding-left: 10px;
+}
+
+.stat-label {
+  margin-left: 10px;
+  font-weight: normal;
+  color: #666;
+  font-size: 0.9em;
 }
