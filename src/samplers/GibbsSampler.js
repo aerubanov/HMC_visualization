@@ -1,15 +1,14 @@
-import { SeededRandom } from '../utils/seededRandom';
+import { BaseSampler } from './BaseSampler';
 
-export class GibbsSampler {
+export class GibbsSampler extends BaseSampler {
   /**
    * Create a new Gibbs Sampler (Mock)
    * @param {Object} params - Sampler parameters (placeholder)
    * @param {number|null} [seed] - Random seed
    */
   constructor(params = {}, seed = null) {
+    super(seed);
     this.params = params;
-    this.seed = seed;
-    this.rng = seed !== null ? new SeededRandom(seed) : null;
   }
 
   /**
@@ -18,15 +17,6 @@ export class GibbsSampler {
    */
   setParams(params) {
     this.params = { ...this.params, ...params };
-  }
-
-  /**
-   * Set the random seed
-   * @param {number|null} seed - New seed or null
-   */
-  setSeed(seed) {
-    this.seed = seed;
-    this.rng = seed !== null ? new SeededRandom(seed) : null;
   }
 
   /**
