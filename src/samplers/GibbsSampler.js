@@ -1,4 +1,5 @@
 import { BaseSampler } from './BaseSampler';
+import { sampleSlice } from '../utils/sliceSampler';
 
 export class GibbsSampler extends BaseSampler {
   /**
@@ -20,37 +21,38 @@ export class GibbsSampler extends BaseSampler {
   }
 
   /**
-   * Perform one sampling step (Mock)
+   * Perform one sampling step
    * @param {Object} currentState - Current particle state { q: {x, y} }
-   * @param {Object} logPInstance - Log probability instance (unused in mock)
+   * @param {Object} logPInstance - Log probability instance
    * @returns {Object} Result { q, p, accepted, trajectory }
    */
-  step(currentState, _logPInstance) {
-    // Mock logic: randomly perturb position slightly to simulate movement
-    const randomFn = this.rng ? () => this.rng.random() : Math.random;
+  step(currentState, logPInstance) {
+    const { x: currentX, y: currentY } = currentState.q;
 
-    // Simple random walk for mock visualization
-    const stepSize = 0.5;
-    const dx = (randomFn() - 0.5) * stepSize;
-    const dy = (randomFn() - 0.5) * stepSize;
+    // 1. Update X given Y
+    // P(x | y) ~ P(x, y)
+    const logPx = (x) => logPInstance.getLogProbability(x, currentY);
+    const nextX = sampleSlice(logPx, currentX, 1.0, this.rng);
 
-    const q_new = {
-      x: currentState.q.x + dx,
-      y: currentState.q.y + dy,
-    };
+    // 2. Update Y given new X
+    // P(y | x) ~ P(x, y)
+    const logPy = (y) => logPInstance.getLogProbability(nextX, y);
+    const nextY = sampleSlice(logPy, currentY, 1.0, this.rng);
 
-    // Gibbs doesn't use momentum in the same way, but we return 0 for compatibility
-    const p_new = { x: 0, y: 0 };
+    const q_new = { x: nextX, y: nextY };
+    const p_new = { x: 0, y: 0 }; // Gibbs doesn't use momentum
 
+    // Trajectory shows "Manhattan" updates: (x0, y0) -> (x1, y0) -> (x1, y1)
     const trajectory = [
-      { x: currentState.q.x, y: currentState.q.y },
-      { x: q_new.x, y: q_new.y },
+      { x: currentX, y: currentY },
+      { x: nextX, y: currentY },
+      { x: nextX, y: nextY },
     ];
 
     return {
       q: q_new,
       p: p_new,
-      accepted: true, // Always accept in this mock
+      accepted: true, // Gibbs is always accepted
       trajectory: trajectory,
     };
   }

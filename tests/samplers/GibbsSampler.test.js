@@ -37,9 +37,16 @@ describe('GibbsSampler', () => {
     expect(result).toHaveProperty('accepted');
     expect(result).toHaveProperty('trajectory');
 
-    expect(result.q.x).not.toBe(0); // Should have moved
-    expect(result.accepted).toBe(true);
-    expect(result.trajectory).toHaveLength(2);
+    // With flat logP, it might move or stay, but trajectory should represent Manhattan steps
+    // (x,y) -> (x', y) -> (x', y')
+    expect(result.trajectory).toHaveLength(3);
+    const [p0, p1, p2] = result.trajectory;
+
+    expect(p0.x).toBe(startState.q.x);
+    expect(p0.y).toBe(startState.q.y);
+
+    expect(p1.y).toBe(p0.y); // First step changes X only (Y constant)
+    expect(p2.x).toBe(p1.x); // Second step changes Y only (X constant)
   });
 
   it('should be reproducible with seed', () => {
