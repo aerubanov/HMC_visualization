@@ -47,6 +47,8 @@ function App() {
     setAxisLimits,
     useFastMode,
     setUseFastMode,
+    samplerType,
+    setSamplerType,
   } = useSamplingController();
 
   return (
@@ -84,6 +86,8 @@ function App() {
           setAxisLimits={setAxisLimits}
           useFastMode={useFastMode}
           setUseFastMode={setUseFastMode}
+          samplerType={samplerType}
+          setSamplerType={setSamplerType}
         />
       </div>
       <div className="App-main">
