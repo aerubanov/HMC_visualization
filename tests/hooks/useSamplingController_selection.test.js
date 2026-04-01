@@ -145,4 +145,29 @@ describe('useSamplingController Sampler Selection', () => {
     // reset re-instantiates or ensures sampler
     expect(GibbsSampler).toHaveBeenCalled();
   });
+
+  it('should apply sampler switch to second chain even if inactive', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Initially HMC, second chain inactive
+    act(() => {
+      result.current.setSamplerType('GIBBS');
+    });
+
+    vi.clearAllMocks();
+
+    // Enable second chain
+    act(() => {
+      result.current.setUseSecondChain(true);
+      result.current.setLogP('-(x^2)/2');
+    });
+
+    act(() => {
+      result.current.step(); // Steps both chains now
+    });
+
+    // Both chains should use Gibbs
+    expect(GibbsSampler.prototype.step).toHaveBeenCalledTimes(2);
+    expect(HMCSampler.prototype.step).not.toHaveBeenCalled();
+  });
 });

@@ -87,7 +87,7 @@ export default function useSamplingController() {
 
   // Initial setup
   if (!samplerRef.current) {
-    ensureSampler('HMC', null);
+    ensureSampler(samplerType, null);
   }
 
   const samplerRef2 = useRef(null);
@@ -110,7 +110,7 @@ export default function useSamplingController() {
   );
 
   if (!samplerRef2.current) {
-    ensureSampler2('HMC', null);
+    ensureSampler2(samplerType, null);
   }
   const currentParticleRef2 = useRef(null); // Second chain particle state
 
@@ -536,7 +536,8 @@ export default function useSamplingController() {
         // For now, let's just set state, and let reset() handle the actual switch logic
         // Actually, we should probably switch immediately to avoid inconsistent state if user steps without reset
         ensureSampler(type, useSeededMode ? seed : null);
-        if (useSecondChain) ensureSampler2(type, useSeededMode ? seed2 : null);
+        // Ensure sampler2 is always updated to match type, even if second chain isn't currently active
+        ensureSampler2(type, useSeededMode ? seed2 : null);
 
         // Auto-reset when changing sampler type
         setSamples([]);
@@ -553,15 +554,7 @@ export default function useSamplingController() {
         setIsRunning(false);
       }
     },
-    [
-      samplerType,
-      ensureSampler,
-      ensureSampler2,
-      seed,
-      seed2,
-      useSeededMode,
-      useSecondChain,
-    ]
+    [samplerType, ensureSampler, ensureSampler2, seed, seed2, useSeededMode]
   );
 
   return {
