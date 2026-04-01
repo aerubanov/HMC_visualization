@@ -6,10 +6,13 @@ Run simulations, explore phase space trajectories, and analyze convergence with 
 ## Features
 
 - **Interactive Simulation**: Tunable parameters for Step Size (epsilon), Integration Time (L), and Mass (m).
+- **Multiple Sampling Algorithms**:
+  - **HMC**: Hamiltonian Monte Carlo with configurable physics parameters.
+  - **Gibbs**: Gibbs Sampling with Slice Sampling for robust 1D conditional updates.
 - **Target Distributions**: Choose from predefined distributions (Gaussian, Rosenbrock, Donut, etc.) or define your own custom potential function.
 - **Dual Chain Support**: Run two independent chains in parallel to assess convergence and explore multi-modal distributions.
 - **Visualizations**:
-  - **2D Trajectory**: Real-time visualization of the particle's path in phase space.
+  - **2D Trajectory**: Real-time visualization of the particle's path in phase space (Smooth for HMC, "Manhattan" steps for Gibbs).
   - **Trace Plots**: Monitor X and Y coordinates over time to detect mixing issues.
   - **Histograms**: Marginal (1D) and Joint (2D) histograms to visualize the estimated posterior distribution.
 - **Diagnostics**:
@@ -105,13 +108,16 @@ src/
 ├── hooks/               # Custom React hooks
 │   └── useSamplingController.js # Central logic for HMC simulation state
 ├── samplers/            # Sampling algorithms
-│   └── HMCSampler.js    # Core HMC physics simulation class
+│   ├── BaseSampler.js     # Abstract base class for samplers
+│   ├── HMCSampler.js      # Hamiltonian Monte Carlo implementation
+│   └── GibbsSampler.js    # Gibbs Sampler (using Slice Sampling)
 ├── utils/               # Core logic modules
 │   ├── mathEngine.js    # Math.js wrappers for parsing & gradients
 │   ├── plotConfig.json  # Centralized Plotly configuration
 │   ├── plotFunctions.js # Plotly trace generation helpers
 │   ├── statistics.js    # Statistical functions (R-hat, ESS)
 │   ├── seededRandom.js  # PRNG for reproducible simulations
+│   ├── sliceSampler.js  # 1D Slice Sampling utility for Gibbs updates
 │   ├── predefinedFunctions.js # Library of target distributions
 │   └── histogramUtils.js # Helpers for histogram data processing
 ├── App.jsx              # Main application component

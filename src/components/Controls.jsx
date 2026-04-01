@@ -35,6 +35,8 @@ function Controls({
   axisLimits,
   setAxisLimits,
   setUseFastMode,
+  samplerType,
+  setSamplerType,
 }) {
   const [nSteps, setNSteps] = useState(params.steps || 10);
   const [draftLogP, setDraftLogP] = useState(logP);
@@ -278,39 +280,76 @@ function Controls({
           </p>
         </section>
 
+        {/* Sampler Selection */}
+        <section className="control-section">
+          <label htmlFor="sampler-select" className="control-label">
+            Sampler Type
+          </label>
+          <select
+            id="sampler-select"
+            className="control-select"
+            value={samplerType}
+            onChange={(e) => setSamplerType(e.target.value)}
+            disabled={isRunning}
+            style={{ width: '100%', padding: '8px', marginBottom: '1rem' }}
+          >
+            <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
+            <option value="GIBBS">Gibbs Sampling</option>
+          </select>
+        </section>
+
         {/* Sampler Parameters */}
         <section className="control-section">
           <h3 className="section-title">Sampler Parameters</h3>
 
-          <div className="control-group">
-            <label htmlFor="epsilon-input" className="control-label">
-              Epsilon (ε) - Step Size
-            </label>
-            <input
-              id="epsilon-input"
-              type="number"
-              className="control-input"
-              step="0.001"
-              min="0.001"
-              value={params.epsilon}
-              onChange={(e) => handleParamChange('epsilon', e.target.value)}
-            />
-          </div>
+          {samplerType === 'HMC' ? (
+            <>
+              <div className="control-group">
+                <label htmlFor="epsilon-input" className="control-label">
+                  Epsilon (ε) - Step Size
+                </label>
+                <input
+                  id="epsilon-input"
+                  type="number"
+                  className="control-input"
+                  step="0.001"
+                  min="0.001"
+                  value={params.epsilon}
+                  onChange={(e) => handleParamChange('epsilon', e.target.value)}
+                />
+              </div>
 
-          <div className="control-group">
-            <label htmlFor="l-input" className="control-label">
-              L - Leapfrog Steps
-            </label>
-            <input
-              id="l-input"
-              type="number"
-              className="control-input"
-              step="1"
-              min="1"
-              value={params.L}
-              onChange={(e) => handleParamChange('L', e.target.value)}
-            />
-          </div>
+              <div className="control-group">
+                <label htmlFor="l-input" className="control-label">
+                  L - Leapfrog Steps
+                </label>
+                <input
+                  id="l-input"
+                  type="number"
+                  className="control-input"
+                  step="1"
+                  min="1"
+                  value={params.L}
+                  onChange={(e) => handleParamChange('L', e.target.value)}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="control-group">
+              <label htmlFor="w-input" className="control-label">
+                Slice Width (w)
+              </label>
+              <input
+                id="w-input"
+                type="number"
+                className="control-input"
+                step="0.1"
+                min="0.01"
+                value={params.w !== undefined ? params.w : 1.0}
+                onChange={(e) => handleParamChange('w', e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="control-group">
             <label htmlFor="burnin-input" className="control-label">
@@ -797,6 +836,8 @@ Controls.propTypes = {
     x: PropTypes.number.isRequired,
     y: PropTypes.number.isRequired,
   }),
+  samplerType: PropTypes.string,
+  setSamplerType: PropTypes.func,
   // acceptedCount2: PropTypes.number,
   // rejectedCount2: PropTypes.number,
   seed2: PropTypes.number,

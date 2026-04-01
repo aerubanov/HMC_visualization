@@ -144,19 +144,18 @@ export function hmcStep(q, epsilon, L, U, gradU, rng = null) {
   }
 }
 
-import { SeededRandom } from '../utils/seededRandom';
+import { BaseSampler } from './BaseSampler';
 
-export class HMCSampler {
+export class HMCSampler extends BaseSampler {
   /**
    * Create a new HMC Sampler
    * @param {Object} params - HMC parameters { epsilon, L }
    * @param {number|null} [seed] - Random seed
    */
   constructor(params = {}, seed = null) {
+    super(seed);
     this.epsilon = params.epsilon || 0.1;
     this.L = params.L || 10;
-    this.seed = seed;
-    this.rng = seed !== null ? new SeededRandom(seed) : null;
   }
 
   /**
@@ -166,15 +165,6 @@ export class HMCSampler {
   setParams(params) {
     if (params.epsilon !== undefined) this.epsilon = params.epsilon;
     if (params.L !== undefined) this.L = params.L;
-  }
-
-  /**
-   * Set the random seed
-   * @param {number|null} seed - New seed or null
-   */
-  setSeed(seed) {
-    this.seed = seed;
-    this.rng = seed !== null ? new SeededRandom(seed) : null;
   }
 
   /**

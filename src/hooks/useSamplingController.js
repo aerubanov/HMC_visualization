@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
 import { HMCSampler } from '../samplers/HMCSampler';
+import { GibbsSampler } from '../samplers/GibbsSampler';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { CONTOUR } from '../utils/plotConfig.json';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
@@ -13,7 +14,13 @@ import { prepareHistogramData } from '../utils/histogramUtils';
  */
 export default function useSamplingController() {
   const [logP, setLogPString] = useState('');
-  const [params, setParamsState] = useState({ epsilon: 0.1, L: 10, steps: 1 });
+  const [params, setParamsState] = useState({
+    epsilon: 0.1,
+    L: 10,
+    steps: 1,
+    w: 1.0,
+  });
+  const [samplerType, setSamplerTypeState] = useState('HMC'); // 'HMC' or 'GIBBS'
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const [samples, setSamples] = useState([]);
   const [trajectory, setTrajectory] = useState([]);
@@ -63,20 +70,73 @@ export default function useSamplingController() {
 
   // Sampler instances
   const samplerRef = useRef(null);
+
+  // Initialize sampler if needed or if type changed
+  const ensureSampler = useCallback(
+    (type, seedVal) => {
+      if (!samplerRef.current || samplerRef.current.type !== type) {
+        if (type === 'GIBBS') {
+          samplerRef.current = new GibbsSampler({ w: params.w }, seedVal);
+          samplerRef.current.type = 'GIBBS';
+        } else {
+          samplerRef.current = new HMCSampler(
+            { epsilon: params.epsilon, L: params.L },
+            seedVal
+          );
+          samplerRef.current.type = 'HMC';
+        }
+      }
+    },
+    [params.epsilon, params.L, params.w]
+  );
+
+  // Initial setup
   if (!samplerRef.current) {
-    samplerRef.current = new HMCSampler({ epsilon: 0.1, L: 10 });
+    ensureSampler(samplerType, null);
   }
+
   const samplerRef2 = useRef(null);
+  const ensureSampler2 = useCallback(
+    (type, seedVal) => {
+      if (!samplerRef2.current || samplerRef2.current.type !== type) {
+        if (type === 'GIBBS') {
+          samplerRef2.current = new GibbsSampler({ w: params.w }, seedVal);
+          samplerRef2.current.type = 'GIBBS';
+        } else {
+          samplerRef2.current = new HMCSampler(
+            { epsilon: params.epsilon, L: params.L },
+            seedVal
+          );
+          samplerRef2.current.type = 'HMC';
+        }
+      }
+    },
+    [params.epsilon, params.L, params.w]
+  );
+
   if (!samplerRef2.current) {
-    samplerRef2.current = new HMCSampler({ epsilon: 0.1, L: 10 });
+    ensureSampler2(samplerType, null);
   }
   const currentParticleRef2 = useRef(null); // Second chain particle state
 
   // Update sampler params when state changes (or initializes)
   useEffect(() => {
-    samplerRef.current.setParams({ epsilon: params.epsilon, L: params.L });
-    samplerRef2.current.setParams({ epsilon: params.epsilon, L: params.L });
-  }, [params.epsilon, params.L]);
+    if (samplerType === 'HMC') {
+      if (samplerRef.current && samplerRef.current.setParams) {
+        samplerRef.current.setParams({ epsilon: params.epsilon, L: params.L });
+      }
+      if (samplerRef2.current && samplerRef2.current.setParams) {
+        samplerRef2.current.setParams({ epsilon: params.epsilon, L: params.L });
+      }
+    } else if (samplerType === 'GIBBS') {
+      if (samplerRef.current && samplerRef.current.setParams) {
+        samplerRef.current.setParams({ w: params.w });
+      }
+      if (samplerRef2.current && samplerRef2.current.setParams) {
+        samplerRef2.current.setParams({ w: params.w });
+      }
+    }
+  }, [params.epsilon, params.L, params.w, samplerType]);
 
   /**
    * Computes contour data for the current logp function
@@ -125,6 +185,15 @@ export default function useSamplingController() {
    * Also resets the RNG to the initial seed if seeded mode is enabled
    */
   const reset = useCallback(() => {
+    // Re-initialize samplers with current type
+    ensureSampler(samplerType, useSeededMode && seed !== null ? seed : null);
+    if (useSecondChain) {
+      ensureSampler2(
+        samplerType,
+        useSeededMode && seed2 !== null ? seed2 : null
+      );
+    }
+
     setSamples([]);
     setTrajectory([]);
     setIterationCount(0);
@@ -174,6 +243,9 @@ export default function useSamplingController() {
     seed,
     seed2,
     useSecondChain,
+    ensureSampler,
+    ensureSampler2,
+    samplerType,
   ]);
 
   // Calculate R-hat and Histogram data when sampling finishes
@@ -461,8 +533,40 @@ export default function useSamplingController() {
    */
   const setSeed2 = useCallback((newSeed) => {
     setSeed2State(newSeed);
-    samplerRef2.current.setSeed(newSeed);
+    if (samplerRef2.current) {
+      samplerRef2.current.setSeed(newSeed);
+    }
   }, []);
+
+  const setSamplerType = useCallback(
+    (type) => {
+      if (type !== samplerType) {
+        setSamplerTypeState(type);
+        // Reset state will be handled by calling reset() from UI or effect
+        // But we should ensure the sampler is switched immediately or on next reset
+        // For now, let's just set state, and let reset() handle the actual switch logic
+        // Actually, we should probably switch immediately to avoid inconsistent state if user steps without reset
+        ensureSampler(type, useSeededMode ? seed : null);
+        // Ensure sampler2 is always updated to match type, even if second chain isn't currently active
+        ensureSampler2(type, useSeededMode ? seed2 : null);
+
+        // Auto-reset when changing sampler type
+        setSamples([]);
+        setTrajectory([]);
+        setIterationCount(0);
+        setRejectedCount(0);
+        setSamples2([]);
+        setTrajectory2([]);
+        setRejectedCount2(0);
+        setCurrentParticle(null);
+        currentParticleRef.current = null;
+        setCurrentParticle2(null);
+        currentParticleRef2.current = null;
+        setIsRunning(false);
+      }
+    },
+    [samplerType, ensureSampler, ensureSampler2, seed, seed2, useSeededMode]
+  );
 
   return {
     logP,
@@ -508,5 +612,7 @@ export default function useSamplingController() {
     rHat,
     ess,
     histogramData,
+    samplerType,
+    setSamplerType,
   };
 }

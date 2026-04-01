@@ -31,6 +31,8 @@ describe('Controls Component', () => {
     setSeed2: vi.fn(),
     burnIn: 10,
     setBurnIn: vi.fn(),
+    samplerType: 'HMC',
+    setSamplerType: vi.fn(),
   };
 
   beforeEach(() => {
@@ -393,6 +395,36 @@ describe('Controls Component', () => {
       render(<Controls {...props} />);
 
       expect(screen.getByText(/generating samples/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Sampler Selection', () => {
+    it('should show correct parameters for HMC', () => {
+      render(<Controls {...mockProps} samplerType="HMC" />);
+      expect(screen.getByLabelText(/epsilon/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^l\s/i)).toBeInTheDocument();
+    });
+
+    it('should show Slice Width for Gibbs sampler', () => {
+      render(
+        <Controls {...mockProps} samplerType="GIBBS" params={{ w: 1.0 }} />
+      );
+      expect(screen.queryByLabelText(/epsilon/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/^l\s/i)).not.toBeInTheDocument();
+
+      const widthInput = screen.getByLabelText(/slice width/i);
+      expect(widthInput).toBeInTheDocument();
+      expect(widthInput.value).toBe('1');
+
+      fireEvent.change(widthInput, { target: { value: '2.5' } });
+      expect(mockProps.setParams).toHaveBeenCalledWith({ w: 2.5 });
+    });
+
+    it('should call setSamplerType when selection changes', () => {
+      render(<Controls {...mockProps} />);
+      const select = screen.getByLabelText(/sampler type/i);
+      fireEvent.change(select, { target: { value: 'GIBBS' } });
+      expect(mockProps.setSamplerType).toHaveBeenCalledWith('GIBBS');
     });
   });
 });
