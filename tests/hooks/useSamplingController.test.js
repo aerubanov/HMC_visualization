@@ -38,7 +38,12 @@ describe('useSamplingController', () => {
     const { result } = renderHook(() => useSamplingController());
 
     expect(result.current.logP).toBe('');
-    expect(result.current.params).toEqual({ epsilon: 0.1, L: 10, steps: 1 });
+    expect(result.current.params).toEqual({
+      epsilon: 0.1,
+      L: 10,
+      steps: 1,
+      w: 1.0,
+    });
     expect(result.current.samples).toEqual([]);
     expect(result.current.trajectory).toEqual([]);
     expect(result.current.currentParticle).toBeNull();
@@ -69,7 +74,12 @@ describe('useSamplingController', () => {
       result.current.setParams({ epsilon: 0.05, L: 20, steps: 5 });
     });
 
-    expect(result.current.params).toEqual({ epsilon: 0.05, L: 20, steps: 5 });
+    expect(result.current.params).toEqual({
+      epsilon: 0.05,
+      L: 20,
+      steps: 5,
+      w: 1.0,
+    });
     // Should update sampler params
     expect(HMCSampler.prototype.setParams).toHaveBeenCalledWith({
       epsilon: 0.05,

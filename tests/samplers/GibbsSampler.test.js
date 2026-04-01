@@ -13,13 +13,13 @@ describe('GibbsSampler', () => {
   });
 
   it('should initialize with default parameters', () => {
-    expect(sampler.params).toEqual({});
+    expect(sampler.params).toEqual({ w: 1.0 });
     expect(sampler.seed).toBeNull();
   });
 
   it('should update parameters via setParams', () => {
     sampler.setParams({ test: 123 });
-    expect(sampler.params).toEqual({ test: 123 });
+    expect(sampler.params).toEqual({ w: 1.0, test: 123 });
   });
 
   it('should set seed correctly', () => {
@@ -59,5 +59,17 @@ describe('GibbsSampler', () => {
     const result2 = sampler2.step(startState, mockLogP);
 
     expect(result1.q).toEqual(result2.q);
+  });
+
+  it('should use provided slice width (w) parameter', async () => {
+    const customW = 2.5;
+
+    // We can't directly mock sampleSlice here easily if it's already imported,
+    // but we can check if params.w is set correctly
+    const customSampler = new GibbsSampler({ w: customW });
+    expect(customSampler.params.w).toBe(customW);
+
+    customSampler.setParams({ w: 3.0 });
+    expect(customSampler.params.w).toBe(3.0);
   });
 });

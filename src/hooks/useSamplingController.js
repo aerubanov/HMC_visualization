@@ -14,7 +14,12 @@ import { prepareHistogramData } from '../utils/histogramUtils';
  */
 export default function useSamplingController() {
   const [logP, setLogPString] = useState('');
-  const [params, setParamsState] = useState({ epsilon: 0.1, L: 10, steps: 1 });
+  const [params, setParamsState] = useState({
+    epsilon: 0.1,
+    L: 10,
+    steps: 1,
+    w: 1.0,
+  });
   const [samplerType, setSamplerTypeState] = useState('HMC'); // 'HMC' or 'GIBBS'
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const [samples, setSamples] = useState([]);
@@ -71,7 +76,7 @@ export default function useSamplingController() {
     (type, seedVal) => {
       if (!samplerRef.current || samplerRef.current.type !== type) {
         if (type === 'GIBBS') {
-          samplerRef.current = new GibbsSampler({}, seedVal);
+          samplerRef.current = new GibbsSampler({ w: params.w }, seedVal);
           samplerRef.current.type = 'GIBBS';
         } else {
           samplerRef.current = new HMCSampler(
@@ -82,7 +87,7 @@ export default function useSamplingController() {
         }
       }
     },
-    [params.epsilon, params.L]
+    [params.epsilon, params.L, params.w]
   );
 
   // Initial setup
@@ -95,7 +100,7 @@ export default function useSamplingController() {
     (type, seedVal) => {
       if (!samplerRef2.current || samplerRef2.current.type !== type) {
         if (type === 'GIBBS') {
-          samplerRef2.current = new GibbsSampler({}, seedVal);
+          samplerRef2.current = new GibbsSampler({ w: params.w }, seedVal);
           samplerRef2.current.type = 'GIBBS';
         } else {
           samplerRef2.current = new HMCSampler(
@@ -106,7 +111,7 @@ export default function useSamplingController() {
         }
       }
     },
-    [params.epsilon, params.L]
+    [params.epsilon, params.L, params.w]
   );
 
   if (!samplerRef2.current) {
@@ -116,7 +121,6 @@ export default function useSamplingController() {
 
   // Update sampler params when state changes (or initializes)
   useEffect(() => {
-    // Only update params for HMC sampler
     if (samplerType === 'HMC') {
       if (samplerRef.current && samplerRef.current.setParams) {
         samplerRef.current.setParams({ epsilon: params.epsilon, L: params.L });
@@ -124,8 +128,15 @@ export default function useSamplingController() {
       if (samplerRef2.current && samplerRef2.current.setParams) {
         samplerRef2.current.setParams({ epsilon: params.epsilon, L: params.L });
       }
+    } else if (samplerType === 'GIBBS') {
+      if (samplerRef.current && samplerRef.current.setParams) {
+        samplerRef.current.setParams({ w: params.w });
+      }
+      if (samplerRef2.current && samplerRef2.current.setParams) {
+        samplerRef2.current.setParams({ w: params.w });
+      }
     }
-  }, [params.epsilon, params.L, samplerType]);
+  }, [params.epsilon, params.L, params.w, samplerType]);
 
   /**
    * Computes contour data for the current logp function

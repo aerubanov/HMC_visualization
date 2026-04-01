@@ -9,7 +9,7 @@ export class GibbsSampler extends BaseSampler {
    */
   constructor(params = {}, seed = null) {
     super(seed);
-    this.params = params;
+    this.params = { w: 1.0, ...params };
   }
 
   /**
@@ -32,12 +32,12 @@ export class GibbsSampler extends BaseSampler {
     // 1. Update X given Y
     // P(x | y) ~ P(x, y)
     const logPx = (x) => logPInstance.getLogProbability(x, currentY);
-    const nextX = sampleSlice(logPx, currentX, 1.0, this.rng);
+    const nextX = sampleSlice(logPx, currentX, this.params.w, this.rng);
 
     // 2. Update Y given new X
     // P(y | x) ~ P(x, y)
     const logPy = (y) => logPInstance.getLogProbability(nextX, y);
-    const nextY = sampleSlice(logPy, currentY, 1.0, this.rng);
+    const nextY = sampleSlice(logPy, currentY, this.params.w, this.rng);
 
     const q_new = { x: nextX, y: nextY };
     const p_new = { x: 0, y: 0 }; // Gibbs doesn't use momentum

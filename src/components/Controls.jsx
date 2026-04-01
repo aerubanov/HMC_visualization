@@ -294,7 +294,7 @@ function Controls({
             style={{ width: '100%', padding: '8px', marginBottom: '1rem' }}
           >
             <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
-            <option value="GIBBS">Gibbs Sampling (Mock)</option>
+            <option value="GIBBS">Gibbs Sampling</option>
           </select>
         </section>
 
@@ -336,9 +336,18 @@ function Controls({
             </>
           ) : (
             <div className="control-group">
-              <p className="control-hint">
-                Gibbs sampler (Mock) has no tunable parameters currently.
-              </p>
+              <label htmlFor="w-input" className="control-label">
+                Slice Width (w)
+              </label>
+              <input
+                id="w-input"
+                type="number"
+                className="control-input"
+                step="0.1"
+                min="0.01"
+                value={params.w !== undefined ? params.w : 1.0}
+                onChange={(e) => handleParamChange('w', e.target.value)}
+              />
             </div>
           )}
 

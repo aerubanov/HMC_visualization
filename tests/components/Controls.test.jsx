@@ -405,13 +405,19 @@ describe('Controls Component', () => {
       expect(screen.getByLabelText(/^l\s/i)).toBeInTheDocument();
     });
 
-    it('should hide parameters for Gibbs sampler', () => {
-      render(<Controls {...mockProps} samplerType="GIBBS" />);
+    it('should show Slice Width for Gibbs sampler', () => {
+      render(
+        <Controls {...mockProps} samplerType="GIBBS" params={{ w: 1.0 }} />
+      );
       expect(screen.queryByLabelText(/epsilon/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/^l\s/i)).not.toBeInTheDocument();
-      expect(
-        screen.getByText(/gibbs sampler \(mock\) has no tunable parameters/i)
-      ).toBeInTheDocument();
+
+      const widthInput = screen.getByLabelText(/slice width/i);
+      expect(widthInput).toBeInTheDocument();
+      expect(widthInput.value).toBe('1');
+
+      fireEvent.change(widthInput, { target: { value: '2.5' } });
+      expect(mockProps.setParams).toHaveBeenCalledWith({ w: 2.5 });
     });
 
     it('should call setSamplerType when selection changes', () => {
