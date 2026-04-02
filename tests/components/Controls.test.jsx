@@ -6,33 +6,25 @@ import Controls from '../../src/components/Controls';
 describe('Controls Component', () => {
   const mockProps = {
     logP: '',
-    params: { epsilon: 0.1, L: 10, steps: 1 },
-    initialPosition: { x: 0, y: 0 },
+    chains: [{
+      id: 0,
+      samplerType: 'HMC',
+      params: { epsilon: 0.1, L: 10, steps: 1 },
+      initialPosition: { x: 0, y: 0 },
+      seed: null
+    }],
     iterationCount: 0,
     isRunning: false,
     error: null,
-    seed: null,
-    useSeededMode: false,
     setLogP: vi.fn(),
-    setParams: vi.fn(),
-    setInitialPosition: vi.fn(),
+    setChainConfig: vi.fn(),
+    addChain: vi.fn(),
+    removeChain: vi.fn(),
     step: vi.fn(),
     sampleSteps: vi.fn(),
     reset: vi.fn(),
-    setSeed: vi.fn(),
-    // Second chain props
-    useSecondChain: false,
-    initialPosition2: { x: 1, y: 1 },
-    acceptedCount2: 0,
-    rejectedCount2: 0,
-    seed2: null,
-    setUseSecondChain: vi.fn(),
-    setInitialPosition2: vi.fn(),
-    setSeed2: vi.fn(),
     burnIn: 10,
     setBurnIn: vi.fn(),
-    samplerType: 'HMC',
-    setSamplerType: vi.fn(),
   };
 
   beforeEach(() => {
@@ -239,7 +231,7 @@ describe('Controls Component', () => {
       const epsilonInput = screen.getByLabelText(/epsilon/i);
       fireEvent.change(epsilonInput, { target: { value: '0.05' } });
 
-      expect(mockProps.setParams).toHaveBeenCalledWith({ epsilon: 0.05 });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {  epsilon: 0.05  });
     });
 
     it('should not interfere with step button', () => {
@@ -417,14 +409,14 @@ describe('Controls Component', () => {
       expect(widthInput.value).toBe('1');
 
       fireEvent.change(widthInput, { target: { value: '2.5' } });
-      expect(mockProps.setParams).toHaveBeenCalledWith({ w: 2.5 });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {  w: 2.5  });
     });
 
     it('should call setSamplerType when selection changes', () => {
       render(<Controls {...mockProps} />);
       const select = screen.getByLabelText(/sampler type/i);
       fireEvent.change(select, { target: { value: 'GIBBS' } });
-      expect(mockProps.setSamplerType).toHaveBeenCalledWith('GIBBS');
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, { samplerType: 'GIBBS' });
     });
   });
 });
