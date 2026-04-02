@@ -6,13 +6,15 @@ import Controls from '../../src/components/Controls';
 describe('Controls Component', () => {
   const mockProps = {
     logP: '',
-    chains: [{
-      id: 0,
-      samplerType: 'HMC',
-      params: { epsilon: 0.1, L: 10, steps: 1 },
-      initialPosition: { x: 0, y: 0 },
-      seed: null
-    }],
+    chains: [
+      {
+        id: 0,
+        samplerType: 'HMC',
+        params: { epsilon: 0.1, L: 10, steps: 1 },
+        initialPosition: { x: 0, y: 0 },
+        seed: null,
+      },
+    ],
     iterationCount: 0,
     isRunning: false,
     error: null,
@@ -231,7 +233,9 @@ describe('Controls Component', () => {
       const epsilonInput = screen.getByLabelText(/epsilon/i);
       fireEvent.change(epsilonInput, { target: { value: '0.05' } });
 
-      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {  epsilon: 0.05  });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {
+        params: { ...mockProps.chains[0].params, epsilon: 0.05 },
+      });
     });
 
     it('should not interfere with step button', () => {
@@ -398,9 +402,14 @@ describe('Controls Component', () => {
     });
 
     it('should show Slice Width for Gibbs sampler', () => {
-      render(
-        <Controls {...mockProps} samplerType="GIBBS" params={{ w: 1.0 }} />
-      );
+      const gibbsChains = [
+        {
+          ...mockProps.chains[0],
+          samplerType: 'GIBBS',
+          params: { w: 1.0 },
+        },
+      ];
+      render(<Controls {...mockProps} chains={gibbsChains} />);
       expect(screen.queryByLabelText(/epsilon/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/^l\s/i)).not.toBeInTheDocument();
 
@@ -409,14 +418,18 @@ describe('Controls Component', () => {
       expect(widthInput.value).toBe('1');
 
       fireEvent.change(widthInput, { target: { value: '2.5' } });
-      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {  w: 2.5  });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {
+        params: { ...gibbsChains[0].params, w: 2.5 },
+      });
     });
 
     it('should call setSamplerType when selection changes', () => {
       render(<Controls {...mockProps} />);
       const select = screen.getByLabelText(/sampler type/i);
       fireEvent.change(select, { target: { value: 'GIBBS' } });
-      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, { samplerType: 'GIBBS' });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {
+        samplerType: 'GIBBS',
+      });
     });
   });
 });
