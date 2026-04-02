@@ -1325,12 +1325,12 @@ describe('useSamplingController', () => {
       const { result } = renderHook(() => useSamplingController());
 
       expect((result.current.chains.length > 1)).toBe(false);
-      expect(result.current.chains[0].initialPosition2).toEqual({ x: 1, y: 1 });
-      expect(result.current.chains[0].samples2).toEqual([]);
-      expect(result.current.chains[0].trajectory2).toEqual([]);
+      expect(result.current.chains[1].initialPosition).toEqual({ x: 1, y: 1 });
+      expect(result.current.chains[1].samples).toEqual([]);
+      expect(result.current.chains[1].trajectory).toEqual([]);
       expect(result.current.chains[0].samples.length2).toBe(0);
-      expect(result.current.chains[0].rejectedCount2).toBe(0);
-      expect(result.current.chains[0].seed2).toBeNull();
+      expect(result.current.chains[1].rejectedCount).toBe(0);
+      expect(result.current.chains[1].seed).toBeNull();
     });
 
     it('should enable and disable second chain', () => {
@@ -1358,7 +1358,7 @@ describe('useSamplingController', () => {
       });
 
       expect(result.current.chains[0].initialPosition).toEqual({ x: 2, y: 3 });
-      expect(result.current.chains[0].initialPosition2).toEqual({ x: -1, y: -2 });
+      expect(result.current.chains[1].initialPosition).toEqual({ x: -1, y: -2 });
     });
 
     it('should have independent seeds for both chains', () => {
@@ -1373,7 +1373,7 @@ describe('useSamplingController', () => {
       });
 
       expect(result.current.chains[0].seed).toBe(42);
-      expect(result.current.chains[0].seed2).toBe(100);
+      expect(result.current.chains[1].seed).toBe(100);
 
       // Verify both samplers received their respective seeds
       expect(HMCSampler.prototype.setSeed).toHaveBeenCalledWith(42);
@@ -1425,7 +1425,7 @@ describe('useSamplingController', () => {
       // Verify both chains were sampled
       expect(result.current.iterationCount).toBe(3);
       expect(result.current.chains[0].samples).toHaveLength(3);
-      expect(result.current.chains[0].samples2).toHaveLength(3);
+      expect(result.current.chains[1].samples).toHaveLength(3);
 
       // step should be called 6 times total (3 steps × 2 chains)
       expect(HMCSampler.prototype.step).toHaveBeenCalledTimes(6);
@@ -1469,7 +1469,7 @@ describe('useSamplingController', () => {
 
       // Chain 2: 0 accepted, 3 rejected
       expect(result.current.chains[0].samples.length2).toBe(0);
-      expect(result.current.chains[0].rejectedCount2).toBe(3);
+      expect(result.current.chains[1].rejectedCount).toBe(3);
     });
 
     it('should reset both chains when reset is called', async () => {
@@ -1501,7 +1501,7 @@ describe('useSamplingController', () => {
 
       // Verify both chains have data
       expect(result.current.chains[0].samples.length).toBeGreaterThan(0);
-      expect(result.current.chains[0].samples2.length).toBeGreaterThan(0);
+      expect(result.current.chains[1].samples.length).toBeGreaterThan(0);
 
       // Reset
       act(() => {
@@ -1510,12 +1510,12 @@ describe('useSamplingController', () => {
 
       // Verify both chains are reset
       expect(result.current.chains[0].samples).toEqual([]);
-      expect(result.current.chains[0].samples2).toEqual([]);
+      expect(result.current.chains[1].samples).toEqual([]);
       expect(result.current.chains[0].trajectory).toEqual([]);
-      expect(result.current.chains[0].trajectory2).toEqual([]);
+      expect(result.current.chains[1].trajectory).toEqual([]);
       expect(result.current.iterationCount).toBe(0);
       expect(result.current.chains[0].rejectedCount).toBe(0);
-      expect(result.current.chains[0].rejectedCount2).toBe(0);
+      expect(result.current.chains[1].rejectedCount).toBe(0);
     });
 
     it('should reset both chain RNGs when both are seeded', async () => {
@@ -1568,7 +1568,7 @@ describe('useSamplingController', () => {
 
       // Only chain 1 should have samples
       expect(result.current.chains[0].samples).toHaveLength(3);
-      expect(result.current.chains[0].samples2).toHaveLength(0);
+      expect(result.current.chains[1].samples).toHaveLength(0);
 
       // step should be called 3 times (only chain 1)
       expect(HMCSampler.prototype.step).toHaveBeenCalledTimes(3);
@@ -1604,7 +1604,7 @@ describe('useSamplingController', () => {
 
       // Both chains should still work independently
       expect(result.current.chains[0].samples).toHaveLength(1);
-      expect(result.current.chains[0].samples2).toHaveLength(1);
+      expect(result.current.chains[1].samples).toHaveLength(1);
     });
 
     it('should preserve second chain trajectory on each step', async () => {
@@ -1649,7 +1649,7 @@ describe('useSamplingController', () => {
 
       // Both chains should have their respective trajectories
       expect(result.current.chains[0].trajectory.length).toBeGreaterThan(0);
-      expect(result.current.chains[0].trajectory2.length).toBeGreaterThan(0);
+      expect(result.current.chains[1].trajectory.length).toBeGreaterThan(0);
     });
 
     it('should clear second chain data when logP changes', () => {
@@ -1671,9 +1671,9 @@ describe('useSamplingController', () => {
       });
 
       // Second chain data should be cleared
-      expect(result.current.chains[0].samples2).toEqual([]);
-      expect(result.current.chains[0].trajectory2).toEqual([]);
-      expect(result.current.chains[0].rejectedCount2).toBe(0);
+      expect(result.current.chains[1].samples).toEqual([]);
+      expect(result.current.chains[1].trajectory).toEqual([]);
+      expect(result.current.chains[1].rejectedCount).toBe(0);
     });
   });
 
@@ -2229,8 +2229,8 @@ describe('Fast Sampling Mode', () => {
     // Chain 1 (odd calls): Accepted
     // Chain 2 (even calls): Rejected
     expect(result.current.chains[0].samples).toHaveLength(5);
-    expect(result.current.chains[0].samples2).toHaveLength(0);
-    expect(result.current.chains[0].rejectedCount2).toBe(5);
+    expect(result.current.chains[1].samples).toHaveLength(0);
+    expect(result.current.chains[1].rejectedCount).toBe(5);
     expect(result.current.iterationCount).toBe(5);
   });
 });

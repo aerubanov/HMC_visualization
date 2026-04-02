@@ -15,133 +15,127 @@ vi.mock('react-plotly.js', () => ({
 }));
 
 describe('TracePlots', () => {
-  const mockSamples = [
-    { x: 0.1, y: 0.2 },
-    { x: 0.3, y: 0.4 },
-    { x: 0.5, y: 0.6 },
-  ];
+  const mockChainsSingle = [{
+    id: 0,
+    samples: [
+      { x: 0.1, y: 0.2 },
+      { x: 0.3, y: 0.4 },
+      { x: 0.5, y: 0.6 },
+    ],
+    acceptedCount: 100,
+    rejectedCount: 50
+  }];
 
-  const mockSamples2 = [
-    { x: 1.1, y: 1.2 },
-    { x: 1.3, y: 1.4 },
-  ];
+  const mockChainsDual = [{
+    id: 0,
+    samples: [
+      { x: 0.1, y: 0.2 },
+      { x: 0.3, y: 0.4 },
+      { x: 0.5, y: 0.6 },
+    ],
+    acceptedCount: 100,
+    rejectedCount: 50
+  }, {
+    id: 1,
+    samples: [
+      { x: 1.1, y: 1.2 },
+      { x: 1.3, y: 1.4 },
+    ],
+    acceptedCount: 80,
+    rejectedCount: 70
+  }];
 
   test('renders without crashing', () => {
-    render(<TracePlots samples={mockSamples} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
     expect(screen.getByText('X Trace')).toBeInTheDocument();
     expect(screen.getByText('Y Trace')).toBeInTheDocument();
   });
 
   test('renders two Plotly plots', () => {
-    render(<TracePlots samples={mockSamples} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
     expect(plots).toHaveLength(2);
   });
 
   test('passes correct data to Plotly for simple case', () => {
-    render(<TracePlots samples={mockSamples} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
 
-    // Check first plot (X trace)
     const xPlotData = JSON.parse(
       plots[0].querySelector('[data-testid="plot-data"]').textContent
     );
     expect(xPlotData).toHaveLength(1);
-    expect(xPlotData[0].y).toEqual([0.1, 0.3, 0.5]); // X values
+    expect(xPlotData[0].y).toEqual([0.1, 0.3, 0.5]);
     expect(xPlotData[0].name).toBe('Chain 1');
 
-    // Check second plot (Y trace)
     const yPlotData = JSON.parse(
       plots[1].querySelector('[data-testid="plot-data"]').textContent
     );
     expect(yPlotData).toHaveLength(1);
-    expect(yPlotData[0].y).toEqual([0.2, 0.4, 0.6]); // Y values
+    expect(yPlotData[0].y).toEqual([0.2, 0.4, 0.6]);
     expect(yPlotData[0].name).toBe('Chain 1');
   });
 
   test('handles burn-in correctly', () => {
     const burnIn = 1;
-    render(<TracePlots samples={mockSamples} burnIn={burnIn} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsSingle} burnIn={burnIn} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
 
-    // Check first plot (X trace)
     const xPlotData = JSON.parse(
       plots[0].querySelector('[data-testid="plot-data"]').textContent
     );
 
-    // Should have 2 traces: burn-in and valid
     expect(xPlotData).toHaveLength(2);
 
-    // Burn-in trace
     expect(xPlotData[0].name).toBe('Chain 1 (Burn-in)');
     expect(xPlotData[0].y).toEqual([0.1, 0.3]);
-    // Opacity should be handled via rgba color now
     expect(xPlotData[0].line.color).toMatch(/^rgba\(\d+, \d+, \d+, 0\.3\)$/);
 
-    // Valid trace
     expect(xPlotData[1].name).toBe('Chain 1');
     expect(xPlotData[1].y).toEqual([0.3, 0.5]);
     expect(xPlotData[1].line.color).toBe('#d73a49');
   });
 
   test('handles second chain correctly', () => {
-    render(
-      <TracePlots
-        samples={mockSamples}
-        samples2={mockSamples2}
-        useSecondChain={true}
-      />
-    );
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsDual} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
 
-    // Check first plot (X trace)
     const xPlotData = JSON.parse(
       plots[0].querySelector('[data-testid="plot-data"]').textContent
     );
 
-    // Should have 2 traces: Chain 1 and Chain 2 (no burn-in)
     expect(xPlotData).toHaveLength(2);
     expect(xPlotData[0].name).toBe('Chain 1');
     expect(xPlotData[1].name).toBe('Chain 2');
-
     expect(xPlotData[1].y).toEqual([1.1, 1.3]);
   });
 
   test('handles chains of different lengths correctly', () => {
-    const longSamples = [
-      { x: 1, y: 1 },
-      { x: 2, y: 2 },
-      { x: 3, y: 3 },
-      { x: 4, y: 4 },
-    ];
-    const shortSamples = [
-      { x: 10, y: 10 },
-      { x: 20, y: 20 },
-    ];
+    const chainsDiffLen = [{
+      id: 0,
+      samples: [{x: 1, y: 1}, {x: 2, y: 2}, {x: 3, y: 3}, {x: 4, y: 4}],
+      acceptedCount: 4, rejectedCount: 0
+    }, {
+      id: 1,
+      samples: [{x: 10, y: 10}, {x: 20, y: 20}],
+      acceptedCount: 2, rejectedCount: 0
+    }];
 
-    render(
-      <TracePlots
-        samples={longSamples}
-        samples2={shortSamples}
-        useSecondChain={true}
-        burnIn={0}
-      />
-    );
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={chainsDiffLen} burnIn={0} iterationCount={4} />);
     const plots = screen.getAllByTestId('plotly-plot');
-
-    // Check X trace plot
-    const xPlotData = JSON.parse(
-      plots[0].querySelector('[data-testid="plot-data"]').textContent
-    );
+    const xPlotData = JSON.parse(plots[0].querySelector('[data-testid="plot-data"]').textContent);
 
     expect(xPlotData).toHaveLength(2);
-
-    // Chain 1 (Long)
     expect(xPlotData[0].name).toBe('Chain 1');
     expect(xPlotData[0].x).toEqual([0, 1, 2, 3]);
     expect(xPlotData[0].y).toEqual([1, 2, 3, 4]);
 
-    // Chain 2 (Short)
     expect(xPlotData[1].name).toBe('Chain 2');
     expect(xPlotData[1].x).toEqual([0, 1]);
     expect(xPlotData[1].y).toEqual([10, 20]);
@@ -149,71 +143,53 @@ describe('TracePlots', () => {
 
   test('displays R-hat values when provided', () => {
     const rHat = { x: 1.05, y: 1.1 };
-    render(<TracePlots samples={mockSamples} rHat={rHat} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsDual} rHat={rHat} iterationCount={150} />);
 
-    // Since text is split into spans, we check for presence of the formatted value
     expect(screen.getByText('(R̂ = 1.05)')).toBeInTheDocument();
     expect(screen.getByText('(R̂ = 1.10)')).toBeInTheDocument();
   });
 
+  test('displays infinity symbol for infinite R-hat', () => {
+    const rHat = { x: Infinity, y: Infinity };
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsDual} rHat={rHat} iterationCount={150} />);
+
+    expect(screen.getAllByText('(R̂ = ∞)')).toHaveLength(2);
+  });
+
   test('does not display R-hat values when null', () => {
-    render(<TracePlots samples={mockSamples} rHat={null} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsSingle} rHat={null} iterationCount={150} />);
 
     expect(screen.getByText('X Trace')).toBeInTheDocument();
     expect(screen.queryByText(/R̂/)).not.toBeInTheDocument();
   });
 
-  test('displays infinity symbol for infinite R-hat', () => {
-    const rHat = { x: Infinity, y: Infinity };
-    render(<TracePlots samples={mockSamples} rHat={rHat} />);
-
-    expect(screen.getAllByText('(R̂ = ∞)')).toHaveLength(2);
-  });
-
   test('displays ESS values when provided', () => {
     const rHat = { x: 1.1, y: 1.1 };
     const ess = { x: 100, y: 200 };
-    render(<TracePlots samples={mockSamples} rHat={rHat} ess={ess} />);
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsDual} rHat={rHat} ess={ess} iterationCount={150} />);
 
     expect(screen.getByText('(ESS = 100)')).toBeInTheDocument();
     expect(screen.getByText('(ESS = 200)')).toBeInTheDocument();
   });
 
   test('displays acceptance and rejection counts for single chain', () => {
-    render(
-      <TracePlots
-        samples={mockSamples}
-        acceptedCount={100}
-        rejectedCount={50}
-        iterationCount={150}
-      />
-    );
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
 
-    // Header/Summary section should contain these values
-    // Exact formatting depends on implementation, but searching for the numbers/text is good
-    expect(screen.getByText(/Acc: 100/i)).toBeInTheDocument();
+    expect(screen.getByText(/Acc: 3/i)).toBeInTheDocument();
     expect(screen.getByText(/Rej: 50/i)).toBeInTheDocument();
   });
 
   test('displays acceptance and rejection counts for second chain', () => {
-    render(
-      <TracePlots
-        samples={mockSamples}
-        samples2={mockSamples2}
-        useSecondChain={true}
-        acceptedCount={100}
-        rejectedCount={50}
-        iterationCount={150}
-        acceptedCount2={80}
-        rejectedCount2={70}
-      />
-    );
+    // eslint-disable-next-line react/prop-types
+    render(<TracePlots chains={mockChainsDual} iterationCount={150} />);
 
-    // Chain 1 stats
-    expect(screen.getByText(/Acc: 100/i)).toBeInTheDocument();
-
-    // Chain 2 stats
-    expect(screen.getByText(/Acc: 80/i)).toBeInTheDocument();
+    expect(screen.getByText(/Acc: 3/i)).toBeInTheDocument();
+    expect(screen.getByText(/Acc: 2/i)).toBeInTheDocument();
     expect(screen.getByText(/Rej: 70/i)).toBeInTheDocument();
   });
 });
