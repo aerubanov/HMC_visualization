@@ -84,11 +84,14 @@ function Controls({
               id="logp-input"
               className="control-input"
               style={{ width: '100%', marginBottom: '10px' }}
+              placeholder="e.g., exp(-(x^2 + y^2)/2)"
               value={draftLogP}
               onChange={e => setDraftLogP(e.target.value)}
               rows={3}
             />
+            <label htmlFor="predefined-select" className="control-sublabel">Pre-defined:</label>
             <select
+              id="predefined-select"
               className="control-select"
               style={{ width: '100%', marginBottom: '10px', padding: '6px' }}
               onChange={e => e.target.value && setDraftLogP(e.target.value)}
@@ -146,8 +149,8 @@ function Controls({
             <h3 className="section-title">Chain {index + 1} Configuration</h3>
 
             <div className="control-group">
-              <label className="control-label">Sampler Type</label>
-              <select className="control-select" style={{width: '100%', padding: '6px'}} value={chain.samplerType} onChange={e => setChainConfig(chain.id, { samplerType: e.target.value })}>
+              <label htmlFor={`sampler-type-${chain.id}`} className="control-label">Sampler Type</label>
+              <select id={`sampler-type-${chain.id}`} className="control-select" style={{width: '100%', padding: '6px'}} value={chain.samplerType} onChange={e => setChainConfig(chain.id, { samplerType: e.target.value })}>
                 <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
                 <option value="GIBBS">Gibbs Sampling</option>
               </select>
@@ -156,19 +159,19 @@ function Controls({
             {chain.samplerType === 'HMC' && (
               <>
                 <div className="control-group">
-                  <label className="control-label">Epsilon (ε)</label>
-                  <input type="number" className="control-input" step="0.001" value={chain.params.epsilon} onChange={e => setChainConfig(chain.id, { params: { ...chain.params, epsilon: parseFloat(e.target.value) }})} />
+                  <label htmlFor={`epsilon-${chain.id}`} className="control-label">Epsilon (ε)</label>
+                  <input id={`epsilon-${chain.id}`} type="number" className="control-input" step="0.001" value={chain.params.epsilon} onChange={e => setChainConfig(chain.id, { params: { ...chain.params, epsilon: parseFloat(e.target.value) }})} />
                 </div>
                 <div className="control-group">
-                  <label className="control-label">Leapfrog Steps (L)</label>
-                  <input type="number" className="control-input" step="1" value={chain.params.L} onChange={e => setChainConfig(chain.id, { params: { ...chain.params, L: parseInt(e.target.value) }})} />
+                  <label htmlFor={`leapfrog-steps-${chain.id}`} className="control-label">Leapfrog Steps (L)</label>
+                  <input id={`leapfrog-steps-${chain.id}`} type="number" className="control-input" step="1" value={chain.params.L} onChange={e => setChainConfig(chain.id, { params: { ...chain.params, L: parseInt(e.target.value) }})} />
                 </div>
               </>
             )}
             {chain.samplerType === 'GIBBS' && (
               <div className="control-group">
-                <label className="control-label">Slice Width (w)</label>
-                <input type="number" className="control-input" step="0.1" value={chain.params.w} onChange={e => setChainConfig(chain.id, { params: { ...chain.params, w: parseFloat(e.target.value) }})} />
+                <label htmlFor={`slice-width-${chain.id}`} className="control-label">Slice Width (w)</label>
+                <input id={`slice-width-${chain.id}`} type="number" className="control-input" step="0.1" value={chain.params.w} onChange={e => setChainConfig(chain.id, { params: { ...chain.params, w: parseFloat(e.target.value) }})} />
               </div>
             )}
 

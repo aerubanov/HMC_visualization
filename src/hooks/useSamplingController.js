@@ -168,7 +168,15 @@ export default function useSamplingController() {
   const setChainConfig = useCallback((id, configUpdates) => {
     setChains(prev => prev.map(c => {
       if (c.id === id) {
-        const result = { ...c, ...configUpdates };
+        const result = { ...c };
+        // Merge params if provided (not replace)
+        if (configUpdates.params !== undefined) {
+          result.params = { ...c.params, ...configUpdates.params };
+        }
+        // Apply remaining non-params updates
+        const { params: _params, ...otherUpdates } = configUpdates;
+        Object.assign(result, otherUpdates);
+
         const impl = samplingChainsRef.current.get(id);
         if (impl) {
           if (configUpdates.samplerType !== undefined) impl.setSamplerType(configUpdates.samplerType);

@@ -29,7 +29,14 @@ export class SamplingChain {
   setParams(newParams) {
     this.params = { ...this.params, ...newParams };
     if (this.sampler && this.sampler.setParams) {
-      this.sampler.setParams(this.params);
+      // Only pass sampler-relevant params (not UI-only params like steps)
+      if (this.samplerType === 'HMC') {
+        const { epsilon, L } = this.params;
+        this.sampler.setParams({ epsilon, L });
+      } else {
+        const { w } = this.params;
+        this.sampler.setParams({ w });
+      }
     }
   }
 
