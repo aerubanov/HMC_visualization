@@ -1,5 +1,6 @@
 import './Controls.css';
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { PREDEFINED_FUNCTIONS } from '../utils/predefinedFunctions';
 
 function Controls({
@@ -490,5 +491,46 @@ function Controls({
     </div>
   );
 }
+
+Controls.propTypes = {
+  logP: PropTypes.string,
+  chains: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      samplerType: PropTypes.string,
+      params: PropTypes.object,
+      initialPosition: PropTypes.shape({
+        x: PropTypes.number,
+        y: PropTypes.number,
+      }),
+      seed: PropTypes.number,
+      samples: PropTypes.array,
+      trajectory: PropTypes.array,
+      rejectedCount: PropTypes.number,
+      acceptedCount: PropTypes.number,
+      error: PropTypes.string,
+    })
+  ),
+  isRunning: PropTypes.bool,
+  error: PropTypes.string,
+  setLogP: PropTypes.func,
+  setChainConfig: PropTypes.func,
+  addChain: PropTypes.func,
+  removeChain: PropTypes.func,
+  step: PropTypes.func,
+  sampleSteps: PropTypes.func,
+  reset: PropTypes.func,
+  burnIn: PropTypes.number,
+  setBurnIn: PropTypes.func,
+  axisLimits: PropTypes.shape({
+    xMin: PropTypes.number,
+    xMax: PropTypes.number,
+    yMin: PropTypes.number,
+    yMax: PropTypes.number,
+  }),
+  setAxisLimits: PropTypes.func,
+  useFastMode: PropTypes.bool,
+  setUseFastMode: PropTypes.func,
+};
 
 export default Controls;

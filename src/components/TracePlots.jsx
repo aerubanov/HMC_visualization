@@ -17,18 +17,26 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
 
   chains.forEach((chain, index) => {
     if (chain.samples && chain.samples.length > 0) {
-      const color = index === 0 ? HMC_SAMPLER.styles.primaryColor : HMC_SAMPLER.styles.secondaryColor;
+      const color =
+        index === 0
+          ? HMC_SAMPLER.styles.primaryColor
+          : HMC_SAMPLER.styles.secondaryColor;
       const label = `Chain ${index + 1}`;
-      xTraces.push(...createTracePlotTrace(chain.samples, 'x', burnIn, color, label));
-      yTraces.push(...createTracePlotTrace(chain.samples, 'y', burnIn, color, label));
+      xTraces.push(
+        ...createTracePlotTrace(chain.samples, 'x', burnIn, color, label)
+      );
+      yTraces.push(
+        ...createTracePlotTrace(chain.samples, 'y', burnIn, color, label)
+      );
     }
   });
 
-  const formatRHat = (val) => (!isFinite(val) ? ' (R̂ = ∞)' : val ? ` (R̂ = ${val.toFixed(2)})` : '');
+  const formatRHat = (val) =>
+    !isFinite(val) ? ' (R̂ = ∞)' : val ? ` (R̂ = ${val.toFixed(2)})` : '';
   const formatESS = (val) => (val ? ` (ESS = ${Math.round(val)})` : '');
   const formatRate = (chain) => {
-    const acc = chain.samples.length;
-    const total = acc + chain.rejectedCount;
+    const acc = chain.acceptedCount ?? chain.samples.length;
+    const total = acc + (chain.rejectedCount ?? 0);
     return total === 0 ? '0.0%' : `${((acc / total) * 100).toFixed(1)}%`;
   };
 
@@ -40,7 +48,10 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
             <span
               className="chain-label"
               style={{
-                color: index === 0 ? HMC_SAMPLER.styles.primaryColor : HMC_SAMPLER.styles.secondaryColor,
+                color:
+                  index === 0
+                    ? HMC_SAMPLER.styles.primaryColor
+                    : HMC_SAMPLER.styles.secondaryColor,
                 fontWeight: 'bold',
               }}
             >
@@ -55,7 +66,8 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
 
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
-          X Trace {rHat && <span className="stat-label">{formatRHat(rHat.x)}</span>}
+          X Trace{' '}
+          {rHat && <span className="stat-label">{formatRHat(rHat.x)}</span>}
           {ess && <span className="stat-label">{formatESS(ess.x)}</span>}
         </h4>
         <Plot
@@ -68,7 +80,8 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
       </div>
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
-          Y Trace {rHat && <span className="stat-label">{formatRHat(rHat.y)}</span>}
+          Y Trace{' '}
+          {rHat && <span className="stat-label">{formatRHat(rHat.y)}</span>}
           {ess && <span className="stat-label">{formatESS(ess.y)}</span>}
         </h4>
         <Plot
@@ -84,10 +97,26 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
 }
 
 TracePlots.propTypes = {
-  chains: PropTypes.array,
+  chains: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      samplerType: PropTypes.string,
+      params: PropTypes.object,
+      initialPosition: PropTypes.shape({
+        x: PropTypes.number,
+        y: PropTypes.number,
+      }),
+      seed: PropTypes.number,
+      samples: PropTypes.array,
+      trajectory: PropTypes.array,
+      rejectedCount: PropTypes.number,
+      acceptedCount: PropTypes.number,
+      error: PropTypes.string,
+    })
+  ),
   burnIn: PropTypes.number,
-  rHat: PropTypes.object,
-  ess: PropTypes.object,
+  rHat: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
+  ess: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
 };
 
 export default TracePlots;

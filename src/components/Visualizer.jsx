@@ -22,12 +22,24 @@ function Visualizer({ contourData, chains, axisLimits }) {
               stroke="currentColor"
               strokeWidth="1.5"
             >
-              <path d="M3 3v18h18" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M7 16c1.5-4 3-6 5-6s3.5 2 5 6" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M3 3v18h18"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M7 16c1.5-4 3-6 5-6s3.5 2 5 6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
               <circle cx="12" cy="10" r="2" />
             </svg>
-            <h2 className="placeholder-title">Enter a Log Probability Function</h2>
-            <p className="placeholder-description">The contour plot will appear here once you define a valid function</p>
+            <h2 className="placeholder-title">
+              Enter a Log Probability Function
+            </h2>
+            <p className="placeholder-description">
+              The contour plot will appear here once you define a valid function
+            </p>
           </div>
         </div>
       </div>
@@ -38,14 +50,18 @@ function Visualizer({ contourData, chains, axisLimits }) {
 
   chains.forEach((chain, index) => {
     const isPrimary = index === 0;
-    const color = isPrimary ? HMC_SAMPLER.styles.primaryColor : HMC_SAMPLER.styles.secondaryColor;
+    const color = isPrimary
+      ? HMC_SAMPLER.styles.primaryColor
+      : HMC_SAMPLER.styles.secondaryColor;
     const label = `Chain ${index + 1}`;
 
     if (chain.samples && chain.samples.length > 0) {
       if (isPrimary) {
         traces.push(createSamplesTrace(chain.samples));
       } else {
-        traces.push(createSamplesTrace(chain.samples, color, `Samples (${label})`));
+        traces.push(
+          createSamplesTrace(chain.samples, color, `Samples (${label})`)
+        );
       }
     }
 
@@ -53,7 +69,13 @@ function Visualizer({ contourData, chains, axisLimits }) {
       if (isPrimary) {
         traces.push(createTrajectoryTrace(chain.trajectory));
       } else {
-        traces.push(createTrajectoryTrace(chain.trajectory, color, `Trajectory (${label})`));
+        traces.push(
+          createTrajectoryTrace(
+            chain.trajectory,
+            color,
+            `Trajectory (${label})`
+          )
+        );
       }
     }
   });
@@ -64,14 +86,21 @@ function Visualizer({ contourData, chains, axisLimits }) {
         data={traces}
         layout={{
           ...GENERAL.layout,
-          title: { text: 'Log Probability Density', font: { size: 16, color: GENERAL.layout.font.color } },
+          title: {
+            text: 'Log Probability Density',
+            font: { size: 16, color: GENERAL.layout.font.color },
+          },
           xaxis: {
             ...GENERAL.layout.xaxis,
-            range: axisLimits ? [axisLimits.xMin, axisLimits.xMax] : GENERAL.layout.xaxis.range,
+            range: axisLimits
+              ? [axisLimits.xMin, axisLimits.xMax]
+              : GENERAL.layout.xaxis.range,
           },
           yaxis: {
             ...GENERAL.layout.yaxis,
-            range: axisLimits ? [axisLimits.yMin, axisLimits.yMax] : GENERAL.layout.yaxis.range,
+            range: axisLimits
+              ? [axisLimits.yMin, axisLimits.yMax]
+              : GENERAL.layout.yaxis.range,
           },
         }}
         config={GENERAL.config}

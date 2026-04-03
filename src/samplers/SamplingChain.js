@@ -15,6 +15,8 @@ export class SamplingChain {
     this.samples = [];
     this.trajectory = [];
     this.rejectedCount = 0;
+    this.acceptedCount = 0;
+    this.error = null;
     this.currentParticle = {
       q: { ...this.initialPosition },
       p: { x: 0, y: 0 },
@@ -64,6 +66,8 @@ export class SamplingChain {
       this.samples = [];
       this.trajectory = [];
       this.rejectedCount = 0;
+      this.acceptedCount = 0;
+      this.error = null;
       this.currentParticle = {
         q: { ...this.initialPosition },
         p: { x: 0, y: 0 },
@@ -80,21 +84,28 @@ export class SamplingChain {
 
   step(logpInstance) {
     if (!this.sampler) return null;
-    const result = this.sampler.step(this.currentParticle, logpInstance);
+    try {
+      const result = this.sampler.step(this.currentParticle, logpInstance);
 
-    this.currentParticle = {
-      q: result.q,
-      p: result.p || { x: 0, y: 0 },
-    };
+      this.currentParticle = {
+        q: result.q,
+        p: result.p || { x: 0, y: 0 },
+      };
 
-    if (result.accepted) {
-      this.samples.push(result.q);
-    } else {
-      this.rejectedCount++;
+      if (result.accepted) {
+        this.samples.push(result.q);
+        this.acceptedCount++;
+      } else {
+        this.rejectedCount++;
+      }
+
+      this.trajectory = result.trajectory || [];
+      this.error = null;
+      return result;
+    } catch (e) {
+      this.error = e.message;
+      return null;
     }
-
-    this.trajectory = result.trajectory || [];
-    return result;
   }
 
   reset() {
@@ -102,6 +113,8 @@ export class SamplingChain {
     this.samples = [];
     this.trajectory = [];
     this.rejectedCount = 0;
+    this.acceptedCount = 0;
+    this.error = null;
     this.currentParticle = {
       q: { ...this.initialPosition },
       p: { x: 0, y: 0 },

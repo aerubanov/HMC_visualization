@@ -46,21 +46,21 @@ describe('TracePlots', () => {
   }];
 
   test('renders without crashing', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
     expect(screen.getByText('X Trace')).toBeInTheDocument();
     expect(screen.getByText('Y Trace')).toBeInTheDocument();
   });
 
   test('renders two Plotly plots', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
     expect(plots).toHaveLength(2);
   });
 
   test('passes correct data to Plotly for simple case', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
 
@@ -81,7 +81,7 @@ describe('TracePlots', () => {
 
   test('handles burn-in correctly', () => {
     const burnIn = 1;
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsSingle} burnIn={burnIn} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
 
@@ -101,7 +101,7 @@ describe('TracePlots', () => {
   });
 
   test('handles second chain correctly', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsDual} iterationCount={150} />);
     const plots = screen.getAllByTestId('plotly-plot');
 
@@ -126,7 +126,7 @@ describe('TracePlots', () => {
       acceptedCount: 2, rejectedCount: 0
     }];
 
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={chainsDiffLen} burnIn={0} iterationCount={4} />);
     const plots = screen.getAllByTestId('plotly-plot');
     const xPlotData = JSON.parse(plots[0].querySelector('[data-testid="plot-data"]').textContent);
@@ -143,7 +143,7 @@ describe('TracePlots', () => {
 
   test('displays R-hat values when provided', () => {
     const rHat = { x: 1.05, y: 1.1 };
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsDual} rHat={rHat} iterationCount={150} />);
 
     expect(screen.getByText('(R̂ = 1.05)')).toBeInTheDocument();
@@ -152,14 +152,14 @@ describe('TracePlots', () => {
 
   test('displays infinity symbol for infinite R-hat', () => {
     const rHat = { x: Infinity, y: Infinity };
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsDual} rHat={rHat} iterationCount={150} />);
 
     expect(screen.getAllByText('(R̂ = ∞)')).toHaveLength(2);
   });
 
   test('does not display R-hat values when null', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsSingle} rHat={null} iterationCount={150} />);
 
     expect(screen.getByText('X Trace')).toBeInTheDocument();
@@ -169,7 +169,7 @@ describe('TracePlots', () => {
   test('displays ESS values when provided', () => {
     const rHat = { x: 1.1, y: 1.1 };
     const ess = { x: 100, y: 200 };
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsDual} rHat={rHat} ess={ess} iterationCount={150} />);
 
     expect(screen.getByText('(ESS = 100)')).toBeInTheDocument();
@@ -177,7 +177,7 @@ describe('TracePlots', () => {
   });
 
   test('displays acceptance and rejection counts for single chain', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsSingle} iterationCount={150} />);
 
     expect(screen.getByText(/Acc: 3/i)).toBeInTheDocument();
@@ -185,11 +185,52 @@ describe('TracePlots', () => {
   });
 
   test('displays acceptance and rejection counts for second chain', () => {
-    // eslint-disable-next-line react/prop-types
+     
     render(<TracePlots chains={mockChainsDual} iterationCount={150} />);
 
     expect(screen.getByText(/Acc: 3/i)).toBeInTheDocument();
     expect(screen.getByText(/Acc: 2/i)).toBeInTheDocument();
     expect(screen.getByText(/Rej: 70/i)).toBeInTheDocument();
+  });
+
+  // Test case 19: Fix mock chain shape — acceptedCount field used for rate
+  test('mock chain shape uses acceptedCount and rejectedCount fields', () => {
+    const chains = [{
+      id: 0,
+      samples: [{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }],
+      acceptedCount: 8,
+      rejectedCount: 2,
+    }];
+     
+    render(<TracePlots chains={chains} />);
+    // Acc displays samples.length (3), Rej from rejectedCount (2)
+    expect(screen.getByText(/Acc: 3/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rej: 2/i)).toBeInTheDocument();
+  });
+
+  // Test case 20: Acceptance rate uses acceptedCount
+  test('acceptance rate uses acceptedCount field — 8 accepted / 10 total = 80.0%', () => {
+    const chains = [{
+      id: 0,
+      samples: [],
+      acceptedCount: 8,
+      rejectedCount: 2,
+    }];
+     
+    render(<TracePlots chains={chains} />);
+    expect(screen.getByText(/Rate: 80\.0%/i)).toBeInTheDocument();
+  });
+
+  // Test case 21: Zero-division guard
+  test('acceptance rate shows 0.0% when both acceptedCount and rejectedCount are 0', () => {
+    const chains = [{
+      id: 0,
+      samples: [],
+      acceptedCount: 0,
+      rejectedCount: 0,
+    }];
+     
+    render(<TracePlots chains={chains} />);
+    expect(screen.getByText(/Rate: 0\.0%/i)).toBeInTheDocument();
   });
 });

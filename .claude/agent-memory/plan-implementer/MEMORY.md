@@ -1,0 +1,1 @@
+- [Samplers Comparison Architecture Patterns](project_samplers_comparison.md) — Per-chain error isolation, acceptedCount tracking, removeChain guard, resetChain API, chainIdsKey dep

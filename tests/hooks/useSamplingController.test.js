@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useSamplingController from '../../src/hooks/useSamplingController';
 import { HMCSampler } from '../../src/samplers/HMCSampler';
+import { GibbsSampler } from '../../src/samplers/GibbsSampler';
 import { createContourTrace } from '../../src/utils/plotFunctions';
 
 // Mock plotFunctions
@@ -20,6 +21,15 @@ vi.mock('../../src/samplers/HMCSampler', () => {
   HMCSamplerMock.prototype.setSeed = vi.fn();
   HMCSamplerMock.prototype.step = vi.fn();
   return { HMCSampler: HMCSamplerMock };
+});
+
+// Mock the GibbsSampler class
+vi.mock('../../src/samplers/GibbsSampler', () => {
+  const GibbsSamplerMock = vi.fn();
+  GibbsSamplerMock.prototype.setParams = vi.fn();
+  GibbsSamplerMock.prototype.setSeed = vi.fn();
+  GibbsSamplerMock.prototype.step = vi.fn();
+  return { GibbsSampler: GibbsSamplerMock };
 });
 
 describe('useSamplingController', () => {
@@ -877,8 +887,9 @@ describe('useSamplingController', () => {
           { timeout: 1000 }
         );
 
-        // Verify error state is set
-        expect(result.current.error).toBe('Step execution failed');
+        // Per-chain errors are now captured in chain.error, not the global error field
+        expect(result.current.chains[0].error).toBe('Step execution failed');
+        expect(result.current.error).toBeNull();
         expect(result.current.isRunning).toBe(false);
       });
 
@@ -2192,17 +2203,9 @@ describe('Fast Sampling Mode', () => {
       result.current.setUseFastMode(true);
     });
 
-    // Mock step to throw error on 3rd call
-    let callCount = 0;
+    // Mock step to always throw — this ensures the error persists after all iterations
     HMCSampler.prototype.step.mockImplementation(() => {
-      callCount++;
-      if (callCount === 3) throw new Error('Simulation failed');
-      return {
-        q: { x: 0, y: 0 },
-        p: { x: 0, y: 0 },
-        accepted: true,
-        trajectory: [],
-      };
+      throw new Error('Simulation failed');
     });
 
     act(() => {
@@ -2210,9 +2213,12 @@ describe('Fast Sampling Mode', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.error).toBe('Simulation failed');
+      expect(result.current.isRunning).toBe(false);
     });
 
+    // Per-chain errors are captured in chain.error; global error remains null
+    expect(result.current.chains[0].error).toBe('Simulation failed');
+    expect(result.current.error).toBeNull();
     expect(result.current.isRunning).toBe(false);
   });
 
@@ -2264,5 +2270,265 @@ describe('Fast Sampling Mode', () => {
     expect(result.current.chains[1].samples.length).toBe(0);
     expect(result.current.chains[1].rejectedCount).toBe(5);
     expect(result.current.iterationCount).toBe(5);
+  });
+});
+
+describe('Plan Bug-Fix Tests (test cases 11-18)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+    GibbsSampler.prototype.step.mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+  });
+
+  // Test case 11: addChain() adds to chains array
+  it('addChain() adds to chains array — chains has length 2', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 99, samplerType: 'GIBBS' });
+    });
+
+    expect(result.current.chains).toHaveLength(2);
+    expect(result.current.chains[1].samplerType).toBe('GIBBS');
+  });
+
+  // Test case 12: addChain() creates exactly one ref instance
+  it('addChain() creates exactly one ref instance — samplingChainsRef has two entries after add', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 1 });
+    });
+
+    // The ref map should have exactly 2 entries (chain 0 and chain 1)
+    expect(result.current.chains).toHaveLength(2);
+    // Both chains should be functional (setLogP and step work for both)
+    act(() => {
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Both chains should have accumulated a sample — meaning both refs were created
+    expect(result.current.chains[0].samples).toHaveLength(1);
+    expect(result.current.chains[1].samples).toHaveLength(1);
+  });
+
+  // Test case 13: removeChain() removes correct chain
+  it('removeChain() removes the correct chain — chains has length 1 with remaining id', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 77 });
+    });
+
+    expect(result.current.chains).toHaveLength(2);
+
+    act(() => {
+      result.current.removeChain(77);
+    });
+
+    expect(result.current.chains).toHaveLength(1);
+    expect(result.current.chains[0].id).toBe(0);
+  });
+
+  // Test case 14: removeChain() is blocked while running
+  it('removeChain() is blocked while running — chain is still present', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 1 });
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    expect(result.current.chains).toHaveLength(2);
+
+    // Start a multi-step run (sampleSteps sets isRunning=true)
+    act(() => {
+      result.current.sampleSteps(100);
+    });
+
+    // While running, attempt to remove — should be a no-op
+    act(() => {
+      result.current.removeChain(1);
+    });
+
+    expect(result.current.chains).toHaveLength(2);
+
+    // Wait for run to finish
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 2000,
+    });
+  });
+
+  // Test case 15: setChainConfig() with samplerType change syncs ref
+  it('setChainConfig() with samplerType change syncs ref — ref samplerType equals GIBBS', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setChainConfig(0, { samplerType: 'GIBBS' });
+    });
+
+    expect(result.current.chains[0].samplerType).toBe('GIBBS');
+    // GibbsSampler constructor should have been called for chain 0
+    expect(GibbsSampler).toHaveBeenCalled();
+  });
+
+  // Test case 16: resetChain(id) resets only target chain
+  it('resetChain(id) resets only target chain — other chain samples are unchanged', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 1 });
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    // Sample a few steps so both chains accumulate data
+    act(() => {
+      result.current.sampleSteps(3);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    expect(result.current.chains[0].samples.length).toBeGreaterThan(0);
+    expect(result.current.chains[1].samples.length).toBeGreaterThan(0);
+
+    const chain1SamplesCount = result.current.chains[1].samples.length;
+
+    // Reset only chain 0
+    act(() => {
+      result.current.resetChain(0);
+    });
+
+    // Chain 0 is reset
+    expect(result.current.chains[0].samples).toHaveLength(0);
+    expect(result.current.chains[0].rejectedCount).toBe(0);
+    expect(result.current.chains[0].acceptedCount).toBe(0);
+
+    // Chain 1 is unchanged
+    expect(result.current.chains[1].samples).toHaveLength(chain1SamplesCount);
+  });
+
+  // Test case 17: Multi-chain step() — both chains accumulate samples
+  it('sampleSteps(10) with two chains — both chains accumulate ~10 samples', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 1 });
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    act(() => {
+      result.current.sampleSteps(10);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 2000,
+    });
+
+    expect(result.current.chains[0].samples).toHaveLength(10);
+    expect(result.current.chains[1].samples).toHaveLength(10);
+  });
+
+  // Test case 18: Per-chain error does not stop other chain
+  it('per-chain error in chain 0 does not stop chain 1 from sampling', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ id: 1 });
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    // Chain 0's sampler throws; chain 1 succeeds.
+    // Since both chains share the HMCSampler mock prototype, we need a call counter
+    // to alternate: odd calls throw, even calls succeed.
+    let callCount = 0;
+    HMCSampler.prototype.step.mockImplementation(() => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        // Chain 0 (first call per step) throws
+        throw new Error('logP eval error in chain 0');
+      }
+      // Chain 1 (second call per step) succeeds
+      return {
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      };
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Chain 0 error is captured, not thrown globally
+    expect(result.current.chains[0].error).toBe('logP eval error in chain 0');
+    // Chain 1 still accumulated a sample
+    expect(result.current.chains[1].samples).toHaveLength(1);
+    // Global error should not be set (per-chain errors are isolated)
+    expect(result.current.error).toBeNull();
+  });
+
+  // Test: resetChain exposes the function on the hook
+  it('hook exposes resetChain function', () => {
+    const { result } = renderHook(() => useSamplingController());
+    expect(result.current.resetChain).toBeDefined();
+    expect(typeof result.current.resetChain).toBe('function');
+  });
+
+  // Test: chainErrors map is exposed
+  it('hook exposes chainErrors Map', () => {
+    const { result } = renderHook(() => useSamplingController());
+    expect(result.current.chainErrors).toBeDefined();
+    expect(result.current.chainErrors instanceof Map).toBe(true);
+  });
+
+  // Test: acceptedCount is exposed on chains
+  it('chains expose acceptedCount field', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    expect(typeof result.current.chains[0].acceptedCount).toBe('number');
+    expect(result.current.chains[0].acceptedCount).toBe(1);
   });
 });
