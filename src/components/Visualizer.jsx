@@ -53,30 +53,18 @@ function Visualizer({ contourData, chains, axisLimits }) {
     const color = isPrimary
       ? HMC_SAMPLER.styles.primaryColor
       : HMC_SAMPLER.styles.secondaryColor;
-    const label = `Chain ${index + 1}`;
+    const label = `Chain ${index + 1} (${chain.samplerType})`;
 
     if (chain.samples && chain.samples.length > 0) {
-      if (isPrimary) {
-        traces.push(createSamplesTrace(chain.samples));
-      } else {
-        traces.push(
-          createSamplesTrace(chain.samples, color, `Samples (${label})`)
-        );
-      }
+      traces.push(
+        createSamplesTrace(chain.samples, color, `Samples (${label})`)
+      );
     }
 
     if (chain.trajectory && chain.trajectory.length > 0) {
-      if (isPrimary) {
-        traces.push(createTrajectoryTrace(chain.trajectory));
-      } else {
-        traces.push(
-          createTrajectoryTrace(
-            chain.trajectory,
-            color,
-            `Trajectory (${label})`
-          )
-        );
-      }
+      traces.push(
+        createTrajectoryTrace(chain.trajectory, color, `Trajectory (${label})`)
+      );
     }
   });
 

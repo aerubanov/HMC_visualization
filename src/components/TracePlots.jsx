@@ -21,7 +21,7 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
         index === 0
           ? HMC_SAMPLER.styles.primaryColor
           : HMC_SAMPLER.styles.secondaryColor;
-      const label = `Chain ${index + 1}`;
+      const label = `Chain ${index + 1} (${chain.samplerType})`;
       xTraces.push(
         ...createTracePlotTrace(chain.samples, 'x', burnIn, color, label)
       );

@@ -185,23 +185,6 @@ function Controls({
             >
               <input
                 type="checkbox"
-                id="second-chain-toggle"
-                checked={chains.length > 1}
-                onChange={(e) => {
-                  if (e.target.checked) addChain({ id: 1 });
-                  else if (chains.length > 1) removeChain(chains[1].id);
-                }}
-              />
-              <label htmlFor="second-chain-toggle">Enable Second Chain</label>
-            </div>
-          </div>
-          <div className="control-group">
-            <div
-              className="checkbox-group"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <input
-                type="checkbox"
                 checked={useSeededMode}
                 onChange={(e) => {
                   const en = e.target.checked;
@@ -402,8 +385,30 @@ function Controls({
                 </div>
               </div>
             )}
+
+            {index > 0 && (
+              <div className="control-group">
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%' }}
+                  onClick={() => removeChain(chain.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </section>
         ))}
+
+        <section className="control-section">
+          <button
+            className="btn btn-secondary"
+            style={{ width: '100%' }}
+            onClick={() => addChain()}
+          >
+            Add another chain
+          </button>
+        </section>
 
         <section className="control-section">
           <details>

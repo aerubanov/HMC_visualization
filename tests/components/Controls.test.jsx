@@ -394,6 +394,86 @@ describe('Controls Component', () => {
     });
   });
 
+  describe('Chain Management UI', () => {
+    it('should not render "Enable Second Chain" checkbox', () => {
+      render(<Controls {...mockProps} />);
+      expect(
+        screen.queryByLabelText(/enable second chain/i)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/enable second chain/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render "Add another chain" button', () => {
+      render(<Controls {...mockProps} />);
+      expect(
+        screen.getByRole('button', { name: /add another chain/i })
+      ).toBeInTheDocument();
+    });
+
+    it('clicking "Add another chain" calls addChain', () => {
+      render(<Controls {...mockProps} />);
+      const addBtn = screen.getByRole('button', { name: /add another chain/i });
+      fireEvent.click(addBtn);
+      expect(mockProps.addChain).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not render a Remove button when only one chain is present', () => {
+      render(<Controls {...mockProps} />);
+      expect(
+        screen.queryByRole('button', { name: /^remove$/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render a Remove button on the second chain but not the first', () => {
+      const twoChains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 0, y: 0 },
+          seed: null,
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 1, y: 1 },
+          seed: null,
+        },
+      ];
+      render(<Controls {...mockProps} chains={twoChains} />);
+      const removeButtons = screen.getAllByRole('button', {
+        name: /^remove$/i,
+      });
+      expect(removeButtons).toHaveLength(1);
+    });
+
+    it('clicking Remove calls removeChain with the correct chain id', () => {
+      const twoChains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 0, y: 0 },
+          seed: null,
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 1, y: 1 },
+          seed: null,
+        },
+      ];
+      render(<Controls {...mockProps} chains={twoChains} />);
+      const removeBtn = screen.getByRole('button', { name: /^remove$/i });
+      fireEvent.click(removeBtn);
+      expect(mockProps.removeChain).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe('Sampler Selection', () => {
     it('should show correct parameters for HMC', () => {
       render(<Controls {...mockProps} samplerType="HMC" />);

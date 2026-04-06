@@ -6,3 +6,4 @@ Interactive React app for visualizing HMC and Gibbs sampling algorithms side-by-
 
 - [Samples Comparison](plans/sampler-comparison-plan.md) — feature to use different sampler for different chains to compare it.
 - [Sampler Comparison Fixes](plans/sampler-comparison-fixes-plan.md) — bug fixes and quality improvements for the samplers-comparison branch (race conditions, acceptance rate formula, test coverage).
+- [Chain UI Improvements](plans/chain-ui-improvements-plan.md) — replace "Enable Second Chain" checkbox with Add/Remove buttons per chain; include sampler type in plot legends.
