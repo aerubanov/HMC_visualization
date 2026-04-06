@@ -245,7 +245,7 @@ export default function useSamplingController() {
     );
   }, []);
 
-  const addChain = useCallback((config) => {
+  const addChain = useCallback((config = {}) => {
     const id = config.id || Date.now();
     const samplerType = config.samplerType || 'HMC';
     const newConfig = {

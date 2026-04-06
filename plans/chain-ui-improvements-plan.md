@@ -45,3 +45,23 @@ Improve chain management UX and plot readability in the samplers-comparison mode
 ### `tests/components/TracePlots.test.jsx`
 
 9. **Trace label includes sampler type** — with two chains of different types, rendered trace labels contain the sampler type string.
+
+---
+
+## Bug Fix: `addChain()` called with no arguments throws
+
+### Root Cause
+
+`addChain` in `src/hooks/useSamplingController.js` has no default value for its `config` parameter. The button in `Controls.jsx` calls `addChain()` with no arguments, so `config` is `undefined` and `config.id` throws a `TypeError`, silently swallowing the click.
+
+### Fix
+
+`src/hooks/useSamplingController.js` — add `config = {}` as the default parameter to `addChain`.
+
+### Regression Test Cases
+
+### `tests/hooks/useSamplingController.test.js`
+
+10. **addChain() with no arguments does not throw** — call `addChain()` with no arguments; verify no error is thrown and `chains` grows to length 2.
+11. **addChain() with no arguments assigns a valid id** — the new chain has a numeric `id` (Date.now()-based).
+12. **addChain({ samplerType: 'GIBBS' }) still works** — existing call signature with a config object correctly creates a Gibbs chain.

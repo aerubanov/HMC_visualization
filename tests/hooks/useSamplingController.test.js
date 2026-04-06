@@ -2531,4 +2531,40 @@ describe('Plan Bug-Fix Tests (test cases 11-18)', () => {
     expect(typeof result.current.chains[0].acceptedCount).toBe('number');
     expect(result.current.chains[0].acceptedCount).toBe(1);
   });
+
+  // Regression test 10: addChain() with no arguments does not throw
+  it('addChain() with no arguments does not throw and chains grows to length 2', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    expect(() => {
+      act(() => {
+        result.current.addChain();
+      });
+    }).not.toThrow();
+
+    expect(result.current.chains).toHaveLength(2);
+  });
+
+  // Regression test 11: addChain() with no arguments assigns a numeric id
+  it('addChain() with no arguments assigns a numeric id', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain();
+    });
+
+    expect(typeof result.current.chains[1].id).toBe('number');
+  });
+
+  // Regression test 12: addChain({ samplerType: 'GIBBS' }) still works correctly
+  it('addChain({ samplerType: "GIBBS" }) creates a Gibbs chain', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.addChain({ samplerType: 'GIBBS' });
+    });
+
+    expect(result.current.chains).toHaveLength(2);
+    expect(result.current.chains[1].samplerType).toBe('GIBBS');
+  });
 });
