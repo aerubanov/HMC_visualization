@@ -1,9 +1,11 @@
 ---
 name: plan-with-files
-description: Work plan files for a project and/or individual feature implementation. Use it when asked to create or update a plan file.
+description: Create plan files for a project and/or individual feature implementation. Use it when asked to create or update a plan file.
 ---
 
 Before writing any code, do research and create a work plan in a separate file in the `plans/` directory.
+
+Ask me any question you need answered to design it well
 
 - Use plans/ImplementationPlan.md to get general idea about project and its features.
 - ImplementationPlan should be updated with new features as they are planned, but it should not contain detailed implementation steps. It should be more like a table of contents for the actual feature plans.

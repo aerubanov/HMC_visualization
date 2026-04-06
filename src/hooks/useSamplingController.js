@@ -34,8 +34,8 @@ export default function useSamplingController() {
   const [isRunning, setIsRunning] = useState(false);
   const [iterationCount, setIterationCount] = useState(0);
   const [error, setError] = useState(null);
-  // Per-chain error map: id → message
-  const [chainErrors, setChainErrors] = useState(new Map());
+  // Per-chain error object: id → message
+  const [chainErrors, setChainErrors] = useState({});
   const [contourData, setContourData] = useState(null);
 
   // Fast sampling mode
@@ -111,7 +111,7 @@ export default function useSamplingController() {
         return {
           ...c,
           samples: [...impl.samples],
-          trajectory: [...impl.trajectory],
+          trajectory: impl.trajectory.map((p) => ({ ...p })),
           rejectedCount: impl.rejectedCount,
           acceptedCount: impl.acceptedCount,
           error: impl.error,
@@ -128,7 +128,7 @@ export default function useSamplingController() {
     setRHat(null);
     setEss(null);
     setHistogramData({ samples: [] });
-    setChainErrors(new Map());
+    setChainErrors({});
     syncChainsState();
   }, [syncChainsState]);
 
@@ -300,9 +300,8 @@ export default function useSamplingController() {
       })
     );
     setChainErrors((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
+      const { [id]: _, ...rest } = prev;
+      return rest;
     });
   }, []);
 
@@ -325,11 +324,11 @@ export default function useSamplingController() {
               );
             }
             // Collect per-chain errors after batch
-            const newErrors = new Map();
+            const newErrors = {};
             samplingChainsRef.current.forEach((chain, id) => {
-              if (chain.error) newErrors.set(id, chain.error);
+              if (chain.error) newErrors[id] = chain.error;
             });
-            if (newErrors.size > 0) setChainErrors(newErrors);
+            setChainErrors(newErrors);
             syncChainsState();
             setIterationCount((prev) => prev + n);
             setIsRunning(false);
@@ -348,11 +347,11 @@ export default function useSamplingController() {
             chain.step(logpInstanceRef.current)
           );
           // Collect per-chain errors
-          const newErrors = new Map();
+          const newErrors = {};
           samplingChainsRef.current.forEach((chain, id) => {
-            if (chain.error) newErrors.set(id, chain.error);
+            if (chain.error) newErrors[id] = chain.error;
           });
-          if (newErrors.size > 0) setChainErrors(newErrors);
+          setChainErrors(newErrors);
           syncChainsState();
           setIterationCount((prev) => prev + 1);
           stepsCompleted++;

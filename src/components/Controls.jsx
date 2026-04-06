@@ -211,6 +211,7 @@ function Controls({
             }}
           >
             <h3 className="section-title">Chain {index + 1} Configuration</h3>
+            {/* TODO: display per-chain error from chainErrors prop */}
 
             <div className="control-group">
               <label

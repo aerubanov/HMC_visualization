@@ -2505,11 +2505,12 @@ describe('Plan Bug-Fix Tests (test cases 11-18)', () => {
     expect(typeof result.current.resetChain).toBe('function');
   });
 
-  // Test: chainErrors map is exposed
-  it('hook exposes chainErrors Map', () => {
+  // Test: chainErrors object is exposed
+  it('hook exposes chainErrors plain object', () => {
     const { result } = renderHook(() => useSamplingController());
     expect(result.current.chainErrors).toBeDefined();
-    expect(result.current.chainErrors instanceof Map).toBe(true);
+    expect(result.current.chainErrors instanceof Map).toBe(false);
+    expect(typeof result.current.chainErrors).toBe('object');
   });
 
   // Test: acceptedCount is exposed on chains
@@ -2566,5 +2567,190 @@ describe('Plan Bug-Fix Tests (test cases 11-18)', () => {
 
     expect(result.current.chains).toHaveLength(2);
     expect(result.current.chains[1].samplerType).toBe('GIBBS');
+  });
+});
+
+describe('Code Quality Fix Tests', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+    });
+  });
+
+  // Test 1: Trajectory deep-copy — mutating the ref's trajectory does not affect React state
+  it('trajectory in React state is deep-copied from ref trajectory', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    // Keep a reference to the trajectory array that the mock returns
+    const mockTrajectoryPoint = { x: 0, y: 0 };
+    const mockTrajectory = [mockTrajectoryPoint, { x: 1, y: 1 }];
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: mockTrajectory,
+    });
+
+    act(() => {
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Capture the React state trajectory point before mutation
+    const statePoint = result.current.chains[0].trajectory[0];
+    expect(statePoint).toEqual({ x: 0, y: 0 });
+
+    // Mutate the original mock trajectory point (simulating in-place sampler mutation)
+    mockTrajectoryPoint.x = 999;
+
+    // React state point must be unaffected (deep copy)
+    expect(result.current.chains[0].trajectory[0].x).toBe(0);
+    expect(statePoint.x).toBe(0);
+  });
+
+  // Test 2: Samples sync after accepted step
+  it('samples in React state are populated after an accepted step', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 2.5, y: -1.3 },
+      p: { x: 0.1, y: 0.2 },
+      accepted: true,
+      trajectory: [
+        { x: 0, y: 0 },
+        { x: 2.5, y: -1.3 },
+      ],
+    });
+
+    act(() => {
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    expect(result.current.chains[0].samples).toHaveLength(1);
+    expect(result.current.chains[0].samples[0]).toEqual({ x: 2.5, y: -1.3 });
+  });
+
+  // Test 3: Counters (acceptedCount/rejectedCount) sync correctly after mixed steps
+  it('acceptedCount and rejectedCount sync correctly after mixed accept/reject steps', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    const mockSequence = [
+      {
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      },
+      {
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: false,
+        trajectory: [{ x: 0.5, y: 0.5 }],
+      },
+      {
+        q: { x: 2, y: 2 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 2, y: 2 }],
+      },
+    ];
+    let callIndex = 0;
+    HMCSampler.prototype.step.mockImplementation(
+      () => mockSequence[callIndex++]
+    );
+
+    act(() => {
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    act(() => {
+      result.current.sampleSteps(3);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    expect(result.current.chains[0].acceptedCount).toBe(2);
+    expect(result.current.chains[0].rejectedCount).toBe(1);
+  });
+
+  // Test 4: Stale error is cleared after a successful step
+  it('stale chainError for a chain is cleared after a successful step', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setLogP('-(x^2 + y^2)/2');
+    });
+
+    // First step throws to set an error
+    HMCSampler.prototype.step.mockImplementationOnce(() => {
+      throw new Error('temporary error');
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Verify an error was recorded on the chain
+    expect(result.current.chains[0].error).toBe('temporary error');
+
+    // Second step succeeds
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [{ x: 1, y: 1 }],
+    });
+
+    act(() => {
+      result.current.step();
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // chainErrors should no longer contain this chain's id after successful step
+    expect(result.current.chainErrors[0]).toBeUndefined();
+    // The chain's error field should also be cleared
+    expect(result.current.chains[0].error).toBeNull();
+  });
+
+  // Test 5: chainErrors is a plain object, not a Map instance
+  it('chainErrors is a plain object (not a Map instance)', () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    expect(result.current.chainErrors).toBeDefined();
+    expect(result.current.chainErrors instanceof Map).toBe(false);
+    expect(typeof result.current.chainErrors).toBe('object');
+    // Verify it behaves like a plain object
+    expect(Object.keys(result.current.chainErrors)).toEqual([]);
   });
 });
