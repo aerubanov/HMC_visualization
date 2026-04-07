@@ -1,4 +1,5 @@
 import './Visualizer.css';
+import { useRef } from 'react';
 import Plot from 'react-plotly.js';
 import PropTypes from 'prop-types';
 import { GENERAL, HMC_SAMPLER } from '../utils/plotConfig.json';
@@ -7,7 +8,14 @@ import {
   createSamplesTrace,
 } from '../utils/plotFunctions';
 
-function Visualizer({ contourData, chains, axisLimits }) {
+function Visualizer({
+  contourData,
+  chains,
+  axisLimits,
+  isRecording = false,
+  captureFrame = () => {},
+}) {
+  const graphDivRef = useRef(null);
   if (!contourData) {
     return (
       <div className="visualizer">
@@ -94,6 +102,12 @@ function Visualizer({ contourData, chains, axisLimits }) {
         config={GENERAL.config}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler={true}
+        onInitialized={(_, graphDiv) => {
+          graphDivRef.current = graphDiv;
+        }}
+        onUpdate={() => {
+          if (isRecording) captureFrame(graphDivRef.current);
+        }}
       />
     </div>
   );
@@ -103,6 +117,8 @@ Visualizer.propTypes = {
   contourData: PropTypes.object,
   chains: PropTypes.array,
   axisLimits: PropTypes.object,
+  isRecording: PropTypes.bool,
+  captureFrame: PropTypes.func,
 };
 
 export default Visualizer;

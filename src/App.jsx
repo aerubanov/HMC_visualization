@@ -4,6 +4,7 @@ import Visualizer from './components/Visualizer';
 import TracePlots from './components/TracePlots';
 import HistogramPlots from './components/HistogramPlots';
 import useSamplingController from './hooks/useSamplingController';
+import useRecording from './hooks/useRecording';
 
 function App() {
   const {
@@ -31,6 +32,14 @@ function App() {
     setUseFastMode,
   } = useSamplingController();
 
+  const {
+    isRecording,
+    isEncoding,
+    startRecording,
+    stopRecording,
+    captureFrame,
+  } = useRecording();
+
   return (
     <div className="App">
       <div className="App-sidebar">
@@ -53,6 +62,10 @@ function App() {
           setAxisLimits={setAxisLimits}
           useFastMode={useFastMode}
           setUseFastMode={setUseFastMode}
+          isRecording={isRecording}
+          isEncoding={isEncoding}
+          startRecording={startRecording}
+          stopRecording={stopRecording}
         />
       </div>
       <div className="App-main">
@@ -91,6 +104,8 @@ function App() {
           contourData={contourData}
           chains={chains}
           axisLimits={axisLimits}
+          isRecording={isRecording}
+          captureFrame={captureFrame}
         />
         <div className="trace-plots-section">
           {contourData && (
