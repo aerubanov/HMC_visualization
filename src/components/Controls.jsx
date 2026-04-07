@@ -26,6 +26,7 @@ function Controls({
   const [draftLogP, setDraftLogP] = useState(logP);
   const [localPositions, setLocalPositions] = useState({});
   const [localSeeds, setLocalSeeds] = useState({});
+  const [localSeedStrings, setLocalSeedStrings] = useState({});
   const [localBurnIn, setLocalBurnIn] = useState(burnIn);
   const [localAxisLimits, setLocalAxisLimits] = useState(
     axisLimits || { xMin: -5, xMax: 5, yMin: -5, yMax: 5 }
@@ -58,8 +59,13 @@ function Controls({
       lSeed[c.id] = c.seed !== null ? c.seed : 42 + c.id;
       if (c.seed !== null) anySeeded = true;
     });
+    const lSeedStr = {};
+    chains.forEach((c) => {
+      lSeedStr[c.id] = String(lSeed[c.id]);
+    });
     setLocalPositions(lPos);
     setLocalSeeds(lSeed);
+    setLocalSeedStrings(lSeedStr);
     setUseSeededMode(anySeeded);
     setPrevChains(chains);
   }
@@ -163,20 +169,6 @@ function Controls({
                 if (!isNaN(b) && b >= 0) setBurnIn(b);
               }}
             />
-          </div>
-          <div className="control-group">
-            <div
-              className="checkbox-group"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <input
-                id="fast-mode-toggle"
-                type="checkbox"
-                checked={useFastMode}
-                onChange={(e) => setUseFastMode(e.target.checked)}
-              />
-              <label htmlFor="fast-mode-toggle">Fast Sampling Mode</label>
-            </div>
           </div>
           <div className="control-group">
             <div
@@ -360,30 +352,25 @@ function Controls({
 
             {useSeededMode && (
               <div className="control-group">
-                <label className="control-label">Seed Configuration</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="number"
-                    className="control-input"
-                    style={{ flex: 1 }}
-                    value={localSeeds[chain.id] || ''}
-                    onChange={(e) => {
-                      const s = parseInt(e.target.value);
+                <label className="control-label">Seed</label>
+                <input
+                  type="number"
+                  className="control-input"
+                  style={{ width: '100%' }}
+                  value={localSeedStrings[chain.id] ?? ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setLocalSeedStrings((prev) => ({
+                      ...prev,
+                      [chain.id]: raw,
+                    }));
+                    const s = parseInt(raw);
+                    if (!isNaN(s)) {
                       setLocalSeeds((prev) => ({ ...prev, [chain.id]: s }));
                       setChainConfig(chain.id, { seed: s });
-                    }}
-                  />
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      const s = Math.floor(Math.random() * 1000000);
-                      setLocalSeeds((prev) => ({ ...prev, [chain.id]: s }));
-                      setChainConfig(chain.id, { seed: s });
-                    }}
-                  >
-                    ��
-                  </button>
-                </div>
+                    }
+                  }}
+                />
               </div>
             )}
 
@@ -478,6 +465,21 @@ function Controls({
           >
             Reset Sampler
           </button>
+
+          <div className="control-group" style={{ marginTop: '8px' }}>
+            <div
+              className="checkbox-group"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <input
+                id="fast-mode-toggle"
+                type="checkbox"
+                checked={useFastMode}
+                onChange={(e) => setUseFastMode(e.target.checked)}
+              />
+              <label htmlFor="fast-mode-toggle">Fast Sampling Mode</label>
+            </div>
+          </div>
 
           {isRunning && useFastMode && (
             <div
