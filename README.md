@@ -20,6 +20,19 @@ Run simulations, explore phase space trajectories, and analyze convergence with 
   - **Burn-in Control**: Specify initial samples to discard to ensure analysis on the stationary distribution.
 - **Reproducibility**: Seeded random number generation for consistent results.
 
+## Architecture
+
+![Component Architecture](architecture.png)
+
+The application is built around a central `useSamplingController` hook that bridges React's state model with OOP sampling objects:
+
+- **UI Layer** (`App.jsx`, `Controls`, `Visualizer`, `TracePlots`, `HistogramPlots`) — pure display components that receive state and callbacks as props. All plots use Plotly.js.
+- **`useSamplingController` (custom hook)** — single source of truth for all React state. Holds chain configs, iteration counters, contour data, and statistics. Maintains `SamplingChain` OOP instances in refs (not state) to avoid re-renders during hot sampling loops. Exposes callbacks (`setLogP`, `sampleSteps`, `addChain`, etc.) to the UI.
+- **Sampling Engine** — `SamplingChain` wraps a single Markov chain: instantiates the concrete sampler, accumulates samples and trajectory points, and delegates each step. `SamplerType?` decides between `HMCSampler` (leapfrog integrator + Metropolis acceptance) and `GibbsSampler` (coordinate-wise 1D slice sampling, always accepts).
+- **Math / Utilities** — `Logp` (mathEngine.js) parses user-supplied log-probability strings with math.js and computes symbolic gradients. `statistics.js` provides Gelman-Rubin R-hat and ESS. `plotFunctions.js` generates Plotly traces.
+
+The key design decision is the **ref-state duality**: `SamplingChain` instances live in a `useRef` Map and mutate freely during sampling; after each step `syncChainsState()` copies trajectory, samples, and counters into React state to trigger a render.
+
 ## Prerequisites
 
 - **Node.js** (v18 or higher)
