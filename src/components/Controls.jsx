@@ -1,851 +1,535 @@
 import './Controls.css';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { useState, useEffect } from 'react';
 import { PREDEFINED_FUNCTIONS } from '../utils/predefinedFunctions';
 
 function Controls({
   logP,
-  params,
-  initialPosition,
-  iterationCount,
-  // acceptedCount,
-  // rejectedCount,
+  chains,
   isRunning,
   error,
-  seed,
-  useSeededMode,
-  useFastMode,
   setLogP,
-  setParams,
-  setInitialPosition,
+  setChainConfig,
+  addChain,
+  removeChain,
   step,
   sampleSteps,
   reset,
-  setSeed,
-  useSecondChain,
-  initialPosition2,
-  // acceptedCount2,
-  // rejectedCount2,
-  seed2,
-  setUseSecondChain,
-  setInitialPosition2,
-  setSeed2,
   burnIn,
   setBurnIn,
   axisLimits,
   setAxisLimits,
+  useFastMode,
   setUseFastMode,
-  samplerType,
-  setSamplerType,
 }) {
-  const [nSteps, setNSteps] = useState(params.steps || 10);
+  const [nSteps, setNSteps] = useState(10);
   const [draftLogP, setDraftLogP] = useState(logP);
-  const [localX, setLocalX] = useState(initialPosition.x);
-  const [localY, setLocalY] = useState(initialPosition.y);
-  const [localSeed, setLocalSeed] = useState(seed || 42);
-
+  const [localPositions, setLocalPositions] = useState({});
+  const [localSeeds, setLocalSeeds] = useState({});
+  const [localSeedStrings, setLocalSeedStrings] = useState({});
+  const [localBurnIn, setLocalBurnIn] = useState(burnIn);
   const [localAxisLimits, setLocalAxisLimits] = useState(
     axisLimits || { xMin: -5, xMax: 5, yMin: -5, yMax: 5 }
   );
+  const [useSeededMode, setUseSeededMode] = useState(false);
 
-  // Second chain local state
-  const [localX2, setLocalX2] = useState(initialPosition2?.x ?? 1);
-  const [localY2, setLocalY2] = useState(initialPosition2?.y ?? 1);
-  const [localSeed2, setLocalSeed2] = useState(seed2 || 43);
+  const [prevLogP, setPrevLogP] = useState(logP);
+  const [prevBurnIn, setPrevBurnIn] = useState(burnIn);
+  const [prevAxisLimits, setPrevAxisLimits] = useState(axisLimits);
+  const [prevChains, setPrevChains] = useState(chains);
 
-  // Burn-in local state
-  const [localBurnIn, setLocalBurnIn] = useState(burnIn);
-
-  // Sync draft with prop when it changes externally (e.g., on reset)
-  useEffect(() => {
+  if (logP !== prevLogP) {
     setDraftLogP(logP);
-  }, [logP]);
-
-  // Sync local position state with props
-  useEffect(() => {
-    setLocalX(initialPosition.x);
-    setLocalY(initialPosition.y);
-  }, [initialPosition]);
-
-  // Sync second chain position state with props
-  useEffect(() => {
-    if (initialPosition2) {
-      setLocalX2(initialPosition2.x);
-      setLocalY2(initialPosition2.y);
-    }
-  }, [initialPosition2]);
-
-  // Sync burn-in state with props
-  useEffect(() => {
+    setPrevLogP(logP);
+  }
+  if (burnIn !== prevBurnIn) {
     setLocalBurnIn(burnIn);
-  }, [burnIn]);
+    setPrevBurnIn(burnIn);
+  }
+  if (axisLimits !== prevAxisLimits) {
+    setLocalAxisLimits(axisLimits);
+    setPrevAxisLimits(axisLimits);
+  }
+  if (chains !== prevChains) {
+    const lPos = {};
+    const lSeed = {};
+    let anySeeded = false;
+    chains.forEach((c) => {
+      lPos[c.id] = c.initialPosition;
+      lSeed[c.id] = c.seed !== null ? c.seed : 42 + c.id;
+      if (c.seed !== null) anySeeded = true;
+    });
+    const lSeedStr = {};
+    chains.forEach((c) => {
+      lSeedStr[c.id] = String(lSeed[c.id]);
+    });
+    setLocalPositions(lPos);
+    setLocalSeeds(lSeed);
+    setLocalSeedStrings(lSeedStr);
+    setUseSeededMode(anySeeded);
+    setPrevChains(chains);
+  }
 
-  // Sync axis limits with props
-  useEffect(() => {
-    if (axisLimits) {
-      setLocalAxisLimits(axisLimits);
-    }
-  }, [axisLimits]);
-
-  const handleLogPChange = (e) => {
-    setDraftLogP(e.target.value);
-  };
-
-  const handleApplyLogP = () => {
-    setLogP(draftLogP);
-  };
-
-  // Check if there are unsaved changes
+  const handleApplyLogP = () => setLogP(draftLogP);
   const hasUnsavedChanges = draftLogP !== logP;
 
-  const handleParamChange = (key, value) => {
-    setParams({ [key]: parseFloat(value) });
-  };
-
-  const handlePositionChange = (axis, value) => {
-    setInitialPosition({ ...initialPosition, [axis]: parseFloat(value) || 0 });
-  };
-
-  const handleSampleSteps = () => {
-    sampleSteps(nSteps);
-  };
-
-  const handleSeedToggle = (e) => {
-    const enabled = e.target.checked;
-
-    if (enabled) {
-      // If enabling, set the seed (if not already set, use localSeed)
-      if (seed === null) {
-        setSeed(localSeed);
-      }
-      // If seed is already set, no need to do anything, seeded mode is implied by seed != null
-    } else {
-      // If disabling, set seed to null
-      setSeed(null);
-    }
-  };
-
-  const handleSeedChange = (e) => {
-    const value = parseInt(e.target.value, 10);
-    setLocalSeed(value);
-    if (useSeededMode) {
-      setSeed(value);
-    }
-  };
-
-  const handleGenerateRandomSeed = () => {
-    const newSeed = Math.floor(Math.random() * 1000000);
-    setLocalSeed(newSeed);
-    setSeed(newSeed);
-  };
-
-  // Second chain handlers
-  const handleSecondChainToggle = (e) => {
-    setUseSecondChain(e.target.checked);
-  };
-
-  const handlePosition2Change = (axis, value) => {
-    setInitialPosition2({
-      ...initialPosition2,
-      [axis]: parseFloat(value) || 0,
-    });
-  };
-
-  const handleSeed2Change = (e) => {
-    const value = parseInt(e.target.value, 10);
-    setLocalSeed2(value);
-    if (useSeededMode) {
-      setSeed2(value);
-    }
-  };
-
-  const handleGenerateRandomSeed2 = () => {
-    const newSeed = Math.floor(Math.random() * 1000000);
-    setLocalSeed2(newSeed);
-    setSeed2(newSeed);
-  };
-
-  const handleBurnInChange = (e) => {
-    const value = parseInt(e.target.value, 10);
-    setLocalBurnIn(value);
-    if (!isNaN(value) && value >= 0) {
-      setBurnIn(value);
-    }
-  };
-
-  const handleAxisLimitChange = (key, value) => {
+  const handleAxisLimitChange = (key, value) =>
     setLocalAxisLimits((prev) => ({ ...prev, [key]: value }));
-  };
-
   const handleAxisLimitBlur = (key) => {
     const val = parseFloat(localAxisLimits[key]);
-    if (!isNaN(val)) {
-      setAxisLimits({ [key]: val });
-    } else {
-      // Revert to valid prop value if invalid
-      setLocalAxisLimits((prev) => ({ ...prev, [key]: axisLimits[key] }));
-    }
+    if (!isNaN(val)) setAxisLimits({ [key]: val });
+    else setLocalAxisLimits((prev) => ({ ...prev, [key]: axisLimits[key] }));
   };
 
-  // const acceptanceRate =
-  //   iterationCount > 0
-  //     ? ((acceptedCount / iterationCount) * 100).toFixed(1)
-  //     : '0.0';
-
-  // const acceptanceRate2 =
-  //   useSecondChain && iterationCount > 0
-  //     ? ((acceptedCount2 / iterationCount) * 100).toFixed(1)
-  //     : '0.0';
+  const handlePosChange = (id, axis, value) => {
+    const val = parseFloat(value);
+    if (!isNaN(val)) {
+      const current = chains.find((c) => c.id === id).initialPosition;
+      setChainConfig(id, { initialPosition: { ...current, [axis]: val } });
+    }
+  };
 
   return (
     <div className="controls">
       <div className="controls-header">
         <h1 className="controls-title">HMC Sampler</h1>
-        <p className="controls-subtitle">
-          Hamiltonian Monte Carlo Visualization
-        </p>
+        <p className="controls-subtitle">Comparison Mode</p>
       </div>
 
       <div className="controls-content">
-        {/* Probability Function */}
+        {/* LogP Section */}
         <section className="control-section">
           <label htmlFor="logp-input" className="control-label">
-            Probability Function (unnormalized)
+            Probability Function
           </label>
           <div className="textarea-with-button">
             <textarea
               id="logp-input"
-              className="control-textarea"
+              className="control-input"
+              style={{ width: '100%', marginBottom: '10px' }}
               placeholder="e.g., exp(-(x^2 + y^2)/2)"
               value={draftLogP}
-              onChange={handleLogPChange}
+              onChange={(e) => setDraftLogP(e.target.value)}
               rows={3}
             />
-
-            <div
-              className="predefined-select-container"
-              style={{ marginTop: '0.5rem' }}
+            <label htmlFor="predefined-select" className="control-sublabel">
+              Pre-defined:
+            </label>
+            <select
+              id="predefined-select"
+              className="control-select"
+              style={{ width: '100%', marginBottom: '10px', padding: '6px' }}
+              onChange={(e) => e.target.value && setDraftLogP(e.target.value)}
+              defaultValue=""
             >
-              <label
-                htmlFor="predefined-select"
-                className="control-sublabel"
-                style={{
-                  fontSize: '0.85rem',
-                  color: '#666',
-                  marginRight: '0.5rem',
-                }}
-              >
-                Pre-defined:
-              </label>
-              <select
-                id="predefined-select"
-                className="control-select"
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setDraftLogP(e.target.value);
-                  }
-                }}
-                defaultValue=""
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd',
-                  fontSize: '0.9rem',
-                  maxWidth: '200px',
-                }}
-              >
-                <option value="" disabled>
-                  Select a function...
+              <option value="" disabled>
+                Select pre-defined...
+              </option>
+              {PREDEFINED_FUNCTIONS.map((f) => (
+                <option key={f.label} value={f.value}>
+                  {f.label}
                 </option>
-                {PREDEFINED_FUNCTIONS.map((func) => (
-                  <option key={func.label} value={func.value}>
-                    {func.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+              ))}
+            </select>
             <button
               className="btn btn-apply"
               onClick={handleApplyLogP}
               disabled={!hasUnsavedChanges || !draftLogP.trim()}
-              title="Apply the expression"
             >
               {hasUnsavedChanges ? '✓ Apply' : 'Applied'}
             </button>
+            {error && (
+              <div
+                className="error-message"
+                style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}
+              >
+                {error}
+              </div>
+            )}
           </div>
-          <p className="control-hint">
-            Enter an unnormalized probability expression in terms of x and y.
-            Click &apos;Apply&apos; to update the visualization.
-          </p>
         </section>
 
-        {/* Sampler Selection */}
+        {/* Global Settings */}
         <section className="control-section">
-          <label htmlFor="sampler-select" className="control-label">
-            Sampler Type
-          </label>
-          <select
-            id="sampler-select"
-            className="control-select"
-            value={samplerType}
-            onChange={(e) => setSamplerType(e.target.value)}
-            disabled={isRunning}
-            style={{ width: '100%', padding: '8px', marginBottom: '1rem' }}
-          >
-            <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
-            <option value="GIBBS">Gibbs Sampling</option>
-          </select>
-        </section>
-
-        {/* Sampler Parameters */}
-        <section className="control-section">
-          <h3 className="section-title">Sampler Parameters</h3>
-
-          {samplerType === 'HMC' ? (
-            <>
-              <div className="control-group">
-                <label htmlFor="epsilon-input" className="control-label">
-                  Epsilon (ε) - Step Size
-                </label>
-                <input
-                  id="epsilon-input"
-                  type="number"
-                  className="control-input"
-                  step="0.001"
-                  min="0.001"
-                  value={params.epsilon}
-                  onChange={(e) => handleParamChange('epsilon', e.target.value)}
-                />
-              </div>
-
-              <div className="control-group">
-                <label htmlFor="l-input" className="control-label">
-                  L - Leapfrog Steps
-                </label>
-                <input
-                  id="l-input"
-                  type="number"
-                  className="control-input"
-                  step="1"
-                  min="1"
-                  value={params.L}
-                  onChange={(e) => handleParamChange('L', e.target.value)}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="control-group">
-              <label htmlFor="w-input" className="control-label">
-                Slice Width (w)
-              </label>
-              <input
-                id="w-input"
-                type="number"
-                className="control-input"
-                step="0.1"
-                min="0.01"
-                value={params.w !== undefined ? params.w : 1.0}
-                onChange={(e) => handleParamChange('w', e.target.value)}
-              />
-            </div>
-          )}
-
+          <h3 className="section-title">Global Settings</h3>
           <div className="control-group">
-            <label htmlFor="burnin-input" className="control-label">
+            <label htmlFor="burn-in-input" className="control-label">
               Burn-in Samples
             </label>
             <input
-              id="burnin-input"
+              id="burn-in-input"
               type="number"
               className="control-input"
-              step="1"
               min="0"
+              step="1"
               value={localBurnIn}
-              onChange={handleBurnInChange}
+              onChange={(e) => {
+                const b = parseInt(e.target.value);
+                setLocalBurnIn(b);
+                if (!isNaN(b) && b >= 0) setBurnIn(b);
+              }}
             />
           </div>
-
-          {/* Random Seed */}
           <div className="control-group">
-            <div className="checkbox-group">
+            <div
+              className="checkbox-group"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
               <input
-                id="seed-toggle"
                 type="checkbox"
                 checked={useSeededMode}
-                onChange={handleSeedToggle}
+                onChange={(e) => {
+                  const en = e.target.checked;
+                  chains.forEach((c) =>
+                    setChainConfig(c.id, {
+                      seed: en ? localSeeds[c.id] || 42 : null,
+                    })
+                  );
+                }}
               />
-              <label htmlFor="seed-toggle" className="control-label">
-                Use Random Seed (Reproducible)
-              </label>
+              <label>Use Random Seed</label>
             </div>
           </div>
-
-          {useSeededMode && (
-            <>
-              <div className="control-group">
-                <label htmlFor="seed-input" className="control-label">
-                  Seed Value
-                </label>
-                <input
-                  id="seed-input"
-                  type="number"
-                  className="control-input"
-                  step="1"
-                  value={localSeed}
-                  onChange={handleSeedChange}
-                />
-              </div>
-
-              <div className="control-group">
-                <button
-                  className="btn btn-secondary"
-                  onClick={handleGenerateRandomSeed}
-                  disabled={isRunning}
-                >
-                  🎲 Generate Random Seed
-                </button>
-              </div>
-            </>
-          )}
         </section>
 
-        {/* Initial Position */}
-        <section className="control-section">
-          <h3 className="section-title">Initial Position</h3>
-
-          <div className="control-row">
-            <div className="control-group">
-              <label htmlFor="x-input" className="control-label">
-                X
-              </label>
-              <input
-                id="x-input"
-                type="text"
-                className="control-input"
-                value={localX}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setLocalX(val);
-                  if (val !== '' && val !== '-' && !isNaN(val)) {
-                    handlePositionChange('x', val);
-                  }
-                }}
-                onBlur={() => {
-                  if (localX === '' || localX === '-' || isNaN(localX)) {
-                    setLocalX(initialPosition.x);
-                  }
-                }}
-              />
-            </div>
+        {/* Chain Render loops */}
+        {chains.map((chain, index) => (
+          <section
+            key={chain.id}
+            className="control-section"
+            style={{
+              borderLeft: `4px solid ${index === 0 ? '#2c3e50' : '#e74c3c'}`,
+              paddingLeft: '8px',
+            }}
+          >
+            <h3 className="section-title">Chain {index + 1} Configuration</h3>
+            {/* TODO: display per-chain error from chainErrors prop */}
 
             <div className="control-group">
-              <label htmlFor="y-input" className="control-label">
-                Y
+              <label
+                htmlFor={`sampler-type-${chain.id}`}
+                className="control-label"
+              >
+                Sampler Type
               </label>
-              <input
-                id="y-input"
-                type="text"
-                className="control-input"
-                value={localY}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setLocalY(val);
-                  if (val !== '' && val !== '-' && !isNaN(val)) {
-                    handlePositionChange('y', val);
-                  }
-                }}
-                onBlur={() => {
-                  if (localY === '' || localY === '-' || isNaN(localY)) {
-                    setLocalY(initialPosition.y);
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Second Chain Toggle and Configuration */}
-        <section className="control-section">
-          <div className="control-group">
-            <div className="checkbox-group">
-              <input
-                id="second-chain-toggle"
-                type="checkbox"
-                checked={useSecondChain}
-                onChange={handleSecondChainToggle}
-              />
-              <label htmlFor="second-chain-toggle" className="control-label">
-                Enable Second Chain (Comparison)
-              </label>
-            </div>
-          </div>
-        </section>
-
-        {/* Second Chain Initial Position */}
-        {useSecondChain && (
-          <section className="control-section">
-            <h3 className="section-title">Second Chain Initial Position</h3>
-
-            <div className="control-row">
-              <div className="control-group">
-                <label htmlFor="x2-input" className="control-label">
-                  X
-                </label>
-                <input
-                  id="x2-input"
-                  type="text"
-                  className="control-input"
-                  value={localX2}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setLocalX2(val);
-                    if (val !== '' && val !== '-' && !isNaN(val)) {
-                      handlePosition2Change('x', val);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (localX2 === '' || localX2 === '-' || isNaN(localX2)) {
-                      setLocalX2(initialPosition2.x);
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="control-group">
-                <label htmlFor="y2-input" className="control-label">
-                  Y
-                </label>
-                <input
-                  id="y2-input"
-                  type="text"
-                  className="control-input"
-                  value={localY2}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setLocalY2(val);
-                    if (val !== '' && val !== '-' && !isNaN(val)) {
-                      handlePosition2Change('y', val);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (localY2 === '' || localY2 === '-' || isNaN(localY2)) {
-                      setLocalY2(initialPosition2.y);
-                    }
-                  }}
-                />
-              </div>
+              <select
+                id={`sampler-type-${chain.id}`}
+                className="control-select"
+                style={{ width: '100%', padding: '6px' }}
+                value={chain.samplerType}
+                onChange={(e) =>
+                  setChainConfig(chain.id, { samplerType: e.target.value })
+                }
+              >
+                <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
+                <option value="GIBBS">Gibbs Sampling</option>
+              </select>
             </div>
 
-            {/* Second chain seed controls (if seeded mode is enabled) */}
-            {useSeededMode && (
+            {chain.samplerType === 'HMC' && (
               <>
                 <div className="control-group">
-                  <label htmlFor="seed2-input" className="control-label">
-                    Seed Value (Chain 2)
+                  <label
+                    htmlFor={`epsilon-${chain.id}`}
+                    className="control-label"
+                  >
+                    Epsilon (ε)
                   </label>
                   <input
-                    id="seed2-input"
+                    id={`epsilon-${chain.id}`}
+                    type="number"
+                    className="control-input"
+                    step="0.001"
+                    value={chain.params.epsilon}
+                    onChange={(e) =>
+                      setChainConfig(chain.id, {
+                        params: {
+                          ...chain.params,
+                          epsilon: parseFloat(e.target.value),
+                        },
+                      })
+                    }
+                  />
+                </div>
+                <div className="control-group">
+                  <label
+                    htmlFor={`leapfrog-steps-${chain.id}`}
+                    className="control-label"
+                  >
+                    L (Leapfrog Steps)
+                  </label>
+                  <input
+                    id={`leapfrog-steps-${chain.id}`}
                     type="number"
                     className="control-input"
                     step="1"
-                    value={localSeed2}
-                    onChange={handleSeed2Change}
+                    value={chain.params.L}
+                    onChange={(e) =>
+                      setChainConfig(chain.id, {
+                        params: {
+                          ...chain.params,
+                          L: parseInt(e.target.value),
+                        },
+                      })
+                    }
                   />
-                </div>
-
-                <div className="control-group">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleGenerateRandomSeed2}
-                    disabled={isRunning}
-                  >
-                    🎲 Generate Random Seed (Chain 2)
-                  </button>
                 </div>
               </>
             )}
-          </section>
-        )}
+            {chain.samplerType === 'GIBBS' && (
+              <div className="control-group">
+                <label
+                  htmlFor={`slice-width-${chain.id}`}
+                  className="control-label"
+                >
+                  Slice Width (w)
+                </label>
+                <input
+                  id={`slice-width-${chain.id}`}
+                  type="number"
+                  className="control-input"
+                  step="0.1"
+                  value={chain.params.w}
+                  onChange={(e) =>
+                    setChainConfig(chain.id, {
+                      params: {
+                        ...chain.params,
+                        w: parseFloat(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </div>
+            )}
 
-        {/* Plot Configuration */}
-        <section className="control-section">
-          <details style={{ width: '100%' }}>
-            <summary
-              className="section-title"
-              style={{ cursor: 'pointer', outline: 'none' }}
+            <div
+              className="control-row"
+              style={{ display: 'flex', gap: '8px' }}
             >
-              Plot Configuration
-            </summary>
-            <div style={{ marginTop: '1rem' }}>
-              <h4
-                style={{
-                  marginBottom: '0.5rem',
-                  fontSize: '0.9em',
-                  color: '#666',
-                }}
-              >
-                Axis Limits
-              </h4>
-              <div className="control-row">
-                <div className="control-group">
-                  <label htmlFor="xmin-input" className="control-label">
-                    X Min
-                  </label>
-                  <input
-                    id="xmin-input"
-                    type="number"
-                    className="control-input"
-                    value={localAxisLimits.xMin}
-                    onChange={(e) =>
-                      handleAxisLimitChange('xMin', e.target.value)
-                    }
-                    onBlur={() => handleAxisLimitBlur('xMin')}
-                  />
-                </div>
-                <div className="control-group">
-                  <label htmlFor="xmax-input" className="control-label">
-                    X Max
-                  </label>
-                  <input
-                    id="xmax-input"
-                    type="number"
-                    className="control-input"
-                    value={localAxisLimits.xMax}
-                    onChange={(e) =>
-                      handleAxisLimitChange('xMax', e.target.value)
-                    }
-                    onBlur={() => handleAxisLimitBlur('xMax')}
-                  />
-                </div>
+              <div className="control-group" style={{ flex: 1 }}>
+                <label
+                  htmlFor={`initial-x-${chain.id}`}
+                  className="control-label"
+                >
+                  X
+                </label>
+                <input
+                  id={`initial-x-${chain.id}`}
+                  type="text"
+                  className="control-input"
+                  value={localPositions[chain.id]?.x ?? ''}
+                  onChange={(e) => {
+                    setLocalPositions((p) => ({
+                      ...p,
+                      [chain.id]: { ...p[chain.id], x: e.target.value },
+                    }));
+                    handlePosChange(chain.id, 'x', e.target.value);
+                  }}
+                />
               </div>
-              <div className="control-row">
-                <div className="control-group">
-                  <label htmlFor="ymin-input" className="control-label">
-                    Y Min
-                  </label>
-                  <input
-                    id="ymin-input"
-                    type="number"
-                    className="control-input"
-                    value={localAxisLimits.yMin}
-                    onChange={(e) =>
-                      handleAxisLimitChange('yMin', e.target.value)
-                    }
-                    onBlur={() => handleAxisLimitBlur('yMin')}
-                  />
-                </div>
-                <div className="control-group">
-                  <label htmlFor="ymax-input" className="control-label">
-                    Y Max
-                  </label>
-                  <input
-                    id="ymax-input"
-                    type="number"
-                    className="control-input"
-                    value={localAxisLimits.yMax}
-                    onChange={(e) =>
-                      handleAxisLimitChange('yMax', e.target.value)
-                    }
-                    onBlur={() => handleAxisLimitBlur('yMax')}
-                  />
-                </div>
+              <div className="control-group" style={{ flex: 1 }}>
+                <label
+                  htmlFor={`initial-y-${chain.id}`}
+                  className="control-label"
+                >
+                  Y
+                </label>
+                <input
+                  id={`initial-y-${chain.id}`}
+                  type="text"
+                  className="control-input"
+                  value={localPositions[chain.id]?.y ?? ''}
+                  onChange={(e) => {
+                    setLocalPositions((p) => ({
+                      ...p,
+                      [chain.id]: { ...p[chain.id], y: e.target.value },
+                    }));
+                    handlePosChange(chain.id, 'y', e.target.value);
+                  }}
+                />
               </div>
+            </div>
+
+            {useSeededMode && (
+              <div className="control-group">
+                <label className="control-label">Seed</label>
+                <input
+                  type="number"
+                  className="control-input"
+                  style={{ width: '100%' }}
+                  value={localSeedStrings[chain.id] ?? ''}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setLocalSeedStrings((prev) => ({
+                      ...prev,
+                      [chain.id]: raw,
+                    }));
+                    const s = parseInt(raw);
+                    if (!isNaN(s)) {
+                      setLocalSeeds((prev) => ({ ...prev, [chain.id]: s }));
+                      setChainConfig(chain.id, { seed: s });
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {index > 0 && (
+              <div className="control-group">
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%' }}
+                  onClick={() => removeChain(chain.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </section>
+        ))}
+
+        <section className="control-section">
+          <button
+            className="btn btn-secondary"
+            style={{ width: '100%' }}
+            onClick={() => addChain()}
+          >
+            Add another chain
+          </button>
+        </section>
+
+        <section className="control-section">
+          <details>
+            <summary className="section-title">Plot Layout Limits</summary>
+            <div
+              style={{
+                marginTop: '1rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              {['xMin', 'xMax', 'yMin', 'yMax'].map((k) => (
+                <div key={k} className="control-group" style={{ width: '45%' }}>
+                  <label className="control-label">{k}</label>
+                  <input
+                    type="number"
+                    className="control-input"
+                    value={localAxisLimits[k]}
+                    onChange={(e) => handleAxisLimitChange(k, e.target.value)}
+                    onBlur={() => handleAxisLimitBlur(k)}
+                  />
+                </div>
+              ))}
             </div>
           </details>
         </section>
 
-        {/* Control Buttons */}
+        {/* Action Buttons */}
         <section className="control-section">
           <h3 className="section-title">Actions</h3>
-
           <button
             className="btn btn-primary"
             onClick={step}
             disabled={isRunning || !logP || useFastMode}
+            style={{ width: '100%', marginBottom: '8px' }}
           >
             Step Once
           </button>
-
-          <div className="control-group" style={{ marginBottom: '0.5rem' }}>
-            <div className="checkbox-group">
-              <input
-                id="fast-mode-toggle-action"
-                type="checkbox"
-                checked={useFastMode || false}
-                onChange={(e) =>
-                  setUseFastMode && setUseFastMode(e.target.checked)
-                }
-              />
-              <label
-                htmlFor="fast-mode-toggle-action"
-                className="control-label"
-                style={{
-                  fontWeight: 'bold',
-                  color: useFastMode ? 'var(--color-primary)' : 'inherit',
-                }}
-              >
-                🚀 Fast Sampling Mode
-              </label>
-            </div>
-          </div>
-
-          <div className="sample-steps-group">
+          <div
+            className="sample-steps-group"
+            style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}
+          >
             <input
               type="number"
               className="control-input control-input-inline"
-              step="1"
+              style={{ flex: 1 }}
               min="1"
               value={nSteps}
               onChange={(e) => setNSteps(parseInt(e.target.value) || 1)}
             />
             <button
               className="btn btn-accent"
-              onClick={handleSampleSteps}
+              style={{ flex: 2 }}
+              onClick={() => sampleSteps(nSteps)}
               disabled={isRunning || !logP}
             >
               Sample N Steps
             </button>
           </div>
-
           <button
             className="btn btn-secondary"
             onClick={reset}
             disabled={isRunning}
+            style={{ width: '100%' }}
           >
-            Reset
+            Reset Sampler
           </button>
-        </section>
 
-        {/* Status Display */}
-        <section className="control-section status-section">
-          {!useSecondChain ? (
-            // Single chain display
-            <>
-              <div className="status-grid">
-                <div className="status-item">
-                  <span className="status-label">Iterations</span>
-                  <span className="status-value">{iterationCount}</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            // Dual chain display with separate stats
-            <>
-              <h3 className="section-title">Chain Statistics</h3>
-              <div className="status-grid">
-                <div className="status-item">
-                  <span className="status-label">Iterations</span>
-                  <span className="status-value">{iterationCount}</span>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="control-group" style={{ marginTop: '8px' }}>
+            <div
+              className="checkbox-group"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <input
+                id="fast-mode-toggle"
+                type="checkbox"
+                checked={useFastMode}
+                onChange={(e) => setUseFastMode(e.target.checked)}
+              />
+              <label htmlFor="fast-mode-toggle">Fast Sampling Mode</label>
+            </div>
+          </div>
 
-          {isRunning && (
-            <div className="status-running">
-              <span className="status-indicator running"></span>
-              <span className="status-text">
-                {useFastMode
-                  ? 'Generating samples in fast mode...'
-                  : 'Running...'}
-              </span>
+          {isRunning && useFastMode && (
+            <div
+              className="running-indicator"
+              style={{
+                marginTop: '10px',
+                textAlign: 'center',
+                color: '#e67e22',
+                fontWeight: 'bold',
+              }}
+            >
+              Generating samples...
             </div>
           )}
         </section>
-
-        {/* Resources */}
-        <section className="control-section">
-          <h3 className="section-title">References</h3>
-          <ul className="resources-list">
-            <li>
-              <a
-                href="https://arxiv.org/abs/1701.02434"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="resource-link"
-              >
-                A Conceptual Introduction to HMC (Betancourt, 2017)
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://arxiv.org/abs/1111.4246"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="resource-link"
-              >
-                MCMC using Hamiltonian dynamics (Neal, 2011)
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://arxiv.org/abs/1206.1901"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="resource-link"
-              >
-                NUTS: The No-U-Turn Sampler (Hoffman & Gelman, 2014)
-              </a>
-            </li>
-          </ul>
-        </section>
-
-        {/* Error Display */}
-        {error && (
-          <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            <span className="error-text">{error}</span>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
 Controls.propTypes = {
-  logP: PropTypes.string.isRequired,
-  params: PropTypes.shape({
-    epsilon: PropTypes.number.isRequired,
-    L: PropTypes.number.isRequired,
-    steps: PropTypes.number,
-  }).isRequired,
-  initialPosition: PropTypes.shape({
-    x: PropTypes.number.isRequired,
-    y: PropTypes.number.isRequired,
-  }).isRequired,
-  iterationCount: PropTypes.number.isRequired,
-  // acceptedCount: PropTypes.number,
-  // rejectedCount: PropTypes.number,
-  isRunning: PropTypes.bool.isRequired,
+  logP: PropTypes.string,
+  chains: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      samplerType: PropTypes.string,
+      params: PropTypes.object,
+      initialPosition: PropTypes.shape({
+        x: PropTypes.number,
+        y: PropTypes.number,
+      }),
+      seed: PropTypes.number,
+      samples: PropTypes.array,
+      trajectory: PropTypes.array,
+      rejectedCount: PropTypes.number,
+      acceptedCount: PropTypes.number,
+      error: PropTypes.string,
+    })
+  ),
+  isRunning: PropTypes.bool,
   error: PropTypes.string,
-  seed: PropTypes.number,
-  useSeededMode: PropTypes.bool.isRequired,
-  useFastMode: PropTypes.bool,
-  setUseFastMode: PropTypes.func,
-  setLogP: PropTypes.func.isRequired,
-  setParams: PropTypes.func.isRequired,
-  setInitialPosition: PropTypes.func.isRequired,
-  step: PropTypes.func.isRequired,
-  sampleSteps: PropTypes.func.isRequired,
-  reset: PropTypes.func.isRequired,
-  setSeed: PropTypes.func.isRequired,
-  // Second chain props
-  useSecondChain: PropTypes.bool.isRequired,
-  initialPosition2: PropTypes.shape({
-    x: PropTypes.number.isRequired,
-    y: PropTypes.number.isRequired,
-  }),
-  samplerType: PropTypes.string,
-  setSamplerType: PropTypes.func,
-  // acceptedCount2: PropTypes.number,
-  // rejectedCount2: PropTypes.number,
-  seed2: PropTypes.number,
-  setUseSecondChain: PropTypes.func.isRequired,
-  setInitialPosition2: PropTypes.func.isRequired,
-  setSeed2: PropTypes.func.isRequired,
-  burnIn: PropTypes.number.isRequired,
-  setBurnIn: PropTypes.func.isRequired,
+  setLogP: PropTypes.func,
+  setChainConfig: PropTypes.func,
+  addChain: PropTypes.func,
+  removeChain: PropTypes.func,
+  step: PropTypes.func,
+  sampleSteps: PropTypes.func,
+  reset: PropTypes.func,
+  burnIn: PropTypes.number,
+  setBurnIn: PropTypes.func,
   axisLimits: PropTypes.shape({
     xMin: PropTypes.number,
     xMax: PropTypes.number,
@@ -853,6 +537,8 @@ Controls.propTypes = {
     yMax: PropTypes.number,
   }),
   setAxisLimits: PropTypes.func,
+  useFastMode: PropTypes.bool,
+  setUseFastMode: PropTypes.func,
 };
 
 export default Controls;

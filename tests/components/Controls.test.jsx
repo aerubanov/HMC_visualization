@@ -6,33 +6,27 @@ import Controls from '../../src/components/Controls';
 describe('Controls Component', () => {
   const mockProps = {
     logP: '',
-    params: { epsilon: 0.1, L: 10, steps: 1 },
-    initialPosition: { x: 0, y: 0 },
+    chains: [
+      {
+        id: 0,
+        samplerType: 'HMC',
+        params: { epsilon: 0.1, L: 10, steps: 1 },
+        initialPosition: { x: 0, y: 0 },
+        seed: null,
+      },
+    ],
     iterationCount: 0,
     isRunning: false,
     error: null,
-    seed: null,
-    useSeededMode: false,
     setLogP: vi.fn(),
-    setParams: vi.fn(),
-    setInitialPosition: vi.fn(),
+    setChainConfig: vi.fn(),
+    addChain: vi.fn(),
+    removeChain: vi.fn(),
     step: vi.fn(),
     sampleSteps: vi.fn(),
     reset: vi.fn(),
-    setSeed: vi.fn(),
-    // Second chain props
-    useSecondChain: false,
-    initialPosition2: { x: 1, y: 1 },
-    acceptedCount2: 0,
-    rejectedCount2: 0,
-    seed2: null,
-    setUseSecondChain: vi.fn(),
-    setInitialPosition2: vi.fn(),
-    setSeed2: vi.fn(),
     burnIn: 10,
     setBurnIn: vi.fn(),
-    samplerType: 'HMC',
-    setSamplerType: vi.fn(),
   };
 
   beforeEach(() => {
@@ -239,7 +233,9 @@ describe('Controls Component', () => {
       const epsilonInput = screen.getByLabelText(/epsilon/i);
       fireEvent.change(epsilonInput, { target: { value: '0.05' } });
 
-      expect(mockProps.setParams).toHaveBeenCalledWith({ epsilon: 0.05 });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {
+        params: { ...mockProps.chains[0].params, epsilon: 0.05 },
+      });
     });
 
     it('should not interfere with step button', () => {
@@ -398,6 +394,86 @@ describe('Controls Component', () => {
     });
   });
 
+  describe('Chain Management UI', () => {
+    it('should not render "Enable Second Chain" checkbox', () => {
+      render(<Controls {...mockProps} />);
+      expect(
+        screen.queryByLabelText(/enable second chain/i)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/enable second chain/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render "Add another chain" button', () => {
+      render(<Controls {...mockProps} />);
+      expect(
+        screen.getByRole('button', { name: /add another chain/i })
+      ).toBeInTheDocument();
+    });
+
+    it('clicking "Add another chain" calls addChain', () => {
+      render(<Controls {...mockProps} />);
+      const addBtn = screen.getByRole('button', { name: /add another chain/i });
+      fireEvent.click(addBtn);
+      expect(mockProps.addChain).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not render a Remove button when only one chain is present', () => {
+      render(<Controls {...mockProps} />);
+      expect(
+        screen.queryByRole('button', { name: /^remove$/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render a Remove button on the second chain but not the first', () => {
+      const twoChains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 0, y: 0 },
+          seed: null,
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 1, y: 1 },
+          seed: null,
+        },
+      ];
+      render(<Controls {...mockProps} chains={twoChains} />);
+      const removeButtons = screen.getAllByRole('button', {
+        name: /^remove$/i,
+      });
+      expect(removeButtons).toHaveLength(1);
+    });
+
+    it('clicking Remove calls removeChain with the correct chain id', () => {
+      const twoChains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 0, y: 0 },
+          seed: null,
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, L: 10, steps: 1 },
+          initialPosition: { x: 1, y: 1 },
+          seed: null,
+        },
+      ];
+      render(<Controls {...mockProps} chains={twoChains} />);
+      const removeBtn = screen.getByRole('button', { name: /^remove$/i });
+      fireEvent.click(removeBtn);
+      expect(mockProps.removeChain).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe('Sampler Selection', () => {
     it('should show correct parameters for HMC', () => {
       render(<Controls {...mockProps} samplerType="HMC" />);
@@ -406,9 +482,14 @@ describe('Controls Component', () => {
     });
 
     it('should show Slice Width for Gibbs sampler', () => {
-      render(
-        <Controls {...mockProps} samplerType="GIBBS" params={{ w: 1.0 }} />
-      );
+      const gibbsChains = [
+        {
+          ...mockProps.chains[0],
+          samplerType: 'GIBBS',
+          params: { w: 1.0 },
+        },
+      ];
+      render(<Controls {...mockProps} chains={gibbsChains} />);
       expect(screen.queryByLabelText(/epsilon/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/^l\s/i)).not.toBeInTheDocument();
 
@@ -417,14 +498,18 @@ describe('Controls Component', () => {
       expect(widthInput.value).toBe('1');
 
       fireEvent.change(widthInput, { target: { value: '2.5' } });
-      expect(mockProps.setParams).toHaveBeenCalledWith({ w: 2.5 });
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {
+        params: { ...gibbsChains[0].params, w: 2.5 },
+      });
     });
 
     it('should call setSamplerType when selection changes', () => {
       render(<Controls {...mockProps} />);
       const select = screen.getByLabelText(/sampler type/i);
       fireEvent.change(select, { target: { value: 'GIBBS' } });
-      expect(mockProps.setSamplerType).toHaveBeenCalledWith('GIBBS');
+      expect(mockProps.setChainConfig).toHaveBeenCalledWith(0, {
+        samplerType: 'GIBBS',
+      });
     });
   });
 });

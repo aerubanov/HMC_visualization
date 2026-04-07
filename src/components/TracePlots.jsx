@@ -4,150 +4,75 @@ import PropTypes from 'prop-types';
 import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
 import { createTracePlotTrace } from '../utils/plotFunctions';
 
-function TracePlots({
-  samples,
-  samples2,
-  burnIn,
-  useSecondChain,
-  rHat,
-  ess,
-  acceptedCount,
-  rejectedCount,
-  acceptedCount2,
-  rejectedCount2,
-}) {
+function TracePlots({ chains, burnIn, rHat, ess }) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
-    legend: {
-      orientation: 'h',
-      y: -0.2, // Move legend below plot
-    },
+    legend: { orientation: 'h', y: -0.2 },
   };
+  const xConfig = { displayModeBar: false, responsive: true };
 
-  const xConfig = {
-    displayModeBar: false,
-    responsive: true,
-  };
-
-  // Generate traces for X
   const xTraces = [];
-  if (samples && samples.length > 0) {
-    xTraces.push(
-      ...createTracePlotTrace(
-        samples,
-        'x',
-        burnIn,
-        HMC_SAMPLER.styles.primaryColor,
-        'Chain 1'
-      )
-    );
-  }
-
-  if (useSecondChain && samples2 && samples2.length > 0) {
-    xTraces.push(
-      ...createTracePlotTrace(
-        samples2,
-        'x',
-        burnIn,
-        HMC_SAMPLER.styles.secondaryColor,
-        'Chain 2'
-      )
-    );
-  }
-
-  // Generate traces for Y
   const yTraces = [];
-  if (samples && samples.length > 0) {
-    yTraces.push(
-      ...createTracePlotTrace(
-        samples,
-        'y',
-        burnIn,
-        HMC_SAMPLER.styles.primaryColor,
-        'Chain 1'
-      )
-    );
-  }
 
-  if (useSecondChain && samples2 && samples2.length > 0) {
-    yTraces.push(
-      ...createTracePlotTrace(
-        samples2,
-        'y',
-        burnIn,
-        HMC_SAMPLER.styles.secondaryColor,
-        'Chain 2'
-      )
-    );
-  }
+  chains.forEach((chain, index) => {
+    if (chain.samples && chain.samples.length > 0) {
+      const color =
+        index === 0
+          ? HMC_SAMPLER.styles.primaryColor
+          : HMC_SAMPLER.styles.secondaryColor;
+      const label = `Chain ${index + 1} (${chain.samplerType})`;
+      xTraces.push(
+        ...createTracePlotTrace(chain.samples, 'x', burnIn, color, label)
+      );
+      yTraces.push(
+        ...createTracePlotTrace(chain.samples, 'y', burnIn, color, label)
+      );
+    }
+  });
 
-  const formatRHat = (val) => {
-    if (val === undefined || val === null) return '';
-    // If val is Infinity, show symbol
-    if (!isFinite(val)) return ' (R̂ = ∞)';
-    return ` (R̂ = ${val.toFixed(2)})`;
-  };
-
-  const formatESS = (val) => {
-    if (val === undefined || val === null) return '';
-    return ` (ESS = ${Math.round(val)})`;
-  };
-
-  const formatRate = (acc, rej) => {
-    const total = acc + rej;
-    if (total === 0) return '0.0%';
-    return `${((acc / total) * 100).toFixed(1)}%`;
+  const formatRHat = (val) =>
+    !isFinite(val) ? ' (R̂ = ∞)' : val ? ` (R̂ = ${val.toFixed(2)})` : '';
+  const formatESS = (val) => (val ? ` (ESS = ${Math.round(val)})` : '');
+  const formatRate = (chain) => {
+    const acc = chain.acceptedCount ?? chain.samples.length;
+    const total = acc + (chain.rejectedCount ?? 0);
+    return total === 0 ? '0.0%' : `${((acc / total) * 100).toFixed(1)}%`;
   };
 
   return (
     <div className="trace-plots-container">
       <div className="trace-stats-header">
-        <div className="chain-stat">
-          <span
-            className="chain-label"
-            style={{
-              color: HMC_SAMPLER.styles.primaryColor,
-              fontWeight: 'bold',
-            }}
-          >
-            Chain 1:
-          </span>
-          <span className="stat-item">Acc: {acceptedCount || 0}</span>
-          <span className="stat-item">Rej: {rejectedCount || 0}</span>
-          <span className="stat-item">
-            Rate: {formatRate(acceptedCount || 0, rejectedCount || 0)}
-          </span>
-        </div>
-        {useSecondChain && (
-          <div className="chain-stat">
+        {chains.map((chain, index) => (
+          <div className="chain-stat" key={chain.id}>
             <span
               className="chain-label"
               style={{
-                color: HMC_SAMPLER.styles.secondaryColor,
+                color:
+                  index === 0
+                    ? HMC_SAMPLER.styles.primaryColor
+                    : HMC_SAMPLER.styles.secondaryColor,
                 fontWeight: 'bold',
               }}
             >
-              Chain 2:
+              Chain {index + 1}:
             </span>
-            <span className="stat-item">Acc: {acceptedCount2 || 0}</span>
-            <span className="stat-item">Rej: {rejectedCount2 || 0}</span>
-            <span className="stat-item">
-              Rate: {formatRate(acceptedCount2 || 0, rejectedCount2 || 0)}
-            </span>
+            <span className="stat-item">Acc: {chain.samples.length}</span>
+            <span className="stat-item">Rej: {chain.rejectedCount}</span>
+            <span className="stat-item">Rate: {formatRate(chain)}</span>
           </div>
-        )}
+        ))}
       </div>
 
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
-          X Trace
+          X Trace{' '}
           {rHat && <span className="stat-label">{formatRHat(rHat.x)}</span>}
           {ess && <span className="stat-label">{formatESS(ess.x)}</span>}
         </h4>
         <Plot
           data={xTraces}
-          layout={{ ...commonLayout, title: '' }} // Remove title from Plotly, use HTML headers
+          layout={{ ...commonLayout, title: '' }}
           config={xConfig}
           style={{ width: '100%', height: '300px' }}
           useResizeHandler={true}
@@ -155,7 +80,7 @@ function TracePlots({
       </div>
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
-          Y Trace
+          Y Trace{' '}
           {rHat && <span className="stat-label">{formatRHat(rHat.y)}</span>}
           {ess && <span className="stat-label">{formatESS(ess.y)}</span>}
         </h4>
@@ -172,32 +97,26 @@ function TracePlots({
 }
 
 TracePlots.propTypes = {
-  samples: PropTypes.arrayOf(
+  chains: PropTypes.arrayOf(
     PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  samples2: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      samplerType: PropTypes.string,
+      params: PropTypes.object,
+      initialPosition: PropTypes.shape({
+        x: PropTypes.number,
+        y: PropTypes.number,
+      }),
+      seed: PropTypes.number,
+      samples: PropTypes.array,
+      trajectory: PropTypes.array,
+      rejectedCount: PropTypes.number,
+      acceptedCount: PropTypes.number,
+      error: PropTypes.string,
     })
   ),
   burnIn: PropTypes.number,
-  useSecondChain: PropTypes.bool,
-  rHat: PropTypes.shape({
-    x: PropTypes.number,
-    y: PropTypes.number,
-  }),
-  ess: PropTypes.shape({
-    x: PropTypes.number,
-    y: PropTypes.number,
-  }),
-  acceptedCount: PropTypes.number,
-  rejectedCount: PropTypes.number,
-  acceptedCount2: PropTypes.number,
-  rejectedCount2: PropTypes.number,
+  rHat: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
+  ess: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
 };
 
 export default TracePlots;

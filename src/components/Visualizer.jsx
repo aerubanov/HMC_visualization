@@ -7,16 +7,7 @@ import {
   createSamplesTrace,
 } from '../utils/plotFunctions';
 
-function Visualizer({
-  contourData,
-  trajectory,
-  acceptedSamples,
-  trajectory2,
-  acceptedSamples2,
-  useSecondChain,
-  axisLimits,
-}) {
-  // Show placeholder if no contour data is available
+function Visualizer({ contourData, chains, axisLimits }) {
   if (!contourData) {
     return (
       <div className="visualizer">
@@ -49,75 +40,34 @@ function Visualizer({
             <p className="placeholder-description">
               The contour plot will appear here once you define a valid function
             </p>
-            <div className="placeholder-features">
-              <div className="feature-item">
-                <span className="feature-icon">📊</span>
-                <span className="feature-text">Contour Plot</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">🔴</span>
-                <span className="feature-text">Sample Points</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">📈</span>
-                <span className="feature-text">Trajectory Lines</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Build traces array for multi-trace rendering
-  const traces = [];
+  const traces = [contourData];
 
-  // Add contour trace (always first for z-ordering)
-  if (contourData) {
-    traces.push(contourData);
-  }
+  chains.forEach((chain, index) => {
+    const isPrimary = index === 0;
+    const color = isPrimary
+      ? HMC_SAMPLER.styles.primaryColor
+      : HMC_SAMPLER.styles.secondaryColor;
+    const label = `Chain ${index + 1} (${chain.samplerType})`;
 
-  // Add samples trace if it exists
-  if (acceptedSamples && acceptedSamples.length > 0) {
-    const samplesTrace = createSamplesTrace(acceptedSamples);
-    if (samplesTrace) {
-      traces.push(samplesTrace);
+    if (chain.samples && chain.samples.length > 0) {
+      traces.push(
+        createSamplesTrace(chain.samples, color, `Samples (${label})`)
+      );
     }
-  }
 
-  // Add second chain samples trace if enabled and exists
-  if (useSecondChain && acceptedSamples2 && acceptedSamples2.length > 0) {
-    const samplesTrace2 = createSamplesTrace(
-      acceptedSamples2,
-      HMC_SAMPLER.styles.secondaryColor,
-      'Samples (Chain 2)'
-    );
-    if (samplesTrace2) {
-      traces.push(samplesTrace2);
+    if (chain.trajectory && chain.trajectory.length > 0) {
+      traces.push(
+        createTrajectoryTrace(chain.trajectory, color, `Trajectory (${label})`)
+      );
     }
-  }
+  });
 
-  // Add trajectory trace if it exists
-  if (trajectory && trajectory.length > 0) {
-    const trajectoryTrace = createTrajectoryTrace(trajectory);
-    if (trajectoryTrace) {
-      traces.push(trajectoryTrace);
-    }
-  }
-
-  // Add second chain trajectory trace if enabled and exists
-  if (useSecondChain && trajectory2 && trajectory2.length > 0) {
-    const trajectoryTrace2 = createTrajectoryTrace(
-      trajectory2,
-      HMC_SAMPLER.styles.secondaryColor,
-      'Trajectory (Chain 2)'
-    );
-    if (trajectoryTrace2) {
-      traces.push(trajectoryTrace2);
-    }
-  }
-
-  // Render the Plotly plot with multiple traces
   return (
     <div className="visualizer">
       <Plot
@@ -150,43 +100,9 @@ function Visualizer({
 }
 
 Visualizer.propTypes = {
-  contourData: PropTypes.shape({
-    type: PropTypes.string,
-    x: PropTypes.array,
-    y: PropTypes.array,
-    z: PropTypes.array,
-  }),
-  trajectory: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  acceptedSamples: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  trajectory2: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  acceptedSamples2: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  useSecondChain: PropTypes.bool,
-  axisLimits: PropTypes.shape({
-    xMin: PropTypes.number,
-    xMax: PropTypes.number,
-    yMin: PropTypes.number,
-    yMax: PropTypes.number,
-  }),
+  contourData: PropTypes.object,
+  chains: PropTypes.array,
+  axisLimits: PropTypes.object,
 };
 
 export default Visualizer;

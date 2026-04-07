@@ -8,36 +8,18 @@ import useSamplingController from './hooks/useSamplingController';
 function App() {
   const {
     logP,
-    params,
-    initialPosition,
+    chains,
     iterationCount,
-    acceptedCount,
-    rejectedCount,
     isRunning,
     error,
     contourData,
-    trajectory,
-    samples,
-    seed,
-    useSeededMode,
     setLogP,
-    setParams,
-    setInitialPosition,
+    setChainConfig,
+    addChain,
+    removeChain,
     step,
     sampleSteps,
     reset,
-    setSeed,
-    // Second chain
-    useSecondChain,
-    initialPosition2,
-    samples2,
-    trajectory2,
-    acceptedCount2,
-    rejectedCount2,
-    seed2,
-    setUseSecondChain,
-    setInitialPosition2,
-    setSeed2,
     burnIn,
     setBurnIn,
     rHat,
@@ -47,8 +29,6 @@ function App() {
     setAxisLimits,
     useFastMode,
     setUseFastMode,
-    samplerType,
-    setSamplerType,
   } = useSamplingController();
 
   return (
@@ -56,38 +36,23 @@ function App() {
       <div className="App-sidebar">
         <Controls
           logP={logP}
-          params={params}
-          initialPosition={initialPosition}
+          chains={chains}
           iterationCount={iterationCount}
-          // acceptedCount={acceptedCount}
-          // rejectedCount={rejectedCount}
           isRunning={isRunning}
           error={error}
-          seed={seed}
-          useSeededMode={useSeededMode}
           setLogP={setLogP}
-          setParams={setParams}
-          setInitialPosition={setInitialPosition}
+          setChainConfig={setChainConfig}
+          addChain={addChain}
+          removeChain={removeChain}
           step={step}
           sampleSteps={sampleSteps}
           reset={reset}
-          setSeed={setSeed}
-          useSecondChain={useSecondChain}
-          initialPosition2={initialPosition2}
-          // acceptedCount2={acceptedCount2}
-          // rejectedCount2={rejectedCount2}
-          seed2={seed2}
-          setUseSecondChain={setUseSecondChain}
-          setInitialPosition2={setInitialPosition2}
-          setSeed2={setSeed2}
           burnIn={burnIn}
           setBurnIn={setBurnIn}
           axisLimits={axisLimits}
           setAxisLimits={setAxisLimits}
           useFastMode={useFastMode}
           setUseFastMode={setUseFastMode}
-          samplerType={samplerType}
-          setSamplerType={setSamplerType}
         />
       </div>
       <div className="App-main">
@@ -124,27 +89,17 @@ function App() {
         </div>
         <Visualizer
           contourData={contourData}
-          trajectory={trajectory}
-          acceptedSamples={samples}
-          trajectory2={trajectory2}
-          acceptedSamples2={samples2}
-          useSecondChain={useSecondChain}
+          chains={chains}
           axisLimits={axisLimits}
         />
         <div className="trace-plots-section">
           {contourData && (
             <>
               <TracePlots
-                samples={samples}
-                samples2={samples2}
+                chains={chains}
                 burnIn={burnIn}
-                useSecondChain={useSecondChain}
                 rHat={rHat}
                 ess={ess}
-                acceptedCount={acceptedCount}
-                rejectedCount={rejectedCount}
-                acceptedCount2={acceptedCount2}
-                rejectedCount2={rejectedCount2}
               />
               <HistogramPlots
                 histogramData={histogramData}

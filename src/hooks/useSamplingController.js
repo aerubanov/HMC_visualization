@@ -1,59 +1,50 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Logp } from '../utils/mathEngine';
-import { HMCSampler } from '../samplers/HMCSampler';
-import { GibbsSampler } from '../samplers/GibbsSampler';
+import { SamplingChain } from '../samplers/SamplingChain';
+import { DEFAULT_SAMPLER_PARAMS } from '../samplers/defaultConfigs';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { CONTOUR } from '../utils/plotConfig.json';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
 import { prepareHistogramData } from '../utils/histogramUtils';
 
 /**
- * Custom hook to control the HMC sampling process
- * Manages state for parameters, sampling results, and visualization data
+ * Custom hook to control the HMC sampling process using independent chains
  * @returns {Object} Controller interface and state
  */
 export default function useSamplingController() {
   const [logP, setLogPString] = useState('');
-  const [params, setParamsState] = useState({
-    epsilon: 0.1,
-    L: 10,
-    steps: 1,
-    w: 1.0,
-  });
-  const [samplerType, setSamplerTypeState] = useState('HMC'); // 'HMC' or 'GIBBS'
-  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
-  const [samples, setSamples] = useState([]);
-  const [trajectory, setTrajectory] = useState([]);
-  const [currentParticle, setCurrentParticle] = useState(null);
+
+  // Now tracks an array of chain states instead of duplicated specific keys
+  const [chains, setChains] = useState([
+    {
+      id: 0,
+      samplerType: 'HMC',
+      params: { ...DEFAULT_SAMPLER_PARAMS['HMC'] },
+      initialPosition: { x: 0, y: 0 },
+      seed: null,
+      samples: [],
+      trajectory: [],
+      rejectedCount: 0,
+      acceptedCount: 0,
+      error: null,
+      currentParticle: null,
+    },
+  ]);
+
   const [isRunning, setIsRunning] = useState(false);
   const [iterationCount, setIterationCount] = useState(0);
   const [error, setError] = useState(null);
+  // Per-chain error object: id → message
+  const [chainErrors, setChainErrors] = useState({});
   const [contourData, setContourData] = useState(null);
-
-  const [rejectedCount, setRejectedCount] = useState(0);
-
-  // Seeded random state
-  const [seed, setSeedState] = useState(null);
-  const [useSeededMode, setUseSeededMode] = useState(false);
 
   // Fast sampling mode
   const [useFastMode, setUseFastMode] = useState(false);
 
-  // Second chain state
-  const [useSecondChain, setUseSecondChain] = useState(false);
-  const [initialPosition2, setInitialPosition2] = useState({ x: 1, y: 1 });
-  const [samples2, setSamples2] = useState([]);
-  const [trajectory2, setTrajectory2] = useState([]);
-  const [currentParticle2, setCurrentParticle2] = useState(null);
-  const [rejectedCount2, setRejectedCount2] = useState(0);
-  const [seed2, setSeed2State] = useState(null);
-
   // Statistics
   const [rHat, setRHat] = useState(null);
   const [ess, setEss] = useState(null);
-  const [histogramData, setHistogramData] = useState({
-    samples: [],
-  });
+  const [histogramData, setHistogramData] = useState({ samples: [] });
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
@@ -64,83 +55,23 @@ export default function useSamplingController() {
     yMax: CONTOUR.grid.yRange[1],
   });
 
-  // Refs to hold instances/values that don't trigger re-renders or need to be accessed in loops
   const logpInstanceRef = useRef(null);
-  const currentParticleRef = useRef(null); // { q, p }
 
-  // Sampler instances
-  const samplerRef = useRef(null);
+  // Real OOP sampling chains held in refs
+  const samplingChainsRef = useRef(new Map());
 
-  // Initialize sampler if needed or if type changed
-  const ensureSampler = useCallback(
-    (type, seedVal) => {
-      if (!samplerRef.current || samplerRef.current.type !== type) {
-        if (type === 'GIBBS') {
-          samplerRef.current = new GibbsSampler({ w: params.w }, seedVal);
-          samplerRef.current.type = 'GIBBS';
-        } else {
-          samplerRef.current = new HMCSampler(
-            { epsilon: params.epsilon, L: params.L },
-            seedVal
-          );
-          samplerRef.current.type = 'HMC';
-        }
-      }
-    },
-    [params.epsilon, params.L, params.w]
-  );
-
-  // Initial setup
-  if (!samplerRef.current) {
-    ensureSampler(samplerType, null);
-  }
-
-  const samplerRef2 = useRef(null);
-  const ensureSampler2 = useCallback(
-    (type, seedVal) => {
-      if (!samplerRef2.current || samplerRef2.current.type !== type) {
-        if (type === 'GIBBS') {
-          samplerRef2.current = new GibbsSampler({ w: params.w }, seedVal);
-          samplerRef2.current.type = 'GIBBS';
-        } else {
-          samplerRef2.current = new HMCSampler(
-            { epsilon: params.epsilon, L: params.L },
-            seedVal
-          );
-          samplerRef2.current.type = 'HMC';
-        }
-      }
-    },
-    [params.epsilon, params.L, params.w]
-  );
-
-  if (!samplerRef2.current) {
-    ensureSampler2(samplerType, null);
-  }
-  const currentParticleRef2 = useRef(null); // Second chain particle state
-
-  // Update sampler params when state changes (or initializes)
+  // Ensure refs match state size (initialize chains).
+  // Depend only on chain IDs so this does not fire on every syncChainsState call.
+  const chainIdsKey = chains.map((c) => c.id).join(',');
   useEffect(() => {
-    if (samplerType === 'HMC') {
-      if (samplerRef.current && samplerRef.current.setParams) {
-        samplerRef.current.setParams({ epsilon: params.epsilon, L: params.L });
+    chains.forEach((c) => {
+      if (!samplingChainsRef.current.has(c.id)) {
+        samplingChainsRef.current.set(c.id, new SamplingChain(c));
       }
-      if (samplerRef2.current && samplerRef2.current.setParams) {
-        samplerRef2.current.setParams({ epsilon: params.epsilon, L: params.L });
-      }
-    } else if (samplerType === 'GIBBS') {
-      if (samplerRef.current && samplerRef.current.setParams) {
-        samplerRef.current.setParams({ w: params.w });
-      }
-      if (samplerRef2.current && samplerRef2.current.setParams) {
-        samplerRef2.current.setParams({ w: params.w });
-      }
-    }
-  }, [params.epsilon, params.L, params.w, samplerType]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chainIdsKey]);
 
-  /**
-   * Computes contour data for the current logp function
-   */
   const computeContour = useCallback(() => {
     if (!logpInstanceRef.current) {
       setContourData(null);
@@ -152,150 +83,91 @@ export default function useSamplingController() {
         [axisLimits.xMin, axisLimits.xMax],
         [axisLimits.yMin, axisLimits.yMax]
       );
-
-      // Compute z values (log probability) for each grid point
       const z = y.map((yVal) =>
         x.map((xVal) => {
           try {
             return logpInstanceRef.current.getLogProbability(xVal, yVal);
           } catch {
-            // Return NaN for points where evaluation fails
             return NaN;
           }
         })
       );
-
-      // Create the contour trace
-      const trace = createContourTrace(x, y, z);
-      setContourData(trace);
+      setContourData(createContourTrace(x, y, z));
     } catch (e) {
       console.error('Error computing contour:', e);
       setContourData(null);
     }
   }, [axisLimits]);
 
-  // Re-compute contour when axis limits change
-  useEffect(() => {
-    computeContour();
-  }, [computeContour]);
+  useEffect(() => computeContour(), [computeContour]);
 
-  /**
-   * Reset the sampler state (samples, trajectory, iteration count)
-   * Keeps the current parameters and logP function
-   * Also resets the RNG to the initial seed if seeded mode is enabled
-   */
+  // Sync back visual info from SamplingChains to React State.
+  // Only copies trajectory (small, bounded) and the latest sample / counters.
+  const syncChainsState = useCallback(() => {
+    setChains((prev) =>
+      prev.map((c) => {
+        const impl = samplingChainsRef.current.get(c.id);
+        if (!impl) return c;
+        return {
+          ...c,
+          samples: [...impl.samples],
+          trajectory: impl.trajectory.map((p) => ({ ...p })),
+          rejectedCount: impl.rejectedCount,
+          acceptedCount: impl.acceptedCount,
+          error: impl.error,
+          currentParticle: impl.currentParticle,
+        };
+      })
+    );
+  }, []);
+
   const reset = useCallback(() => {
-    // Re-initialize samplers with current type
-    ensureSampler(samplerType, useSeededMode && seed !== null ? seed : null);
-    if (useSecondChain) {
-      ensureSampler2(
-        samplerType,
-        useSeededMode && seed2 !== null ? seed2 : null
-      );
-    }
-
-    setSamples([]);
-    setTrajectory([]);
+    samplingChainsRef.current.forEach((chain) => chain.reset());
     setIterationCount(0);
-    setRejectedCount(0);
-
-    const startState = {
-      q: { ...initialPosition },
-      p: { x: 0, y: 0 },
-    };
-
-    setCurrentParticle(startState);
-    currentParticleRef.current = startState;
     setIsRunning(false);
-
-    // Reset RNG to initial seed if seeded mode is enabled
-    if (useSeededMode && seed !== null) {
-      samplerRef.current.setSeed(seed);
-    }
-
     setRHat(null);
     setEss(null);
     setHistogramData({ samples: [] });
+    setChainErrors({});
+    syncChainsState();
+  }, [syncChainsState]);
 
-    // Reset second chain if enabled
-    if (useSecondChain) {
-      setSamples2([]);
-      setTrajectory2([]);
-      setRejectedCount2(0);
-
-      const startState2 = {
-        q: { ...initialPosition2 },
-        p: { x: 0, y: 0 },
-      };
-
-      setCurrentParticle2(startState2);
-      currentParticleRef2.current = startState2;
-
-      // Reset second chain RNG if seeded mode is enabled
-      if (useSeededMode && seed2 !== null) {
-        samplerRef2.current.setSeed(seed2);
-      }
-    }
-  }, [
-    initialPosition,
-    initialPosition2,
-    useSeededMode,
-    seed,
-    seed2,
-    useSecondChain,
-    ensureSampler,
-    ensureSampler2,
-    samplerType,
-  ]);
-
-  // Calculate R-hat and Histogram data when sampling finishes
+  // Sync stats when chains change OR iteration stops
   useEffect(() => {
-    // If running, do not update
     if (isRunning) return;
 
-    // Prepare histogram data whenever sampling stops
+    // We expect chains[0] samples, and potentially chains[1]
+    const samples1 = chains[0]?.samples || [];
+    const samples2 = chains[1]?.samples || [];
+    const hasSecondChain = chains.length > 1;
+
     const hData = prepareHistogramData(
-      samples,
+      samples1,
       samples2,
       burnIn,
-      useSecondChain
+      hasSecondChain
     );
     setHistogramData(hData);
 
-    if (useSecondChain && samples.length > burnIn && samples2.length > burnIn) {
-      const validSamples = samples.slice(burnIn);
-      const validSamples2 = samples2.slice(burnIn);
+    const validSamples1 = samples1.slice(burnIn);
+    const validSamples2 = samples2.slice(burnIn);
 
-      // Ensure we still have enough samples after burn-in
-      if (validSamples.length > 1 && validSamples2.length > 1) {
-        const rHatValue = calculateGelmanRubin([validSamples, validSamples2]);
-        setRHat(rHatValue);
-
-        const essValue = calculateESS([validSamples, validSamples2]);
-        setEss(essValue);
-        return;
-      }
-    } else if (!useSecondChain && samples.length > burnIn) {
-      // Calculate ESS even for single chain
-      const validSamples = samples.slice(burnIn);
-      if (validSamples.length > 1) {
-        setRHat(null); // R-hat needs multiple chains
-        const essValue = calculateESS([validSamples]);
-        setEss(essValue);
-        return;
-      }
+    if (
+      hasSecondChain &&
+      validSamples1.length > 1 &&
+      validSamples2.length > 1
+    ) {
+      setRHat(calculateGelmanRubin([validSamples1, validSamples2]));
+      setEss(calculateESS([validSamples1, validSamples2]));
+    } else if (!hasSecondChain && validSamples1.length > 1) {
+      setRHat(null);
+      setEss(calculateESS([validSamples1]));
+    } else {
+      setRHat(null);
+      setEss(null);
     }
+  }, [isRunning, chains, burnIn]);
 
-    // Fallback: if conditions not met (e.g. disabled second chain, not enough samples), clear R-hat
-    setRHat(null);
-    setEss(null);
-  }, [isRunning, useSecondChain, samples, samples2, burnIn]);
-
-  /**
-   * Set the log probability function from a string expression
-   * Parses the string and updates the contour plot
-   * @param {string} str - Mathematical expression for log P(x, y)
-   */
   const setLogP = useCallback(
     (str) => {
       setLogPString(str);
@@ -303,13 +175,11 @@ export default function useSamplingController() {
       try {
         if (str) {
           logpInstanceRef.current = new Logp(str);
-          // Compute contour data when function changes
           computeContour();
         } else {
           logpInstanceRef.current = null;
           setContourData(null);
         }
-        // Reset state when function changes
         reset();
       } catch (e) {
         setError(e.message);
@@ -320,179 +190,173 @@ export default function useSamplingController() {
     [reset, computeContour]
   );
 
-  /**
-   * Update axis limits for visualization
-   * @param {Object} newLimits - Partial limits { xMin, xMax, yMin, yMax }
-   */
   const setAxisLimits = useCallback((newLimits) => {
     setAxisLimitsState((prev) => ({ ...prev, ...newLimits }));
   }, []);
 
-  /**
-   * Update HMC parameters
-   * @param {Object} newParams - Partial parameters object { epsilon, L, steps }
-   */
-  const setParams = useCallback((newParams) => {
-    setParamsState((prev) => ({ ...prev, ...newParams }));
-    // useEffect will handle updating samplerRef because it depends on params state
+  // Update configuration for a specific chain
+  const setChainConfig = useCallback((id, configUpdates) => {
+    setChains((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          const result = { ...c };
+          // Merge params if provided (not replace)
+          if (configUpdates.params !== undefined) {
+            result.params = { ...c.params, ...configUpdates.params };
+          }
+          // Apply remaining non-params updates
+          const { params: _params, ...otherUpdates } = configUpdates;
+          Object.assign(result, otherUpdates);
+
+          const impl = samplingChainsRef.current.get(id);
+          if (impl) {
+            // Sync samplerType on the ref BEFORE updating React state to keep them consistent
+            if (configUpdates.samplerType !== undefined)
+              impl.setSamplerType(configUpdates.samplerType);
+            if (configUpdates.params !== undefined)
+              impl.setParams(configUpdates.params);
+            if (configUpdates.initialPosition !== undefined)
+              impl.initialPosition = configUpdates.initialPosition;
+            if (configUpdates.seed !== undefined)
+              impl.setSeed(configUpdates.seed);
+          }
+
+          // If samplerType changed, ensure params map default properly into react state
+          if (
+            configUpdates.samplerType !== undefined &&
+            configUpdates.samplerType !== c.samplerType
+          ) {
+            result.params = {
+              ...DEFAULT_SAMPLER_PARAMS[configUpdates.samplerType],
+            };
+            // Implicit reset inside sampling chain needs a sync or manual reset:
+            result.samples = [];
+            result.trajectory = [];
+            result.rejectedCount = 0;
+            result.acceptedCount = 0;
+            result.error = null;
+            result.currentParticle = null;
+          }
+
+          return result;
+        }
+        return c;
+      })
+    );
   }, []);
 
+  const addChain = useCallback((config = {}) => {
+    const id = config.id || Date.now();
+    const samplerType = config.samplerType || 'HMC';
+    const newConfig = {
+      id,
+      samplerType,
+      params: { ...DEFAULT_SAMPLER_PARAMS[samplerType] },
+      initialPosition: { x: 1, y: 1 },
+      seed: null,
+      samples: [],
+      trajectory: [],
+      rejectedCount: 0,
+      acceptedCount: 0,
+      error: null,
+      currentParticle: null,
+      ...config,
+    };
+    // Create the ref instance here; the useEffect will skip it since the id is already present
+    samplingChainsRef.current.set(id, new SamplingChain(newConfig));
+    setChains((prev) => [...prev, newConfig]);
+  }, []);
+
+  const removeChain = useCallback(
+    (id) => {
+      // Guard: do not remove while sampling is in progress
+      if (isRunning) return;
+      samplingChainsRef.current.delete(id);
+      setChains((prev) => prev.filter((c) => c.id !== id));
+    },
+    [isRunning]
+  );
+
   /**
-   * Run the sampler for N steps
-   * Uses requestAnimationFrame for non-blocking execution
-   * @param {number} n - Number of steps to run
+   * Reset a single chain by id without affecting other chains.
    */
+  const resetChain = useCallback((id) => {
+    const impl = samplingChainsRef.current.get(id);
+    if (impl) {
+      impl.reset();
+    }
+    setChains((prev) =>
+      prev.map((c) => {
+        if (c.id !== id) return c;
+        return {
+          ...c,
+          samples: [],
+          trajectory: [],
+          rejectedCount: 0,
+          acceptedCount: 0,
+          error: null,
+          currentParticle: impl ? impl.currentParticle : null,
+        };
+      })
+    );
+    setChainErrors((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+  }, []);
+
   const sampleSteps = useCallback(
     (n) => {
       setIsRunning(true);
-
       if (!logpInstanceRef.current) {
         console.warn('No logP function set');
         setIsRunning(false);
         return;
       }
 
-      if (!currentParticleRef.current) {
-        currentParticleRef.current = {
-          q: { ...initialPosition },
-          p: { x: 0, y: 0 },
-        };
-      }
-
-      // Initialize second chain particle if enabled and not initialized
-      if (useSecondChain && !currentParticleRef2.current) {
-        currentParticleRef2.current = {
-          q: { ...initialPosition2 },
-          p: { x: 0, y: 0 },
-        };
-      }
-
       if (useFastMode) {
-        // Fast mode: execute all steps in a loop then update state once
         setTimeout(() => {
           try {
-            const newSamples = [];
-            const newSamples2 = [];
-            let newRejectedCount = 0;
-            let newRejectedCount2 = 0;
-            let finalTrajectory = [];
-            let finalTrajectory2 = [];
-
+            // Process all iteration batch before returning to main thread loop
             for (let i = 0; i < n; i++) {
-              // Chain 1
-              const result = samplerRef.current.step(
-                currentParticleRef.current,
-                logpInstanceRef.current
+              samplingChainsRef.current.forEach((chain) =>
+                chain.step(logpInstanceRef.current)
               );
-              currentParticleRef.current = {
-                q: result.q,
-                p: result.p || { x: 0, y: 0 },
-              };
-              if (result.accepted) {
-                newSamples.push(result.q);
-              } else {
-                newRejectedCount++;
-              }
-              finalTrajectory = result.trajectory;
-
-              // Chain 2
-              if (useSecondChain) {
-                const result2 = samplerRef2.current.step(
-                  currentParticleRef2.current,
-                  logpInstanceRef.current
-                );
-                currentParticleRef2.current = {
-                  q: result2.q,
-                  p: result2.p || { x: 0, y: 0 },
-                };
-                if (result2.accepted) {
-                  newSamples2.push(result2.q);
-                } else {
-                  newRejectedCount2++;
-                }
-                finalTrajectory2 = result2.trajectory;
-              }
             }
-
-            // Batch update state
-            setSamples((prev) => [...prev, ...newSamples]);
-            setRejectedCount((prev) => prev + newRejectedCount);
-            setTrajectory(finalTrajectory || []);
-            setCurrentParticle(currentParticleRef.current);
-
-            if (useSecondChain) {
-              setSamples2((prev) => [...prev, ...newSamples2]);
-              setRejectedCount2((prev) => prev + newRejectedCount2);
-              setTrajectory2(finalTrajectory2 || []);
-              setCurrentParticle2(currentParticleRef2.current);
-            }
-
+            // Collect per-chain errors after batch
+            const newErrors = {};
+            samplingChainsRef.current.forEach((chain, id) => {
+              if (chain.error) newErrors[id] = chain.error;
+            });
+            setChainErrors(newErrors);
+            syncChainsState();
             setIterationCount((prev) => prev + n);
             setIsRunning(false);
           } catch (e) {
             setError(e.message);
             setIsRunning(false);
           }
-        }, 0); // Use timeout to allow UI to render "Generating..." state
+        }, 0);
         return;
       }
 
       let stepsCompleted = 0;
-
       const executeStep = () => {
         try {
-          // Perform step using HMCSampler for chain 1
-          const result = samplerRef.current.step(
-            currentParticleRef.current,
-            logpInstanceRef.current
+          samplingChainsRef.current.forEach((chain) =>
+            chain.step(logpInstanceRef.current)
           );
-
-          currentParticleRef.current = {
-            q: result.q,
-            p: result.p || { x: 0, y: 0 },
-          };
-
-          // Update state after each step - UI will render between steps
-          // Only save accepted samples
-          if (result.accepted) {
-            setSamples((prev) => [...prev, result.q]);
-          } else {
-            setRejectedCount((prev) => prev + 1);
-          }
-
-          // Always show trajectory (even for rejected steps for visualization)
-          setTrajectory(result.trajectory || []);
-          setCurrentParticle(currentParticleRef.current);
-
-          // Run second chain if enabled
-          if (useSecondChain) {
-            const result2 = samplerRef2.current.step(
-              currentParticleRef2.current,
-              logpInstanceRef.current
-            );
-
-            currentParticleRef2.current = {
-              q: result2.q,
-              p: result2.p || { x: 0, y: 0 },
-            };
-
-            // Update second chain state
-            if (result2.accepted) {
-              setSamples2((prev) => [...prev, result2.q]);
-            } else {
-              setRejectedCount2((prev) => prev + 1);
-            }
-
-            setTrajectory2(result2.trajectory || []);
-            setCurrentParticle2(currentParticleRef2.current);
-          }
-
+          // Collect per-chain errors
+          const newErrors = {};
+          samplingChainsRef.current.forEach((chain, id) => {
+            if (chain.error) newErrors[id] = chain.error;
+          });
+          setChainErrors(newErrors);
+          syncChainsState();
           setIterationCount((prev) => prev + 1);
-
           stepsCompleted++;
 
           if (stepsCompleted < n) {
-            // Schedule next step on next animation frame
             requestAnimationFrame(executeStep);
           } else {
             setIsRunning(false);
@@ -502,109 +366,39 @@ export default function useSamplingController() {
           setIsRunning(false);
         }
       };
-
       executeStep();
     },
-    [initialPosition, initialPosition2, useSecondChain, useFastMode]
+    [useFastMode, syncChainsState]
   );
 
-  // Expose single step for manual stepping
-  /**
-   * Perform a single HMC step
-   * Wrapper around sampleSteps(1)
-   */
-  const stepAction = useCallback(() => {
-    sampleSteps(1);
-  }, [sampleSteps]);
+  const stepAction = useCallback(() => sampleSteps(1), [sampleSteps]);
 
-  /**
-   * Set the random seed for reproducible sampling
-   * @param {number|null} newSeed - Seed value, or null to disable seeded mode
-   */
-  const setSeed = useCallback((newSeed) => {
-    setSeedState(newSeed);
-    samplerRef.current.setSeed(newSeed);
-    setUseSeededMode(newSeed !== null);
-  }, []);
-
-  /**
-   * Set the random seed for second chain
-   * @param {number|null} newSeed - Seed value, or null to disable seeded mode for chain 2
-   */
-  const setSeed2 = useCallback((newSeed) => {
-    setSeed2State(newSeed);
-    if (samplerRef2.current) {
-      samplerRef2.current.setSeed(newSeed);
-    }
-  }, []);
-
-  const setSamplerType = useCallback(
-    (type) => {
-      if (type !== samplerType) {
-        setSamplerTypeState(type);
-        // Reset state will be handled by calling reset() from UI or effect
-        // But we should ensure the sampler is switched immediately or on next reset
-        // For now, let's just set state, and let reset() handle the actual switch logic
-        // Actually, we should probably switch immediately to avoid inconsistent state if user steps without reset
-        ensureSampler(type, useSeededMode ? seed : null);
-        // Ensure sampler2 is always updated to match type, even if second chain isn't currently active
-        ensureSampler2(type, useSeededMode ? seed2 : null);
-
-        // Auto-reset when changing sampler type
-        setSamples([]);
-        setTrajectory([]);
-        setIterationCount(0);
-        setRejectedCount(0);
-        setSamples2([]);
-        setTrajectory2([]);
-        setRejectedCount2(0);
-        setCurrentParticle(null);
-        currentParticleRef.current = null;
-        setCurrentParticle2(null);
-        currentParticleRef2.current = null;
-        setIsRunning(false);
-      }
-    },
-    [samplerType, ensureSampler, ensureSampler2, seed, seed2, useSeededMode]
-  );
-
+  // Derived properties for UI backwards compatibility (mostly handling fast mode rendering and general stats)
   return {
     logP,
-    params,
-    initialPosition,
-    samples,
-    trajectory,
-    currentParticle,
+    chains,
     isRunning,
     iterationCount,
-    acceptedCount: samples.length,
-    rejectedCount,
     error,
+    chainErrors,
     contourData,
-    seed,
-    useSeededMode,
+
     setLogP,
-    setParams,
-    setInitialPosition,
     sampleSteps,
     step: stepAction,
     reset,
-    setSeed,
+
     // Fast mode
     useFastMode,
     setUseFastMode,
-    // Second chain data and controls
-    useSecondChain,
-    initialPosition2,
-    samples2,
-    trajectory2,
-    currentParticle2,
-    acceptedCount2: samples2.length,
-    rejectedCount2,
-    seed2,
-    setUseSecondChain,
-    setInitialPosition2,
-    setSeed2,
+
+    // Chain Management
+    setChainConfig,
+    addChain,
+    removeChain,
+    resetChain,
+
+    // Plot props
     burnIn,
     setBurnIn,
     axisLimits,
@@ -612,7 +406,5 @@ export default function useSamplingController() {
     rHat,
     ess,
     histogramData,
-    samplerType,
-    setSamplerType,
   };
 }

@@ -35,7 +35,6 @@ describe('useSamplingController Sampler Selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default mock behavior
     HMCSampler.prototype.step.mockReturnValue({
       q: { x: 0, y: 0 },
       p: { x: 0, y: 0 },
@@ -53,7 +52,7 @@ describe('useSamplingController Sampler Selection', () => {
 
   it('should initialize with HMC sampler by default', () => {
     const { result } = renderHook(() => useSamplingController());
-    expect(result.current.samplerType).toBe('HMC');
+    expect(result.current.chains[0].samplerType).toBe('HMC');
     expect(HMCSampler).toHaveBeenCalled();
   });
 
@@ -61,10 +60,10 @@ describe('useSamplingController Sampler Selection', () => {
     const { result } = renderHook(() => useSamplingController());
 
     act(() => {
-      result.current.setSamplerType('GIBBS');
+      result.current.setChainConfig(0, { samplerType: 'GIBBS' });
     });
 
-    expect(result.current.samplerType).toBe('GIBBS');
+    expect(result.current.chains[0].samplerType).toBe('GIBBS');
     expect(GibbsSampler).toHaveBeenCalled();
   });
 
@@ -72,48 +71,48 @@ describe('useSamplingController Sampler Selection', () => {
     const { result } = renderHook(() => useSamplingController());
 
     act(() => {
-      result.current.setSamplerType('GIBBS');
+      result.current.setChainConfig(0, { samplerType: 'GIBBS' });
     });
 
-    expect(result.current.samplerType).toBe('GIBBS');
-    vi.clearAllMocks(); // Clear previous instantiations
+    expect(result.current.chains[0].samplerType).toBe('GIBBS');
+    vi.clearAllMocks();
 
     act(() => {
-      result.current.setSamplerType('HMC');
+      result.current.setChainConfig(0, { samplerType: 'HMC' });
     });
 
-    expect(result.current.samplerType).toBe('HMC');
+    expect(result.current.chains[0].samplerType).toBe('HMC');
     expect(HMCSampler).toHaveBeenCalled();
   });
 
   it('should clear state when switching samplers', () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Generate some state
     act(() => {
       result.current.setLogP('-(x^2)/2');
+    });
+    act(() => {
       result.current.step();
     });
 
     expect(result.current.iterationCount).toBe(1);
-    expect(result.current.samples.length).toBe(1);
+    expect(result.current.chains[0].samples.length).toBe(1);
 
-    // Switch sampler
     act(() => {
-      result.current.setSamplerType('GIBBS');
+      result.current.setChainConfig(0, { samplerType: 'GIBBS' });
     });
 
-    expect(result.current.iterationCount).toBe(0);
-    expect(result.current.samples.length).toBe(0);
-    expect(result.current.trajectory.length).toBe(0);
+    expect(result.current.chains[0].samples.length).toBe(0);
+    expect(result.current.chains[0].trajectory.length).toBe(0);
   });
 
   it('should use correct sampler for stepping', () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Default HMC
     act(() => {
       result.current.setLogP('-(x^2)/2');
+    });
+    act(() => {
       result.current.step();
     });
     expect(HMCSampler.prototype.step).toHaveBeenCalled();
@@ -121,9 +120,8 @@ describe('useSamplingController Sampler Selection', () => {
 
     vi.clearAllMocks();
 
-    // Switch to Gibbs
     act(() => {
-      result.current.setSamplerType('GIBBS');
+      result.current.setChainConfig(0, { samplerType: 'GIBBS' });
     });
 
     act(() => {
@@ -137,28 +135,21 @@ describe('useSamplingController Sampler Selection', () => {
     const { result } = renderHook(() => useSamplingController());
 
     act(() => {
-      result.current.setSamplerType('GIBBS');
+      result.current.setChainConfig(0, { samplerType: 'GIBBS' });
+    });
+    act(() => {
       result.current.reset();
     });
 
-    expect(result.current.samplerType).toBe('GIBBS');
-    // reset re-instantiates or ensures sampler
+    expect(result.current.chains[0].samplerType).toBe('GIBBS');
     expect(GibbsSampler).toHaveBeenCalled();
   });
 
-  it('should apply sampler switch to second chain even if inactive', () => {
+  it('should apply sampler switch to second chain independently', () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Initially HMC, second chain inactive
     act(() => {
-      result.current.setSamplerType('GIBBS');
-    });
-
-    vi.clearAllMocks();
-
-    // Enable second chain
-    act(() => {
-      result.current.setUseSecondChain(true);
+      result.current.addChain({ id: 1, samplerType: 'GIBBS', params: { w: 1.0 }, initialPosition: { x: 0, y: 0 } });
       result.current.setLogP('-(x^2)/2');
     });
 
@@ -166,8 +157,8 @@ describe('useSamplingController Sampler Selection', () => {
       result.current.step(); // Steps both chains now
     });
 
-    // Both chains should use Gibbs
-    expect(GibbsSampler.prototype.step).toHaveBeenCalledTimes(2);
-    expect(HMCSampler.prototype.step).not.toHaveBeenCalled();
+    // Chain 0 uses HMCSampler, Chain 1 uses Gibbs
+    expect(HMCSampler.prototype.step).toHaveBeenCalledTimes(1);
+    expect(GibbsSampler.prototype.step).toHaveBeenCalledTimes(1);
   });
 });
