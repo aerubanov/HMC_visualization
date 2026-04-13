@@ -17,6 +17,8 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "buffer": "^6.0.3",
+    "gifshot": "^0.4.5",
     "mathjs": "^13.2.2",
     "plotly.js": "^2.35.2",
     "react": "^18.3.1",

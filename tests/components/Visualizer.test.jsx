@@ -3,15 +3,23 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import Visualizer from '../../src/components/Visualizer';
 
+// Track onInitialized and onUpdate callbacks so tests can invoke them
+let capturedOnInitialized = null;
+let capturedOnUpdate = null;
+
 // Mock Plot component
 vi.mock('react-plotly.js', () => ({
   __esModule: true,
-  default: ({ data, layout }) => (
-    <div data-testid="plotly-plot">
-      <div data-testid="plot-data">{JSON.stringify(data)}</div>
-      <div data-testid="plot-layout">{JSON.stringify(layout)}</div>
-    </div>
-  ),
+  default: ({ data, layout, onInitialized, onUpdate }) => {
+    capturedOnInitialized = onInitialized;
+    capturedOnUpdate = onUpdate;
+    return (
+      <div data-testid="plotly-plot">
+        <div data-testid="plot-data">{JSON.stringify(data)}</div>
+        <div data-testid="plot-layout">{JSON.stringify(layout)}</div>
+      </div>
+    );
+  },
 }));
 
 describe('Visualizer', () => {
@@ -42,7 +50,6 @@ describe('Visualizer', () => {
   ];
 
   it('should render placeholder when no contourData', () => {
-     
     render(<Visualizer contourData={null} chains={[]} />);
     expect(
       screen.getByText('Enter a Log Probability Function')
@@ -50,7 +57,6 @@ describe('Visualizer', () => {
   });
 
   it('should render plot when contourData is provided', () => {
-     
     render(<Visualizer contourData={mockContour} chains={mockChainsSingle} />);
 
     const plot = screen.getByTestId('plotly-plot');
@@ -64,7 +70,7 @@ describe('Visualizer', () => {
 
   it('should respect axisLimits prop', () => {
     const axisLimits = { xMin: -10, xMax: 10, yMin: -20, yMax: 20 };
-     
+
     render(
       <Visualizer
         contourData={mockContour}
@@ -114,7 +120,6 @@ describe('Visualizer', () => {
   });
 
   it('should render multiple chain traces when provided', () => {
-     
     render(<Visualizer contourData={mockContour} chains={mockChainsDual} />);
 
     const plot = screen.getByTestId('plotly-plot');
@@ -124,5 +129,46 @@ describe('Visualizer', () => {
 
     // Expect: Contour + Chain1 Samples + Chain1 Trajectory + Chain2 Samples + Chain2 Trajectory = 5 traces
     expect(data).toHaveLength(5);
+  });
+
+  // Test case 9: onUpdate calls captureFrame when isRecording=true
+  it('onUpdate calls captureFrame with graphDiv when isRecording=true', () => {
+    const captureFrame = vi.fn();
+    render(
+      <Visualizer
+        contourData={mockContour}
+        chains={mockChainsSingle}
+        isRecording={true}
+        captureFrame={captureFrame}
+      />
+    );
+
+    // Simulate onInitialized to set graphDivRef
+    const fakeGraphDiv = document.createElement('div');
+    capturedOnInitialized?.(null, fakeGraphDiv);
+
+    // Simulate plot update
+    capturedOnUpdate?.();
+
+    expect(captureFrame).toHaveBeenCalledWith(fakeGraphDiv);
+  });
+
+  // Test case 10: onUpdate does not call captureFrame when isRecording=false
+  it('onUpdate does not call captureFrame when isRecording=false', () => {
+    const captureFrame = vi.fn();
+    render(
+      <Visualizer
+        contourData={mockContour}
+        chains={mockChainsSingle}
+        isRecording={false}
+        captureFrame={captureFrame}
+      />
+    );
+
+    const fakeGraphDiv = document.createElement('div');
+    capturedOnInitialized?.(null, fakeGraphDiv);
+    capturedOnUpdate?.();
+
+    expect(captureFrame).not.toHaveBeenCalled();
   });
 });

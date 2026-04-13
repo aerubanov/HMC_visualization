@@ -512,4 +512,81 @@ describe('Controls Component', () => {
       });
     });
   });
+
+  describe('Recording Controls', () => {
+    const recordingProps = {
+      ...mockProps,
+      isRecording: false,
+      isEncoding: false,
+      startRecording: vi.fn(),
+      stopRecording: vi.fn(),
+    };
+
+    // Test 11: Record button renders "Start Recording" when not recording
+    it('should render "Start Recording" button when not recording', () => {
+      render(<Controls {...recordingProps} isRecording={false} />);
+      expect(
+        screen.getByRole('button', { name: /start recording/i })
+      ).toBeInTheDocument();
+    });
+
+    // Test 12: Record button renders "Stop Recording" when recording
+    it('should render "Stop Recording" button when recording', () => {
+      render(<Controls {...recordingProps} isRecording={true} />);
+      expect(
+        screen.getByRole('button', { name: /stop recording/i })
+      ).toBeInTheDocument();
+    });
+
+    // Test 13: Clicking record button calls startRecording
+    it('clicking record button calls startRecording when not recording', () => {
+      const startRecording = vi.fn();
+      render(
+        <Controls
+          {...recordingProps}
+          isRecording={false}
+          startRecording={startRecording}
+        />
+      );
+      const btn = screen.getByRole('button', { name: /start recording/i });
+      fireEvent.click(btn);
+      expect(startRecording).toHaveBeenCalledTimes(1);
+    });
+
+    // Test 14: Clicking record button calls stopRecording
+    it('clicking record button calls stopRecording when recording', () => {
+      const stopRecording = vi.fn();
+      render(
+        <Controls
+          {...recordingProps}
+          isRecording={true}
+          stopRecording={stopRecording}
+        />
+      );
+      const btn = screen.getByRole('button', { name: /stop recording/i });
+      fireEvent.click(btn);
+      expect(stopRecording).toHaveBeenCalledTimes(1);
+    });
+
+    // Test 15: Record button is disabled in fast mode
+    it('record button is disabled when useFastMode is true', () => {
+      render(
+        <Controls {...recordingProps} useFastMode={true} isRecording={false} />
+      );
+      const btn = screen.getByRole('button', { name: /start recording/i });
+      expect(btn).toBeDisabled();
+    });
+
+    it('record button shows "Encoding..." when isEncoding is true', () => {
+      render(<Controls {...recordingProps} isEncoding={true} />);
+      expect(
+        screen.getByRole('button', { name: /encoding/i })
+      ).toBeInTheDocument();
+    });
+
+    it('shows "Recording..." indicator text when isRecording is true', () => {
+      render(<Controls {...recordingProps} isRecording={true} />);
+      expect(screen.getByText(/recording\.\.\./i)).toBeInTheDocument();
+    });
+  });
 });

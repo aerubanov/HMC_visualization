@@ -21,6 +21,10 @@ function Controls({
   setAxisLimits,
   useFastMode,
   setUseFastMode,
+  isRecording,
+  isEncoding,
+  startRecording,
+  stopRecording,
 }) {
   const [nSteps, setNSteps] = useState(10);
   const [draftLogP, setDraftLogP] = useState(logP);
@@ -466,6 +470,38 @@ function Controls({
             Reset Sampler
           </button>
 
+          <button
+            className="btn btn-secondary"
+            style={{
+              width: '100%',
+              marginTop: '8px',
+              color: isRecording ? 'red' : undefined,
+            }}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={useFastMode || isEncoding}
+            title={useFastMode ? 'Recording is not available in Fast Mode' : ''}
+          >
+            {isEncoding
+              ? 'Encoding...'
+              : isRecording
+                ? 'Stop Recording'
+                : 'Start Recording'}
+          </button>
+
+          {isRecording && (
+            <div
+              className="recording-indicator"
+              style={{
+                marginTop: '6px',
+                textAlign: 'center',
+                color: 'red',
+                fontWeight: 'bold',
+              }}
+            >
+              Recording...
+            </div>
+          )}
+
           <div className="control-group" style={{ marginTop: '8px' }}>
             <div
               className="checkbox-group"
@@ -539,6 +575,10 @@ Controls.propTypes = {
   setAxisLimits: PropTypes.func,
   useFastMode: PropTypes.bool,
   setUseFastMode: PropTypes.func,
+  isRecording: PropTypes.bool,
+  isEncoding: PropTypes.bool,
+  startRecording: PropTypes.func,
+  stopRecording: PropTypes.func,
 };
 
 export default Controls;
