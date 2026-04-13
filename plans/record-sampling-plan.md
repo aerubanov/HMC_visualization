@@ -84,3 +84,24 @@ Dependency: `gifshot` npm package (`npm install gifshot`).
 13. **Clicking record button calls startRecording** — render with `isRecording={false}` and a `startRecording` spy; click the button; assert spy called.
 14. **Clicking record button calls stopRecording** — render with `isRecording={true}` and a `stopRecording` spy; click; assert spy called.
 15. **Record button is disabled in fast mode** — render with `useFastMode={true}`; assert record button has `disabled` attribute.
+
+---
+
+## Build Fix: Vite cannot resolve "buffer/"
+
+`plotly.js` internally does `require('buffer/')` which esbuild cannot resolve because the `buffer` polyfill package is not installed. This is a pre-existing issue unrelated to gifshot.
+
+**Fix (part of this feature's setup):**
+
+1. Install polyfill: `npm install buffer`
+2. Add to `vite.config.js`:
+   ```js
+   resolve: {
+     alias: { 'buffer/': 'buffer/' },
+   },
+   optimizeDeps: {
+     include: ['buffer'],
+   },
+   ```
+
+No application code changes needed — only `vite.config.js` and `package.json`.

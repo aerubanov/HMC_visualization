@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import Plotly from 'plotly.js';
+import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
 
 /** Frames-per-second for the exported GIF. */

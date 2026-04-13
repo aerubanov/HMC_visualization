@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
 // Mock Plotly
-vi.mock('plotly.js', () => ({
+vi.mock('plotly.js/dist/plotly', () => ({
   default: {
     toImage: vi.fn(),
   },
@@ -16,7 +16,7 @@ vi.mock('gifshot', () => ({
 }));
 
 import useRecording from '../../src/hooks/useRecording';
-import Plotly from 'plotly.js';
+import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
 
 describe('useRecording hook', () => {
