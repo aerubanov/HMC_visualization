@@ -3,7 +3,7 @@ import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
 
 /** Frames-per-second for the exported GIF. */
-const GIF_FPS = 10;
+const GIF_FPS = 5;
 
 /** Dimensions for captured frames. */
 const CAPTURE_WIDTH = 800;
