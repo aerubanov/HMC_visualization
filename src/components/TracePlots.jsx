@@ -4,7 +4,11 @@ import PropTypes from 'prop-types';
 import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
 import { createTracePlotTrace } from '../utils/plotFunctions';
 
-function TracePlots({ chains, burnIn, rHat, ess }) {
+/**
+ * @param {Array<{chainId: *, ess: {x: number, y: number}}>|null|undefined} essPerChain
+ *   When provided, each chain's ESS is sourced from this array instead of the aggregate `ess` prop.
+ */
+function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
@@ -68,7 +72,24 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
         <h4 className="trace-title">
           X Trace{' '}
           {rHat && <span className="stat-label">{formatRHat(rHat.x)}</span>}
-          {ess && <span className="stat-label">{formatESS(ess.x)}</span>}
+          {!essPerChain && ess && (
+            <span className="stat-label">{formatESS(ess.x)}</span>
+          )}
+          {essPerChain &&
+            essPerChain.map((entry) => {
+              const chainIndex = chains.findIndex(
+                (c) => c.id === entry.chainId
+              );
+              const label =
+                chainIndex >= 0
+                  ? `Chain ${chainIndex + 1} (${chains[chainIndex].samplerType})`
+                  : `Chain ${entry.chainId}`;
+              return (
+                <span key={entry.chainId} className="stat-label">
+                  {label}: ESS={Math.round(entry.ess.x)}
+                </span>
+              );
+            })}
         </h4>
         <Plot
           data={xTraces}
@@ -82,7 +103,24 @@ function TracePlots({ chains, burnIn, rHat, ess }) {
         <h4 className="trace-title">
           Y Trace{' '}
           {rHat && <span className="stat-label">{formatRHat(rHat.y)}</span>}
-          {ess && <span className="stat-label">{formatESS(ess.y)}</span>}
+          {!essPerChain && ess && (
+            <span className="stat-label">{formatESS(ess.y)}</span>
+          )}
+          {essPerChain &&
+            essPerChain.map((entry) => {
+              const chainIndex = chains.findIndex(
+                (c) => c.id === entry.chainId
+              );
+              const label =
+                chainIndex >= 0
+                  ? `Chain ${chainIndex + 1} (${chains[chainIndex].samplerType})`
+                  : `Chain ${entry.chainId}`;
+              return (
+                <span key={entry.chainId} className="stat-label">
+                  {label}: ESS={Math.round(entry.ess.y)}
+                </span>
+              );
+            })}
         </h4>
         <Plot
           data={yTraces}
@@ -117,6 +155,17 @@ TracePlots.propTypes = {
   burnIn: PropTypes.number,
   rHat: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
   ess: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
+  /** Optional: when provided, per-chain ESS is shown instead of aggregate ESS */
+  essPerChain: PropTypes.arrayOf(
+    PropTypes.shape({
+      chainId: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
+        .isRequired,
+      ess: PropTypes.shape({
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+      }).isRequired,
+    })
+  ),
 };
 
 export default TracePlots;

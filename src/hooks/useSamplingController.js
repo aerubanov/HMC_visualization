@@ -5,7 +5,22 @@ import { DEFAULT_SAMPLER_PARAMS } from '../samplers/defaultConfigs';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { CONTOUR } from '../utils/plotConfig.json';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
-import { prepareHistogramData } from '../utils/histogramUtils';
+import {
+  prepareHistogramData,
+  prepareHistogramDataPerChain,
+} from '../utils/histogramUtils';
+
+/**
+ * Returns true when all chains share the same samplerType (or when there is at most one chain).
+ * When this returns false, R-hat is meaningless and ESS should be computed per-chain.
+ *
+ * @param {Array<{samplerType: string}>} chains
+ * @returns {boolean}
+ */
+export function allSameSamplerType(chains) {
+  if (chains.length <= 1) return true;
+  return chains.every((c) => c.samplerType === chains[0].samplerType);
+}
 
 /**
  * Custom hook to control the HMC sampling process using independent chains
@@ -45,6 +60,9 @@ export default function useSamplingController() {
   const [rHat, setRHat] = useState(null);
   const [ess, setEss] = useState(null);
   const [histogramData, setHistogramData] = useState({ samples: [] });
+  // Per-chain stats — populated only when chains have different sampler types
+  const [histogramDataPerChain, setHistogramDataPerChain] = useState(null);
+  const [essPerChain, setEssPerChain] = useState(null);
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
@@ -128,6 +146,8 @@ export default function useSamplingController() {
     setRHat(null);
     setEss(null);
     setHistogramData({ samples: [] });
+    setHistogramDataPerChain(null);
+    setEssPerChain(null);
     setChainErrors({});
     syncChainsState();
   }, [syncChainsState]);
@@ -136,35 +156,56 @@ export default function useSamplingController() {
   useEffect(() => {
     if (isRunning) return;
 
-    // We expect chains[0] samples, and potentially chains[1]
-    const samples1 = chains[0]?.samples || [];
-    const samples2 = chains[1]?.samples || [];
-    const hasSecondChain = chains.length > 1;
+    if (allSameSamplerType(chains)) {
+      // --- Same sampler type: existing merged behaviour ---
+      const samples1 = chains[0]?.samples || [];
+      const samples2 = chains[1]?.samples || [];
+      const hasSecondChain = chains.length > 1;
 
-    const hData = prepareHistogramData(
-      samples1,
-      samples2,
-      burnIn,
-      hasSecondChain
-    );
-    setHistogramData(hData);
+      const hData = prepareHistogramData(
+        samples1,
+        samples2,
+        burnIn,
+        hasSecondChain
+      );
+      setHistogramData(hData);
+      setHistogramDataPerChain(null);
+      setEssPerChain(null);
 
-    const validSamples1 = samples1.slice(burnIn);
-    const validSamples2 = samples2.slice(burnIn);
+      const validSamples1 = samples1.slice(burnIn);
+      const validSamples2 = samples2.slice(burnIn);
 
-    if (
-      hasSecondChain &&
-      validSamples1.length > 1 &&
-      validSamples2.length > 1
-    ) {
-      setRHat(calculateGelmanRubin([validSamples1, validSamples2]));
-      setEss(calculateESS([validSamples1, validSamples2]));
-    } else if (!hasSecondChain && validSamples1.length > 1) {
-      setRHat(null);
-      setEss(calculateESS([validSamples1]));
+      if (
+        hasSecondChain &&
+        validSamples1.length > 1 &&
+        validSamples2.length > 1
+      ) {
+        setRHat(calculateGelmanRubin([validSamples1, validSamples2]));
+        setEss(calculateESS([validSamples1, validSamples2]));
+      } else if (!hasSecondChain && validSamples1.length > 1) {
+        setRHat(null);
+        setEss(calculateESS([validSamples1]));
+      } else {
+        setRHat(null);
+        setEss(null);
+      }
     } else {
+      // --- Different sampler types: per-chain stats ---
+      setHistogramData(null);
       setRHat(null);
       setEss(null);
+
+      setHistogramDataPerChain(prepareHistogramDataPerChain(chains, burnIn));
+
+      const perChainEss = chains.map((c) => {
+        const postBurnin = (c.samples || []).slice(burnIn);
+        return {
+          chainId: c.id,
+          ess:
+            postBurnin.length > 1 ? calculateESS([postBurnin]) : { x: 0, y: 0 },
+        };
+      });
+      setEssPerChain(perChainEss);
     }
   }, [isRunning, chains, burnIn]);
 
@@ -406,5 +447,8 @@ export default function useSamplingController() {
     rHat,
     ess,
     histogramData,
+    // Per-chain stats (non-null only when chains have different sampler types)
+    essPerChain,
+    histogramDataPerChain,
   };
 }

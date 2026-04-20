@@ -26,6 +26,8 @@ function App() {
     rHat,
     ess,
     histogramData,
+    essPerChain,
+    histogramDataPerChain,
     axisLimits,
     setAxisLimits,
     useFastMode,
@@ -115,9 +117,11 @@ function App() {
                 burnIn={burnIn}
                 rHat={rHat}
                 ess={ess}
+                essPerChain={essPerChain}
               />
               <HistogramPlots
                 histogramData={histogramData}
+                histogramDataPerChain={histogramDataPerChain}
                 axisLimits={axisLimits}
               />
             </>

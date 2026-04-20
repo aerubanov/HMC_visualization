@@ -37,6 +37,31 @@ export function prepareHistogramData(
 }
 
 /**
+ * Prepares per-chain histogram data for mixed sampler type scenarios.
+ * Each chain's burn-in samples are removed independently; chains are NOT merged.
+ *
+ * @param {Array<{id: *, samplerType: string, samples: Array<{x: number, y: number}>}>} chains
+ *   Array of chain objects (each must have id, samplerType, and samples fields)
+ * @param {number} burnIn - Number of initial samples to exclude as burn-in
+ * @returns {Array<{chainId: *, samplerType: string, label: string, samples: Array<{x: number, y: number}>}>}
+ *   One entry per chain, each with post-burnin samples only
+ */
+export function prepareHistogramDataPerChain(chains, burnIn) {
+  return chains.map((chain, index) => {
+    const postBurnin =
+      chain.samples && Array.isArray(chain.samples)
+        ? chain.samples.slice(burnIn)
+        : [];
+    return {
+      chainId: chain.id,
+      samplerType: chain.samplerType,
+      label: `Chain ${index + 1} (${chain.samplerType})`,
+      samples: postBurnin,
+    };
+  });
+}
+
+/**
  * Calculates optimal bin edges for 1D histograms using Freedman-Diaconis rule
  * @param {Array<number>} values - Array of values for a single dimension
  * @param {number} numBins - Desired number of bins (optional, will calculate if not provided)
