@@ -80,6 +80,46 @@ describe('histogramUtils', () => {
       expect(result.samples).toHaveLength(2);
       expect(result.samples).toEqual(samples);
     });
+
+    it('does not throw and returns non-empty samples when all x values are identical', () => {
+      // All x values are the same → range === 0 branch in calculateBinEdges
+      const samples = [
+        { x: 5, y: 1 },
+        { x: 5, y: 2 },
+        { x: 5, y: 3 },
+      ];
+
+      let result;
+      expect(() => {
+        result = prepareHistogramData(samples, null, 0, false);
+      }).not.toThrow();
+
+      expect(result.samples.length).toBeGreaterThan(0);
+    });
+
+    it('does not throw when IQR is zero but range is non-zero (zero-IQR fallback)', () => {
+      // Majority of x values identical → IQR = 0, but a few outliers give range > 0
+      // This exercises the binWidth === 0 branch in Freedman-Diaconis rule
+      const samples = [
+        { x: 5, y: 1 },
+        { x: 5, y: 2 },
+        { x: 5, y: 3 },
+        { x: 5, y: 4 },
+        { x: 5, y: 5 },
+        { x: 5, y: 6 },
+        { x: 5, y: 7 },
+        { x: 5, y: 8 },
+        { x: 1, y: 9 },
+        { x: 9, y: 10 },
+      ];
+
+      let result;
+      expect(() => {
+        result = prepareHistogramData(samples, null, 0, false);
+      }).not.toThrow();
+
+      expect(result.samples.length).toBeGreaterThan(0);
+    });
   });
 
   describe('prepareHistogramDataPerChain', () => {

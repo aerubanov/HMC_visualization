@@ -310,6 +310,22 @@ describe('TracePlots', () => {
     expect(screen.queryByText(/ESS=/)).not.toBeInTheDocument();
   });
 
+  test('renders fallback "Chain <id>" label when essPerChain chainId is not in chains', () => {
+    // chains has id 0 only; essPerChain references id 99 which does not exist
+    const essPerChain = [{ chainId: 99, ess: { x: 50, y: 45 } }];
+
+    render(
+      <TracePlots
+        chains={mockChainsSingle}
+        burnIn={0}
+        essPerChain={essPerChain}
+      />
+    );
+
+    // Fallback label "Chain 99" should appear (no samplerType lookup possible)
+    expect(screen.getAllByText(/Chain 99/)).toHaveLength(2); // once in X Trace, once in Y Trace
+  });
+
   // Test case 21: Zero-division guard
   test('acceptance rate shows 0.0% when both acceptedCount and rejectedCount are 0', () => {
     const chains = [

@@ -66,3 +66,9 @@ Pass `essPerChain` and `histogramDataPerChain` from `useSamplingController` thro
 
 10. **Per-chain ESS displayed** — with `essPerChain` provided, ESS values appear adjacent to each chain's trace header.
 11. **Aggregate ESS fallback** — without `essPerChain`, the existing aggregate `ess` prop is displayed unchanged.
+12. **Unknown chainId fallback** — when `essPerChain` contains a `chainId` not present in `chains`, the label falls back to `"Chain <id>"` instead of crashing.
+
+### `histogramUtils` — edge cases (`tests/utils/histogramUtils.test.js`)
+
+13. **All-same-value samples (range = 0)** — when all sample values for one axis are identical, `calculateBinEdges` returns a synthetic bin of width 1 centred on that value without throwing.
+14. **Zero IQR fallback** — when samples have zero IQR (e.g. majority of values identical), `calculateBinEdges` falls back to Sturges' rule instead of producing zero-width bins.
