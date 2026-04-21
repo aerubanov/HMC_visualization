@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   prepareHistogramData,
+  prepareHistogramDataPerChain,
   calculateHistogramBins,
 } from '../../src/utils/histogramUtils';
 
@@ -78,6 +79,156 @@ describe('histogramUtils', () => {
 
       expect(result.samples).toHaveLength(2);
       expect(result.samples).toEqual(samples);
+    });
+
+    it('does not throw and returns non-empty samples when all x values are identical', () => {
+      // All x values are the same → range === 0 branch in calculateBinEdges
+      const samples = [
+        { x: 5, y: 1 },
+        { x: 5, y: 2 },
+        { x: 5, y: 3 },
+      ];
+
+      let result;
+      expect(() => {
+        result = prepareHistogramData(samples, null, 0, false);
+      }).not.toThrow();
+
+      expect(result.samples.length).toBeGreaterThan(0);
+    });
+
+    it('does not throw when IQR is zero but range is non-zero (zero-IQR fallback)', () => {
+      // Majority of x values identical → IQR = 0, but a few outliers give range > 0
+      // This exercises the binWidth === 0 branch in Freedman-Diaconis rule
+      const samples = [
+        { x: 5, y: 1 },
+        { x: 5, y: 2 },
+        { x: 5, y: 3 },
+        { x: 5, y: 4 },
+        { x: 5, y: 5 },
+        { x: 5, y: 6 },
+        { x: 5, y: 7 },
+        { x: 5, y: 8 },
+        { x: 1, y: 9 },
+        { x: 9, y: 10 },
+      ];
+
+      let result;
+      expect(() => {
+        result = prepareHistogramData(samples, null, 0, false);
+      }).not.toThrow();
+
+      expect(result.samples.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('prepareHistogramDataPerChain', () => {
+    it('returns one entry per chain with required fields', () => {
+      const chains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          samples: [
+            { x: 1, y: 2 },
+            { x: 3, y: 4 },
+            { x: 5, y: 6 },
+          ],
+        },
+        {
+          id: 1,
+          samplerType: 'Gibbs',
+          samples: [
+            { x: 10, y: 20 },
+            { x: 30, y: 40 },
+          ],
+        },
+      ];
+
+      const result = prepareHistogramDataPerChain(chains, 0);
+
+      expect(result).toHaveLength(2);
+
+      expect(result[0]).toHaveProperty('chainId', 0);
+      expect(result[0]).toHaveProperty('samplerType', 'HMC');
+      expect(result[0]).toHaveProperty('label');
+      expect(result[0]).toHaveProperty('samples');
+      expect(typeof result[0].label).toBe('string');
+      expect(result[0].label).toContain('HMC');
+
+      expect(result[1]).toHaveProperty('chainId', 1);
+      expect(result[1]).toHaveProperty('samplerType', 'Gibbs');
+      expect(result[1]).toHaveProperty('label');
+      expect(result[1].label).toContain('Gibbs');
+    });
+
+    it('excludes burn-in samples from each chain independently', () => {
+      const chains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          samples: [
+            { x: 1, y: 1 },
+            { x: 2, y: 2 },
+            { x: 3, y: 3 },
+            { x: 4, y: 4 },
+          ],
+        },
+        {
+          id: 1,
+          samplerType: 'Gibbs',
+          samples: [
+            { x: 10, y: 10 },
+            { x: 20, y: 20 },
+            { x: 30, y: 30 },
+          ],
+        },
+      ];
+
+      const result = prepareHistogramDataPerChain(chains, 2);
+
+      // Chain 0: 4 samples, burnIn 2 → 2 remaining
+      expect(result[0].samples).toHaveLength(2);
+      expect(result[0].samples[0]).toEqual({ x: 3, y: 3 });
+      expect(result[0].samples[1]).toEqual({ x: 4, y: 4 });
+
+      // Chain 1: 3 samples, burnIn 2 → 1 remaining
+      expect(result[1].samples).toHaveLength(1);
+      expect(result[1].samples[0]).toEqual({ x: 30, y: 30 });
+    });
+
+    it('does not mix samples between chains (no cross-chain merging)', () => {
+      const hmcSamples = [
+        { x: 1, y: 1 },
+        { x: 2, y: 2 },
+        { x: 3, y: 3 },
+      ];
+      const gibbsSamples = [
+        { x: 100, y: 100 },
+        { x: 200, y: 200 },
+        { x: 300, y: 300 },
+      ];
+      const chains = [
+        { id: 0, samplerType: 'HMC', samples: hmcSamples },
+        { id: 1, samplerType: 'Gibbs', samples: gibbsSamples },
+      ];
+
+      const result = prepareHistogramDataPerChain(chains, 0);
+
+      // HMC entry must only contain HMC samples
+      result[0].samples.forEach((s) => {
+        expect(s.x).toBeLessThan(10);
+      });
+
+      // Gibbs entry must only contain Gibbs samples
+      result[1].samples.forEach((s) => {
+        expect(s.x).toBeGreaterThanOrEqual(100);
+      });
+
+      // No sample should appear in both entries
+      const allHmcXValues = new Set(result[0].samples.map((s) => s.x));
+      result[1].samples.forEach((s) => {
+        expect(allHmcXValues.has(s.x)).toBe(false);
+      });
     });
   });
 

@@ -94,6 +94,53 @@ describe('HistogramPlots', () => {
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
   });
+  it('renders two labelled panels when histogramDataPerChain has two entries', () => {
+    const histogramDataPerChain = [
+      {
+        chainId: 0,
+        samplerType: 'HMC',
+        label: 'Chain 1 (HMC)',
+        samples: mockSamples,
+      },
+      {
+        chainId: 1,
+        samplerType: 'Gibbs',
+        label: 'Chain 2 (Gibbs)',
+        samples: mockSamples2,
+      },
+    ];
+
+    render(
+      <HistogramPlots
+        histogramData={{ samples: [] }}
+        histogramDataPerChain={histogramDataPerChain}
+      />
+    );
+
+    expect(screen.getByText('Chain 1 (HMC)')).toBeInTheDocument();
+    expect(screen.getByText('Chain 2 (Gibbs)')).toBeInTheDocument();
+
+    // Each chain should have 3 plots (2D, X marginal, Y marginal) → 6 total
+    const plots = screen.getAllByTestId('plotly-plot');
+    expect(plots).toHaveLength(6);
+  });
+
+  it('renders legacy single-panel when histogramDataPerChain is null', () => {
+    render(
+      <HistogramPlots
+        histogramData={{ samples: mockSamples }}
+        histogramDataPerChain={null}
+      />
+    );
+
+    expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
+    // No per-chain labels
+    expect(screen.queryByText('Chain 1 (HMC)')).not.toBeInTheDocument();
+
+    const plots = screen.getAllByTestId('plotly-plot');
+    expect(plots).toHaveLength(3);
+  });
+
   it('should respect axisLimits prop', () => {
     const axisLimits = { xMin: -10, xMax: 10, yMin: -20, yMax: 20 };
     render(

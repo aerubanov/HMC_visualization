@@ -9,3 +9,4 @@ Interactive React app for visualizing HMC and Gibbs sampling algorithms side-by-
 - [Chain UI Improvements](plans/chain-ui-improvements-plan.md) — replace "Enable Second Chain" checkbox with Add/Remove buttons per chain; include sampler type in plot legends.
 - [Code Quality Fixes](plans/code-quality-fixes-plan.md) — gitignore .claude/, trajectory deep-copy safety, chainErrors plain object + stale-error fix, TODO comment for error UI, syncChainsState tests.
 - [Record Sampling](plans/record-sampling-plan.md) — "Start/Stop Recording" button that captures trajectory plot frames during sampling and downloads a GIF.
+- [Sampler Comparison Post-Processing](plans/sampler-comparison-postprocessing-plan.md) — conditional R-hat/ESS/histogram logic: merge + R-hat when chains share a sampler type; skip R-hat, per-chain ESS, and side-by-side histograms when sampler types differ.

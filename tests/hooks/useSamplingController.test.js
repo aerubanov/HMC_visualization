@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import useSamplingController from '../../src/hooks/useSamplingController';
+import useSamplingController, {
+  allChainsCompatible,
+} from '../../src/hooks/useSamplingController';
 import { HMCSampler } from '../../src/samplers/HMCSampler';
 import { GibbsSampler } from '../../src/samplers/GibbsSampler';
 import { createContourTrace } from '../../src/utils/plotFunctions';
@@ -2752,5 +2754,171 @@ describe('Code Quality Fix Tests', () => {
     expect(typeof result.current.chainErrors).toBe('object');
     // Verify it behaves like a plain object
     expect(Object.keys(result.current.chainErrors)).toEqual([]);
+  });
+
+  describe('allChainsCompatible helper', () => {
+    it('returns true when all chains have the same samplerType', () => {
+      const chains = [
+        { id: 0, samplerType: 'HMC' },
+        { id: 1, samplerType: 'HMC' },
+      ];
+      expect(allChainsCompatible(chains)).toBe(true);
+    });
+
+    it('returns true for a single chain', () => {
+      expect(allChainsCompatible([{ id: 0, samplerType: 'HMC' }])).toBe(true);
+    });
+
+    it('returns true for empty array', () => {
+      expect(allChainsCompatible([])).toBe(true);
+    });
+
+    it('returns false when at least one chain has a different samplerType', () => {
+      const chains = [
+        { id: 0, samplerType: 'HMC' },
+        { id: 1, samplerType: 'Gibbs' },
+      ];
+      expect(allChainsCompatible(chains)).toBe(false);
+    });
+
+    it('returns false when chains have the same samplerType but different params', () => {
+      const chains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, numLeapfrog: 10 },
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.3, numLeapfrog: 10 },
+        },
+      ];
+      expect(allChainsCompatible(chains)).toBe(false);
+    });
+
+    it('returns true when chains differ only in seed or initialPosition', () => {
+      const chains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, numLeapfrog: 10 },
+          seed: 42,
+          initialPosition: { x: 0, y: 0 },
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, numLeapfrog: 10 },
+          seed: 99,
+          initialPosition: { x: 1, y: 1 },
+        },
+      ];
+      expect(allChainsCompatible(chains)).toBe(true);
+    });
+  });
+
+  describe('mixed sampler type post-processing', () => {
+    it('sets essPerChain and clears rHat/histogramData when chain types differ', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      // Set up logP so sampling can run
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+      });
+
+      // Add a second chain with a different sampler type
+      act(() => {
+        result.current.addChain({ id: 99, samplerType: 'Gibbs' });
+      });
+
+      // Simulate samples on chain 0 (HMC mock) and chain 1 (Gibbs mock)
+      // Inject samples directly through setChainConfig — we test the useEffect branch,
+      // so we need isRunning to be false. The effect fires when chains state changes.
+
+      // Mock steps to populate samples
+      let hmcCallCount = 0;
+      HMCSampler.prototype.step.mockImplementation(() => {
+        const val = hmcCallCount++;
+        return {
+          q: { x: val * 0.1, y: val * 0.2 },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: val * 0.1, y: val * 0.2 }],
+        };
+      });
+
+      let gibbsCallCount = 0;
+      GibbsSampler.prototype.step.mockImplementation(() => {
+        const val = gibbsCallCount++;
+        return {
+          q: { x: val * 0.5, y: val * 0.5 },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: val * 0.5, y: val * 0.5 }],
+        };
+      });
+
+      // Run a batch of steps so both chains accumulate samples
+      act(() => {
+        result.current.sampleSteps(20);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false), {
+        timeout: 3000,
+      });
+
+      // With burnIn=10 (default), after 20 samples each chain has 10 post-burnin samples
+      // Different sampler types → essPerChain populated, rHat null, histogramData empty
+      expect(result.current.rHat).toBeNull();
+      expect(result.current.histogramData).toEqual({ samples: [] });
+      expect(result.current.essPerChain).not.toBeNull();
+      expect(result.current.essPerChain).toHaveLength(2);
+      expect(result.current.essPerChain[0]).toHaveProperty('chainId');
+      expect(result.current.essPerChain[0]).toHaveProperty('ess');
+      expect(result.current.essPerChain[0].ess).toHaveProperty('x');
+      expect(result.current.essPerChain[0].ess).toHaveProperty('y');
+      expect(result.current.histogramDataPerChain).not.toBeNull();
+      expect(result.current.histogramDataPerChain).toHaveLength(2);
+    });
+
+    it('keeps existing merged behaviour (rHat, histogramData) when all chains share same samplerType', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+      });
+
+      // Add a second HMC chain (same type)
+      act(() => {
+        result.current.addChain({ id: 88, samplerType: 'HMC' });
+      });
+
+      let hmcCallCount = 0;
+      HMCSampler.prototype.step.mockImplementation(() => {
+        const val = hmcCallCount++;
+        return {
+          q: { x: val * 0.1, y: val * 0.2 },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: val * 0.1, y: val * 0.2 }],
+        };
+      });
+
+      act(() => {
+        result.current.sampleSteps(20);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false), {
+        timeout: 3000,
+      });
+
+      // Same sampler type → rHat computed, essPerChain null, histogramDataPerChain null
+      expect(result.current.rHat).not.toBeNull();
+      expect(result.current.essPerChain).toBeNull();
+      expect(result.current.histogramDataPerChain).toBeNull();
+      expect(result.current.histogramData).not.toBeNull();
+      expect(result.current.histogramData).toHaveProperty('samples');
+    });
   });
 });

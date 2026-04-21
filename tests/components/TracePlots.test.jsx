@@ -278,6 +278,54 @@ describe('TracePlots', () => {
     expect(screen.getByText(/Rate: 80\.0%/i)).toBeInTheDocument();
   });
 
+  test('displays per-chain ESS from essPerChain when provided', () => {
+    const essPerChain = [
+      { chainId: 0, ess: { x: 42, y: 37 } },
+      { chainId: 1, ess: { x: 55, y: 61 } },
+    ];
+
+    render(
+      <TracePlots
+        chains={mockChainsDual}
+        burnIn={0}
+        essPerChain={essPerChain}
+      />
+    );
+
+    // Per-chain ESS should appear in X Trace and Y Trace headers
+    expect(screen.getAllByText(/ESS=42/)).toHaveLength(1);
+    expect(screen.getAllByText(/ESS=37/)).toHaveLength(1);
+    expect(screen.getAllByText(/ESS=55/)).toHaveLength(1);
+    expect(screen.getAllByText(/ESS=61/)).toHaveLength(1);
+  });
+
+  test('shows aggregate ESS from ess prop when essPerChain is absent', () => {
+    const ess = { x: 150, y: 175 };
+
+    render(<TracePlots chains={mockChainsSingle} burnIn={0} ess={ess} />);
+
+    expect(screen.getByText('(ESS = 150)')).toBeInTheDocument();
+    expect(screen.getByText('(ESS = 175)')).toBeInTheDocument();
+    // No per-chain ESS format
+    expect(screen.queryByText(/ESS=/)).not.toBeInTheDocument();
+  });
+
+  test('renders fallback "Chain <id>" label when essPerChain chainId is not in chains', () => {
+    // chains has id 0 only; essPerChain references id 99 which does not exist
+    const essPerChain = [{ chainId: 99, ess: { x: 50, y: 45 } }];
+
+    render(
+      <TracePlots
+        chains={mockChainsSingle}
+        burnIn={0}
+        essPerChain={essPerChain}
+      />
+    );
+
+    // Fallback label "Chain 99" should appear (no samplerType lookup possible)
+    expect(screen.getAllByText(/Chain 99/)).toHaveLength(2); // once in X Trace, once in Y Trace
+  });
+
   // Test case 21: Zero-division guard
   test('acceptance rate shows 0.0% when both acceptedCount and rejectedCount are 0', () => {
     const chains = [
