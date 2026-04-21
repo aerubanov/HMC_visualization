@@ -431,7 +431,6 @@ export default function useSamplingController() {
 
   const stepAction = useCallback(() => sampleSteps(1), [sampleSteps]);
 
-  /** Cancel an in-progress non-fast sampling run. */
   const stopSampling = useCallback(() => {
     cancelRef.current = true;
   }, []);

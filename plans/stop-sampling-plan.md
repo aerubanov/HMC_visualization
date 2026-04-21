@@ -15,7 +15,7 @@ Fast mode is a single synchronous `setTimeout` batch — it cannot be interrupte
 - Add `cancelRef = useRef(false)` — a mutable ref (not state) to avoid stale closures and prevent unnecessary re-renders.
 - At the start of `sampleSteps`, always reset `cancelRef.current = false`.
 - Inside the `executeStep` loop (non-fast path), check `cancelRef.current` before scheduling the next frame. If `true`, call `setIsRunning(false)` and return without scheduling another `requestAnimationFrame`.
-- Add `stopSampling` callback: sets `cancelRef.current = true`. This is the only public API added.
+- Add `stopSampling` callback: sets `cancelRef.current = true`. This is the only public API added. Do **not** add a comment above it — the name is self-documenting (per project convention: no comments unless the WHY is non-obvious).
 - Return `stopSampling` from the hook.
 
 ### `src/components/Controls.jsx` (modify)
@@ -35,7 +35,7 @@ Fast mode is a single synchronous `setTimeout` batch — it cannot be interrupte
 ### `useSamplingController` (`tests/hooks/useSamplingController.test.js`)
 
 1. **`stopSampling` is exposed** — the hook returns a `stopSampling` function.
-2. **Cancellation stops the loop** — start a 100-step run, call `stopSampling` after a few frames; verify `isRunning` becomes `false` and `iterationCount` is less than 100.
+2. **Cancellation stops the loop** — use a small N (e.g. 10) and block each mock step behind a Promise/flag so `stopSampling` is guaranteed to fire before the run completes; verify `isRunning` becomes `false` and `iterationCount` is less than N. Alternatively, call `stopSampling` synchronously inside the same `act` block as `sampleSteps` (before any frames advance) and assert `iterationCount < N`.
 3. **`cancelRef` is reset on new run** — after stopping, calling `sampleSteps` again runs normally (not immediately cancelled).
 
 ### `Controls` (`tests/components/Controls.test.jsx`)

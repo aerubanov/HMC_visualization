@@ -2935,28 +2935,16 @@ describe('Code Quality Fix Tests', () => {
         result.current.setLogP('-(x^2)/2');
       });
 
-      let callCount = 0;
-      HMCSampler.prototype.step.mockImplementation(() => {
-        callCount++;
-        return {
-          q: { x: callCount, y: callCount },
-          p: { x: 0, y: 0 },
-          accepted: true,
-          trajectory: [{ x: callCount, y: callCount }],
-        };
-      });
+      HMCSampler.prototype.step.mockImplementation(() => ({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      }));
 
-      // Start a long 100-step run
+      // Start a 10-step run and immediately stop it before any frames advance
       act(() => {
-        result.current.sampleSteps(100);
-      });
-
-      // Call stopSampling after a few frames
-      await waitFor(() => {
-        expect(result.current.iterationCount).toBeGreaterThan(0);
-      });
-
-      act(() => {
+        result.current.sampleSteps(10);
         result.current.stopSampling();
       });
 
@@ -2967,8 +2955,8 @@ describe('Code Quality Fix Tests', () => {
         { timeout: 2000 }
       );
 
-      // Fewer than all 100 steps should have run
-      expect(result.current.iterationCount).toBeLessThan(100);
+      // Fewer than all 10 steps should have run
+      expect(result.current.iterationCount).toBeLessThan(10);
     });
 
     it('should reset cancelRef so a new sampleSteps call runs normally', async () => {
