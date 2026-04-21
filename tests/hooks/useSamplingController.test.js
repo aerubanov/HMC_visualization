@@ -2869,9 +2869,9 @@ describe('Code Quality Fix Tests', () => {
       });
 
       // With burnIn=10 (default), after 20 samples each chain has 10 post-burnin samples
-      // Different sampler types → essPerChain populated, rHat null, histogramData null
+      // Different sampler types → essPerChain populated, rHat null, histogramData empty
       expect(result.current.rHat).toBeNull();
-      expect(result.current.histogramData).toBeNull();
+      expect(result.current.histogramData).toEqual({ samples: [] });
       expect(result.current.essPerChain).not.toBeNull();
       expect(result.current.essPerChain).toHaveLength(2);
       expect(result.current.essPerChain[0]).toHaveProperty('chainId');

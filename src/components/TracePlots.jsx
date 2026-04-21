@@ -85,9 +85,11 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
                   ? `Chain ${chainIndex + 1} (${chains[chainIndex].samplerType})`
                   : `Chain ${entry.chainId}`;
               return (
-                <span key={entry.chainId} className="stat-label">
-                  {label}: ESS={Math.round(entry.ess.x)}
-                </span>
+                entry.ess && (
+                  <span key={entry.chainId} className="stat-label">
+                    {label}: ESS={Math.round(entry.ess.x)}
+                  </span>
+                )
               );
             })}
         </h4>
@@ -116,9 +118,11 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
                   ? `Chain ${chainIndex + 1} (${chains[chainIndex].samplerType})`
                   : `Chain ${entry.chainId}`;
               return (
-                <span key={entry.chainId} className="stat-label">
-                  {label}: ESS={Math.round(entry.ess.y)}
-                </span>
+                entry.ess && (
+                  <span key={entry.chainId} className="stat-label">
+                    {label}: ESS={Math.round(entry.ess.y)}
+                  </span>
+                )
               );
             })}
         </h4>
@@ -163,7 +167,7 @@ TracePlots.propTypes = {
       ess: PropTypes.shape({
         x: PropTypes.number.isRequired,
         y: PropTypes.number.isRequired,
-      }).isRequired,
+      }),
     })
   ),
 };

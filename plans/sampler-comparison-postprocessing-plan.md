@@ -16,10 +16,10 @@ Add `prepareHistogramDataPerChain(chains, burnIn)` — iterates over the chains 
 
 ### `src/hooks/useSamplingController.js` (modify)
 
-- Add pure helper `allChainsCompatible(chains)` (replaces `allSameSamplerType`) — returns `true` when every chain shares the same `samplerType` **and** the same sampler params (all fields in `params` except `initialPosition` and `seed`, which are chain-specific and irrelevant to convergence diagnostics).
-- In the stats `useEffect`, branch on `allSameSamplerType(chains)`:
+- Add pure helper `allChainsCompatible(chains)` — returns `true` when every chain shares the same `samplerType` **and** the same sampler params. `initialPosition` and `seed` are top-level chain fields, not inside `params`, so no special exclusion logic is needed inside the params comparison — just compare all keys of `params` directly. Remove the dead `IGNORED` set from the current implementation.
+- In the stats `useEffect`, branch on `allChainsCompatible(chains)`:
   - **Same type**: existing path unchanged — merge histogram, compute R-hat + joint ESS, set `essPerChain = null`, set `histogramDataPerChain = null`.
-  - **Different types**: call `prepareHistogramDataPerChain`, set `rHat = null`, compute `calculateESS([chain.samples.slice(burnIn)])` for each chain individually, store as `essPerChain: [{ chainId, ess: {x,y} }]`, set `histogramData = null`.
+  - **Different types**: call `prepareHistogramDataPerChain`, set `rHat = null`, compute `calculateESS([chain.samples.slice(burnIn)])` for each chain individually, store as `essPerChain: [{ chainId, ess: {x,y} | null }]` (use `null` instead of `{ x:0, y:0 }` when chain has insufficient samples), set `histogramData = { samples: [] }` (not `null`, to satisfy the `isRequired` PropType on `HistogramPlots`).
 - Add `essPerChain` and `histogramDataPerChain` to the hook's return value.
 
 ### `src/components/HistogramPlots.jsx` (modify)

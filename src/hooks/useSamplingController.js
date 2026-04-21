@@ -27,10 +27,7 @@ export function allChainsCompatible(chains) {
     const refParams = ref.params || {};
     const cParams = c.params || {};
     const keys = new Set([...Object.keys(refParams), ...Object.keys(cParams)]);
-    const IGNORED = new Set(['initialPosition', 'seed']);
-    return [...keys].every(
-      (k) => IGNORED.has(k) || cParams[k] === refParams[k]
-    );
+    return [...keys].every((k) => cParams[k] === refParams[k]);
   });
 }
 
@@ -203,7 +200,7 @@ export default function useSamplingController() {
       }
     } else {
       // --- Different sampler types: per-chain stats ---
-      setHistogramData(null);
+      setHistogramData({ samples: [] });
       setRHat(null);
       setEss(null);
 
@@ -213,8 +210,7 @@ export default function useSamplingController() {
         const postBurnin = (c.samples || []).slice(burnIn);
         return {
           chainId: c.id,
-          ess:
-            postBurnin.length > 1 ? calculateESS([postBurnin]) : { x: 0, y: 0 },
+          ess: postBurnin.length > 1 ? calculateESS([postBurnin]) : null,
         };
       });
       setEssPerChain(perChainEss);
