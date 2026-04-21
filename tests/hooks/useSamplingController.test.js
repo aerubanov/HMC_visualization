@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useSamplingController, {
-  allSameSamplerType,
+  allChainsCompatible,
 } from '../../src/hooks/useSamplingController';
 import { HMCSampler } from '../../src/samplers/HMCSampler';
 import { GibbsSampler } from '../../src/samplers/GibbsSampler';
@@ -2756,21 +2756,21 @@ describe('Code Quality Fix Tests', () => {
     expect(Object.keys(result.current.chainErrors)).toEqual([]);
   });
 
-  describe('allSameSamplerType helper', () => {
+  describe('allChainsCompatible helper', () => {
     it('returns true when all chains have the same samplerType', () => {
       const chains = [
         { id: 0, samplerType: 'HMC' },
         { id: 1, samplerType: 'HMC' },
       ];
-      expect(allSameSamplerType(chains)).toBe(true);
+      expect(allChainsCompatible(chains)).toBe(true);
     });
 
     it('returns true for a single chain', () => {
-      expect(allSameSamplerType([{ id: 0, samplerType: 'HMC' }])).toBe(true);
+      expect(allChainsCompatible([{ id: 0, samplerType: 'HMC' }])).toBe(true);
     });
 
     it('returns true for empty array', () => {
-      expect(allSameSamplerType([])).toBe(true);
+      expect(allChainsCompatible([])).toBe(true);
     });
 
     it('returns false when at least one chain has a different samplerType', () => {
@@ -2778,7 +2778,43 @@ describe('Code Quality Fix Tests', () => {
         { id: 0, samplerType: 'HMC' },
         { id: 1, samplerType: 'Gibbs' },
       ];
-      expect(allSameSamplerType(chains)).toBe(false);
+      expect(allChainsCompatible(chains)).toBe(false);
+    });
+
+    it('returns false when chains have the same samplerType but different params', () => {
+      const chains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, numLeapfrog: 10 },
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.3, numLeapfrog: 10 },
+        },
+      ];
+      expect(allChainsCompatible(chains)).toBe(false);
+    });
+
+    it('returns true when chains differ only in seed or initialPosition', () => {
+      const chains = [
+        {
+          id: 0,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, numLeapfrog: 10 },
+          seed: 42,
+          initialPosition: { x: 0, y: 0 },
+        },
+        {
+          id: 1,
+          samplerType: 'HMC',
+          params: { epsilon: 0.1, numLeapfrog: 10 },
+          seed: 99,
+          initialPosition: { x: 1, y: 1 },
+        },
+      ];
+      expect(allChainsCompatible(chains)).toBe(true);
     });
   });
 

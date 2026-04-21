@@ -11,15 +11,27 @@ import {
 } from '../utils/histogramUtils';
 
 /**
- * Returns true when all chains share the same samplerType (or when there is at most one chain).
- * When this returns false, R-hat is meaningless and ESS should be computed per-chain.
+ * Returns true when all chains share the same samplerType and sampler params
+ * (ignoring chain-specific fields: initialPosition and seed), or when there is
+ * at most one chain. When this returns false, R-hat is meaningless and ESS
+ * should be computed per-chain.
  *
- * @param {Array<{samplerType: string}>} chains
+ * @param {Array<{samplerType: string, params?: object}>} chains
  * @returns {boolean}
  */
-export function allSameSamplerType(chains) {
+export function allChainsCompatible(chains) {
   if (chains.length <= 1) return true;
-  return chains.every((c) => c.samplerType === chains[0].samplerType);
+  const ref = chains[0];
+  return chains.every((c) => {
+    if (c.samplerType !== ref.samplerType) return false;
+    const refParams = ref.params || {};
+    const cParams = c.params || {};
+    const keys = new Set([...Object.keys(refParams), ...Object.keys(cParams)]);
+    const IGNORED = new Set(['initialPosition', 'seed']);
+    return [...keys].every(
+      (k) => IGNORED.has(k) || cParams[k] === refParams[k]
+    );
+  });
 }
 
 /**
@@ -156,7 +168,7 @@ export default function useSamplingController() {
   useEffect(() => {
     if (isRunning) return;
 
-    if (allSameSamplerType(chains)) {
+    if (allChainsCompatible(chains)) {
       // --- Same sampler type: existing merged behaviour ---
       const samples1 = chains[0]?.samples || [];
       const samples2 = chains[1]?.samples || [];

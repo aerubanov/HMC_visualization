@@ -16,7 +16,7 @@ Add `prepareHistogramDataPerChain(chains, burnIn)` — iterates over the chains 
 
 ### `src/hooks/useSamplingController.js` (modify)
 
-- Add pure helper `allSameSamplerType(chains)` — returns `true` when every chain shares the same `samplerType`.
+- Add pure helper `allChainsCompatible(chains)` (replaces `allSameSamplerType`) — returns `true` when every chain shares the same `samplerType` **and** the same sampler params (all fields in `params` except `initialPosition` and `seed`, which are chain-specific and irrelevant to convergence diagnostics).
 - In the stats `useEffect`, branch on `allSameSamplerType(chains)`:
   - **Same type**: existing path unchanged — merge histogram, compute R-hat + joint ESS, set `essPerChain = null`, set `histogramDataPerChain = null`.
   - **Different types**: call `prepareHistogramDataPerChain`, set `rHat = null`, compute `calculateESS([chain.samples.slice(burnIn)])` for each chain individually, store as `essPerChain: [{ chainId, ess: {x,y} }]`, set `histogramData = null`.
@@ -50,10 +50,12 @@ Pass `essPerChain` and `histogramDataPerChain` from `useSamplingController` thro
 
 ### `useSamplingController` (`tests/hooks/useSamplingController.test.js`)
 
-4. **`allSameSamplerType` — homogeneous** — returns `true` when all chains have the same `samplerType`.
-5. **`allSameSamplerType` — heterogeneous** — returns `false` when at least one chain differs.
-6. **Different samplers path** — when chains differ: `rHat` is null, `essPerChain` has one entry per chain each with a valid `ess` object, `histogramDataPerChain` is populated, `histogramData` is null.
-7. **Same sampler path** — when chains are the same type: `rHat` is computed, `essPerChain` is null, `histogramData` is populated, `histogramDataPerChain` is null.
+4. **`allChainsCompatible` — same type and params** — returns `true` when all chains share the same `samplerType` and identical `params`.
+5. **`allChainsCompatible` — different type** — returns `false` when sampler types differ.
+6. **`allChainsCompatible` — same type, different params** — returns `false` when sampler types match but at least one param value differs (e.g. different epsilon).
+7. **`allChainsCompatible` — ignores seed and initialPosition** — returns `true` when only `seed` or `initialPosition` differ between chains.
+8. **Different samplers path** — when chains differ: `rHat` is null, `essPerChain` has one entry per chain each with a valid `ess` object, `histogramDataPerChain` is populated, `histogramData` is null.
+9. **Same sampler path** — when chains are the same type: `rHat` is computed, `essPerChain` is null, `histogramData` is populated, `histogramDataPerChain` is null.
 
 ### `HistogramPlots` (`tests/components/HistogramPlots.test.jsx`)
 
