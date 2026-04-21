@@ -2921,4 +2921,96 @@ describe('Code Quality Fix Tests', () => {
       expect(result.current.histogramData).toHaveProperty('samples');
     });
   });
+
+  describe('Stop Sampling', () => {
+    it('should expose stopSampling function in returned object', () => {
+      const { result } = renderHook(() => useSamplingController());
+      expect(typeof result.current.stopSampling).toBe('function');
+    });
+
+    it('should stop an in-progress run and set isRunning to false', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+      });
+
+      let callCount = 0;
+      HMCSampler.prototype.step.mockImplementation(() => {
+        callCount++;
+        return {
+          q: { x: callCount, y: callCount },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: callCount, y: callCount }],
+        };
+      });
+
+      // Start a long 100-step run
+      act(() => {
+        result.current.sampleSteps(100);
+      });
+
+      // Call stopSampling after a few frames
+      await waitFor(() => {
+        expect(result.current.iterationCount).toBeGreaterThan(0);
+      });
+
+      act(() => {
+        result.current.stopSampling();
+      });
+
+      await waitFor(
+        () => {
+          expect(result.current.isRunning).toBe(false);
+        },
+        { timeout: 2000 }
+      );
+
+      // Fewer than all 100 steps should have run
+      expect(result.current.iterationCount).toBeLessThan(100);
+    });
+
+    it('should reset cancelRef so a new sampleSteps call runs normally', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2)/2');
+      });
+
+      HMCSampler.prototype.step.mockImplementation(() => ({
+        q: { x: 1, y: 1 },
+        p: { x: 0, y: 0 },
+        accepted: true,
+        trajectory: [{ x: 1, y: 1 }],
+      }));
+
+      // Start and immediately stop a run
+      act(() => {
+        result.current.sampleSteps(100);
+      });
+
+      act(() => {
+        result.current.stopSampling();
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false), {
+        timeout: 2000,
+      });
+
+      const countAfterStop = result.current.iterationCount;
+
+      // Now start a fresh short run — it must NOT be immediately cancelled
+      act(() => {
+        result.current.sampleSteps(5);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false), {
+        timeout: 2000,
+      });
+
+      // Iteration count should have increased by 5
+      expect(result.current.iterationCount).toBe(countAfterStop + 5);
+    });
+  });
 });

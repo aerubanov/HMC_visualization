@@ -84,6 +84,9 @@ export default function useSamplingController() {
 
   const logpInstanceRef = useRef(null);
 
+  // Cancellation flag for non-fast sampling loop
+  const cancelRef = useRef(false);
+
   // Real OOP sampling chains held in refs
   const samplingChainsRef = useRef(new Map());
 
@@ -356,6 +359,7 @@ export default function useSamplingController() {
 
   const sampleSteps = useCallback(
     (n) => {
+      cancelRef.current = false;
       setIsRunning(true);
       if (!logpInstanceRef.current) {
         console.warn('No logP function set');
@@ -405,6 +409,11 @@ export default function useSamplingController() {
           setIterationCount((prev) => prev + 1);
           stepsCompleted++;
 
+          if (cancelRef.current) {
+            setIsRunning(false);
+            return;
+          }
+
           if (stepsCompleted < n) {
             requestAnimationFrame(executeStep);
           } else {
@@ -422,6 +431,11 @@ export default function useSamplingController() {
 
   const stepAction = useCallback(() => sampleSteps(1), [sampleSteps]);
 
+  /** Cancel an in-progress non-fast sampling run. */
+  const stopSampling = useCallback(() => {
+    cancelRef.current = true;
+  }, []);
+
   // Derived properties for UI backwards compatibility (mostly handling fast mode rendering and general stats)
   return {
     logP,
@@ -436,6 +450,7 @@ export default function useSamplingController() {
     sampleSteps,
     step: stepAction,
     reset,
+    stopSampling,
 
     // Fast mode
     useFastMode,

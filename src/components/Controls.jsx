@@ -25,6 +25,7 @@ function Controls({
   isEncoding,
   startRecording,
   stopRecording,
+  stopSampling,
 }) {
   const [nSteps, setNSteps] = useState(10);
   const [draftLogP, setDraftLogP] = useState(logP);
@@ -461,11 +462,20 @@ function Controls({
               Sample N Steps
             </button>
           </div>
+          {isRunning && !useFastMode && (
+            <button
+              className="btn btn-secondary"
+              style={{ width: '100%', marginTop: '8px' }}
+              onClick={stopSampling}
+            >
+              Stop Sampling
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={reset}
             disabled={isRunning}
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginBottom: '8px' }}
           >
             Reset Sampler
           </button>
@@ -579,6 +589,7 @@ Controls.propTypes = {
   isEncoding: PropTypes.bool,
   startRecording: PropTypes.func,
   stopRecording: PropTypes.func,
+  stopSampling: PropTypes.func,
 };
 
 export default Controls;
