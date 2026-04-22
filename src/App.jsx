@@ -32,6 +32,7 @@ function App() {
     setAxisLimits,
     useFastMode,
     setUseFastMode,
+    stopSampling,
   } = useSamplingController();
 
   const {
@@ -68,6 +69,7 @@ function App() {
           isEncoding={isEncoding}
           startRecording={startRecording}
           stopRecording={stopRecording}
+          stopSampling={stopSampling}
         />
       </div>
       <div className="App-main">

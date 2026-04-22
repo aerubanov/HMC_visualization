@@ -589,4 +589,72 @@ describe('Controls Component', () => {
       expect(screen.getByText(/recording\.\.\./i)).toBeInTheDocument();
     });
   });
+
+  describe('Stop Sampling Button', () => {
+    const stopSamplingProps = {
+      ...mockProps,
+      stopSampling: vi.fn(),
+      isRecording: false,
+      isEncoding: false,
+      startRecording: vi.fn(),
+      stopRecording: vi.fn(),
+    };
+
+    it('should render "Stop Sampling" button when isRunning=true and useFastMode=false', () => {
+      render(
+        <Controls
+          {...stopSamplingProps}
+          isRunning={true}
+          useFastMode={false}
+          logP="exp(-x^2)"
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: /stop sampling/i })
+      ).toBeInTheDocument();
+    });
+
+    it('should NOT render "Stop Sampling" button when isRunning=false', () => {
+      render(
+        <Controls
+          {...stopSamplingProps}
+          isRunning={false}
+          useFastMode={false}
+        />
+      );
+      expect(
+        screen.queryByRole('button', { name: /stop sampling/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should NOT render "Stop Sampling" button when isRunning=true and useFastMode=true', () => {
+      render(
+        <Controls
+          {...stopSamplingProps}
+          isRunning={true}
+          useFastMode={true}
+          logP="exp(-x^2)"
+        />
+      );
+      expect(
+        screen.queryByRole('button', { name: /stop sampling/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('clicking "Stop Sampling" button calls stopSampling prop', () => {
+      const stopSampling = vi.fn();
+      render(
+        <Controls
+          {...stopSamplingProps}
+          isRunning={true}
+          useFastMode={false}
+          logP="exp(-x^2)"
+          stopSampling={stopSampling}
+        />
+      );
+      const btn = screen.getByRole('button', { name: /stop sampling/i });
+      fireEvent.click(btn);
+      expect(stopSampling).toHaveBeenCalledTimes(1);
+    });
+  });
 });

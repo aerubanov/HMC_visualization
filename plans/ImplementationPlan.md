@@ -10,3 +10,4 @@ Interactive React app for visualizing HMC and Gibbs sampling algorithms side-by-
 - [Code Quality Fixes](plans/code-quality-fixes-plan.md) — gitignore .claude/, trajectory deep-copy safety, chainErrors plain object + stale-error fix, TODO comment for error UI, syncChainsState tests.
 - [Record Sampling](plans/record-sampling-plan.md) — "Start/Stop Recording" button that captures trajectory plot frames during sampling and downloads a GIF.
 - [Sampler Comparison Post-Processing](plans/sampler-comparison-postprocessing-plan.md) — conditional R-hat/ESS/histogram logic: merge + R-hat when chains share a sampler type; skip R-hat, per-chain ESS, and side-by-side histograms when sampler types differ.
+- [Stop Sampling](plans/stop-sampling-plan.md) — "Stop Sampling" button that cancels an in-progress standard-mode run early via a cancellation ref checked inside the requestAnimationFrame loop.
