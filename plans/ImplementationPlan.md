@@ -11,3 +11,4 @@ Interactive React app for visualizing HMC and Gibbs sampling algorithms side-by-
 - [Record Sampling](plans/record-sampling-plan.md) — "Start/Stop Recording" button that captures trajectory plot frames during sampling and downloads a GIF.
 - [Sampler Comparison Post-Processing](plans/sampler-comparison-postprocessing-plan.md) — conditional R-hat/ESS/histogram logic: merge + R-hat when chains share a sampler type; skip R-hat, per-chain ESS, and side-by-side histograms when sampler types differ.
 - [Stop Sampling](plans/stop-sampling-plan.md) — "Stop Sampling" button that cancels an in-progress standard-mode run early via a cancellation ref checked inside the requestAnimationFrame loop.
+- [Debug Logging](plans/debug-logging-plan.md) — structured console logger with DEBUG/INFO/WARN/ERROR levels; level auto-selected from Vite build mode (dev → DEBUG, prod → INFO); instrumented in useSamplingController and SamplingChain.

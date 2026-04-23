@@ -1,6 +1,7 @@
 import { HMCSampler } from './HMCSampler';
 import { GibbsSampler } from './GibbsSampler';
 import { DEFAULT_SAMPLER_PARAMS } from './defaultConfigs';
+import { logger } from '../utils/logger';
 
 export class SamplingChain {
   constructor(config = {}) {
@@ -23,6 +24,12 @@ export class SamplingChain {
     };
 
     this._initializeSampler();
+    logger.debug('SamplingChain initialised', {
+      id: this.id,
+      sampler: this.samplerType,
+      ...this.params,
+      seed: this.seed,
+    });
   }
 
   _initializeSampler() {
