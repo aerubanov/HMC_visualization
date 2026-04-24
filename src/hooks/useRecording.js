@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
+import { logger } from '../utils/logger';
 
 /** Frames-per-second for the exported GIF. */
 const GIF_FPS = 5;
@@ -32,6 +33,7 @@ function useRecording() {
   const startRecording = () => {
     framesRef.current = [];
     setIsRecording(true);
+    logger.info('Recording started');
   };
 
   /**
@@ -41,12 +43,16 @@ function useRecording() {
    */
   const captureFrame = async (graphDiv) => {
     if (!isRecording) return;
-    const dataUrl = await Plotly.toImage(graphDiv, {
-      format: 'png',
-      width: CAPTURE_WIDTH,
-      height: CAPTURE_HEIGHT,
-    });
-    framesRef.current.push(dataUrl);
+    try {
+      const dataUrl = await Plotly.toImage(graphDiv, {
+        format: 'png',
+        width: CAPTURE_WIDTH,
+        height: CAPTURE_HEIGHT,
+      });
+      framesRef.current.push(dataUrl);
+    } catch (e) {
+      logger.warn('Frame capture failed', { message: e.message });
+    }
   };
 
   /**
@@ -55,6 +61,7 @@ function useRecording() {
   const stopRecording = () => {
     setIsRecording(false);
     setIsEncoding(true);
+    logger.info('Recording stopped — encoding GIF');
     const frames = framesRef.current.slice();
 
     gifshot.createGIF(
@@ -71,6 +78,8 @@ function useRecording() {
           a.href = obj.image;
           a.download = GIF_FILENAME;
           a.click();
+        } else {
+          logger.error('GIF encoding failed', { message: obj.errorMsg });
         }
         framesRef.current = [];
         setIsEncoding(false);

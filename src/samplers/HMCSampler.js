@@ -145,6 +145,7 @@ export function hmcStep(q, epsilon, L, U, gradU, rng = null) {
 }
 
 import { BaseSampler } from './BaseSampler';
+import { logger } from '../utils/logger';
 
 export class HMCSampler extends BaseSampler {
   /**
@@ -156,6 +157,11 @@ export class HMCSampler extends BaseSampler {
     super(seed);
     this.epsilon = params.epsilon || 0.1;
     this.L = params.L || 10;
+    logger.debug('HMCSampler initialised', {
+      epsilon: this.epsilon,
+      L: this.L,
+      seed,
+    });
   }
 
   /**
@@ -165,6 +171,7 @@ export class HMCSampler extends BaseSampler {
   setParams(params) {
     if (params.epsilon !== undefined) this.epsilon = params.epsilon;
     if (params.L !== undefined) this.L = params.L;
+    logger.debug('HMCSampler params updated', { ...params });
   }
 
   /**

@@ -15,9 +15,14 @@ vi.mock('gifshot', () => ({
   },
 }));
 
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 import useRecording from '../../src/hooks/useRecording';
 import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
+import { logger } from '../../src/utils/logger';
 
 describe('useRecording hook', () => {
   let originalCreateElement;
@@ -248,6 +253,60 @@ describe('useRecording hook', () => {
       expect(gifshot.createGIF).toHaveBeenCalledTimes(2);
       const secondCall = gifshot.createGIF.mock.calls[1];
       expect(secondCall[0].images).toEqual([]);
+    });
+  });
+
+  // Logger tests
+  it('startRecording calls logger.info', () => {
+    const { result } = renderHook(() => useRecording());
+
+    act(() => {
+      result.current.startRecording();
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Recording started')
+    );
+  });
+
+  it('stopRecording calls logger.info for encoding start', () => {
+    const { result } = renderHook(() => useRecording());
+
+    act(() => {
+      result.current.startRecording();
+    });
+
+    vi.clearAllMocks();
+
+    act(() => {
+      result.current.stopRecording();
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('encoding GIF')
+    );
+  });
+
+  it('gifshot error branch calls logger.error', async () => {
+    gifshot.createGIF.mockImplementation((_opts, cb) => {
+      cb({ error: true, errorMsg: 'encoding failed' });
+    });
+
+    const { result } = renderHook(() => useRecording());
+
+    act(() => {
+      result.current.startRecording();
+    });
+
+    act(() => {
+      result.current.stopRecording();
+    });
+
+    await waitFor(() => {
+      expect(logger.error).toHaveBeenCalledWith(
+        'GIF encoding failed',
+        expect.objectContaining({ message: 'encoding failed' })
+      );
     });
   });
 

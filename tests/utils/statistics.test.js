@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { calculateGelmanRubin, calculateESS } from '../../src/utils/statistics';
 import { SeededRandom } from '../../src/utils/seededRandom';
 
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { logger } from '../../src/utils/logger';
+
 describe('calculateGelmanRubin', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('returns null for insufficient chains', () => {
     expect(calculateGelmanRubin([])).toBeNull();
     expect(calculateGelmanRubin([[{ x: 1, y: 1 }]])).toBeNull();
@@ -11,6 +21,26 @@ describe('calculateGelmanRubin', () => {
   it('returns null for insufficient samples', () => {
     const chains = [[{ x: 1, y: 1 }], [{ x: 2, y: 2 }]];
     expect(calculateGelmanRubin(chains)).toBeNull();
+  });
+
+  it('calls logger.warn when chains have insufficient samples', () => {
+    const chains = [[{ x: 1, y: 1 }], [{ x: 2, y: 2 }]];
+    calculateGelmanRubin(chains);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('insufficient samples')
+    );
+  });
+
+  it('calls logger.warn when within-chain variance is zero', () => {
+    const n = 5;
+    const chains = [
+      Array(n).fill({ x: 0, y: 0 }),
+      Array(n).fill({ x: 100, y: 100 }),
+    ];
+    calculateGelmanRubin(chains);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('within-chain variance is zero')
+    );
   });
 
   it('calculates perfect convergence (identical chains)', () => {
@@ -112,12 +142,25 @@ describe('calculateGelmanRubin', () => {
 });
 
 describe('calculateESS', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('returns null for insufficient chains or samples', () => {
     expect(calculateESS(null)).toBeNull();
     expect(calculateESS([])).toBeNull();
     // Single chain is valid if m=1 is supported, but guide says "m = number of chains (here m = 2)".
     // However proper ESS calc handles m>=1.
     expect(calculateESS([[]])).toBeNull();
+  });
+
+  it('calls logger.warn when gamma0Pooled is zero (constant samples)', () => {
+    const n = 10;
+    const constantChain = Array(n).fill({ x: 5, y: 3 });
+    calculateESS([constantChain]);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('zero autocorrelation denominator')
+    );
   });
 
   it('calculates ESS for IID samples (ESS approx equal to N)', () => {

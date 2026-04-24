@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 /**
  * Perform one step of Slice Sampling to sample from a 1D distribution.
  *
@@ -69,8 +71,6 @@ export function sampleSlice(logDensityFn, x0, w = 1.0, rng = null) {
   }
 
   // Fallback: if we simply can't find a point (numerical issues?), return x0
-  console.warn(
-    'Slice sampler failed to find a new point after max shrinkage steps.'
-  );
+  logger.warn('Slice sampler max shrinkage reached — returning x0');
   return x0;
 }

@@ -1,10 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   leapfrogStep,
   generateProposal,
   hmcStep,
   HMCSampler,
 } from '../../src/samplers/HMCSampler';
+
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { logger } from '../../src/utils/logger';
 
 // Helper functions for testing
 function kineticEnergy(p) {
@@ -554,6 +560,10 @@ describe('HMCSampler (Standalone Functions)', () => {
 });
 
 describe('HMCSampler Class', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('should initialize with default parameters', () => {
     const sampler = new HMCSampler();
     expect(sampler.epsilon).toBe(0.1);
@@ -590,6 +600,24 @@ describe('HMCSampler Class', () => {
     sampler.setSeed(null);
     expect(sampler.seed).toBeNull();
     expect(sampler.rng).toBeNull();
+  });
+
+  it('constructor calls logger.debug with epsilon, L, and seed', () => {
+    new HMCSampler({ epsilon: 0.2, L: 15 }, 99);
+    expect(logger.debug).toHaveBeenCalledWith(
+      'HMCSampler initialised',
+      expect.objectContaining({ epsilon: 0.2, L: 15, seed: 99 })
+    );
+  });
+
+  it('setParams calls logger.debug with new values', () => {
+    const sampler = new HMCSampler();
+    vi.clearAllMocks();
+    sampler.setParams({ epsilon: 0.2, L: 15 });
+    expect(logger.debug).toHaveBeenCalledWith(
+      'HMCSampler params updated',
+      expect.objectContaining({ epsilon: 0.2, L: 15 })
+    );
   });
 
   describe('step', () => {

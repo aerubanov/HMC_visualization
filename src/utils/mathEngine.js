@@ -1,4 +1,5 @@
 import { parse, derivative, simplify } from 'mathjs';
+import { logger } from './logger';
 
 export class Logp {
   /**
@@ -13,6 +14,7 @@ export class Logp {
     try {
       parse(pdfString);
     } catch (e) {
+      logger.error('logP compile error', { message: e.message });
       throw new Error(`Syntax error in PDF string: ${e.message}`);
     }
 
@@ -22,6 +24,7 @@ export class Logp {
     try {
       logNode = parse(logExpr);
     } catch (e) {
+      logger.error('logP compile error', { message: e.message });
       throw new Error(`Error parsing log expression: ${e.message}`);
     }
 
@@ -29,7 +32,7 @@ export class Logp {
     try {
       this.logNode = simplify(logNode);
     } catch (e) {
-      console.warn('Simplification failed, using original expression', e);
+      logger.warn('logP simplification fallback', { message: e.message });
       this.logNode = logNode;
     }
 
@@ -40,6 +43,7 @@ export class Logp {
     try {
       this.logCompiled.evaluate({ x: 1, y: 1 });
     } catch (e) {
+      logger.error('logP compile error', { message: e.message });
       throw new Error(
         `Invalid function: unable to evaluate. Ensure only 'x' and 'y' are used as variables. Details: ${e.message}`
       );
@@ -53,11 +57,14 @@ export class Logp {
       this.gradXNode = simplify(gradX);
       this.gradYNode = simplify(gradY);
     } catch (e) {
+      logger.error('logP compile error', { message: e.message });
       throw new Error(`Error computing gradients: ${e.message}`);
     }
 
     this.gradXCompiled = this.gradXNode.compile();
     this.gradYCompiled = this.gradYNode.compile();
+
+    logger.info('logP compiled', { expr: pdfString.slice(0, 60) });
   }
 
   /**
