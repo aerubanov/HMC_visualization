@@ -270,35 +270,6 @@ export default function useSamplingController() {
           const { params: _params, ...otherUpdates } = configUpdates;
           Object.assign(result, otherUpdates);
 
-          if (
-            configUpdates.samplerType !== undefined &&
-            configUpdates.samplerType !== c.samplerType
-          ) {
-            logger.info('Sampler type changed', {
-              id,
-              from: c.samplerType,
-              to: configUpdates.samplerType,
-            });
-          }
-          if (configUpdates.params !== undefined) {
-            logger.debug('Chain params changed', {
-              id,
-              ...configUpdates.params,
-            });
-          }
-          if (configUpdates.seed !== undefined) {
-            logger.debug('Chain seed changed', {
-              id,
-              seed: configUpdates.seed,
-            });
-          }
-          if (configUpdates.initialPosition !== undefined) {
-            logger.debug('Chain position changed', {
-              id,
-              ...configUpdates.initialPosition,
-            });
-          }
-
           const impl = samplingChainsRef.current.get(id);
           if (impl) {
             // Sync samplerType on the ref BEFORE updating React state to keep them consistent
@@ -307,7 +278,7 @@ export default function useSamplingController() {
             if (configUpdates.params !== undefined)
               impl.setParams(configUpdates.params);
             if (configUpdates.initialPosition !== undefined)
-              impl.initialPosition = configUpdates.initialPosition;
+              impl.setInitialPosition(configUpdates.initialPosition);
             if (configUpdates.seed !== undefined)
               impl.setSeed(configUpdates.seed);
           }
