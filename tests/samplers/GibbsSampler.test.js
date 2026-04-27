@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GibbsSampler } from '../../src/samplers/GibbsSampler';
+
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { logger } from '../../src/utils/logger';
 
 describe('GibbsSampler', () => {
   let sampler;
@@ -9,6 +15,7 @@ describe('GibbsSampler', () => {
   };
 
   beforeEach(() => {
+    vi.clearAllMocks();
     sampler = new GibbsSampler();
   });
 
@@ -71,5 +78,22 @@ describe('GibbsSampler', () => {
 
     customSampler.setParams({ w: 3.0 });
     expect(customSampler.params.w).toBe(3.0);
+  });
+
+  it('constructor calls logger.debug with w and seed', () => {
+    new GibbsSampler({ w: 2.0 }, 42);
+    expect(logger.debug).toHaveBeenCalledWith(
+      'GibbsSampler initialised',
+      expect.objectContaining({ w: 2.0, seed: 42 })
+    );
+  });
+
+  it('setParams calls logger.debug with new values', () => {
+    vi.clearAllMocks();
+    sampler.setParams({ w: 2.0 });
+    expect(logger.debug).toHaveBeenCalledWith(
+      'GibbsSampler params updated',
+      expect.objectContaining({ w: 2.0 })
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { HMCSampler } from './HMCSampler';
 import { GibbsSampler } from './GibbsSampler';
 import { DEFAULT_SAMPLER_PARAMS } from './defaultConfigs';
+import { logger } from '../utils/logger';
 
 export class SamplingChain {
   constructor(config = {}) {
@@ -23,6 +24,12 @@ export class SamplingChain {
     };
 
     this._initializeSampler();
+    logger.debug('SamplingChain initialised', {
+      id: this.id,
+      sampler: this.samplerType,
+      ...this.params,
+      seed: this.seed,
+    });
   }
 
   _initializeSampler() {
@@ -40,6 +47,7 @@ export class SamplingChain {
   setParams(newParams) {
     const oldParams = { ...this.params };
     this.params = { ...this.params, ...newParams };
+    logger.debug('Chain params changed', { id: this.id, ...newParams });
 
     if (this.sampler && this.sampler.setParams) {
       if (this.samplerType === 'HMC') {
@@ -59,9 +67,15 @@ export class SamplingChain {
 
   setSamplerType(type) {
     if (this.samplerType !== type) {
+      const prev = this.samplerType;
       this.samplerType = type;
       this.params = { ...DEFAULT_SAMPLER_PARAMS[type] };
       this._initializeSampler();
+      logger.info('Sampler type changed', {
+        id: this.id,
+        from: prev,
+        to: type,
+      });
       // Internal reset but keeping initial pos and seed
       this.samples = [];
       this.trajectory = [];
@@ -77,9 +91,15 @@ export class SamplingChain {
 
   setSeed(seed) {
     this.seed = seed;
+    logger.debug('Chain seed changed', { id: this.id, seed });
     if (this.sampler && this.sampler.setSeed) {
       this.sampler.setSeed(seed);
     }
+  }
+
+  setInitialPosition(pos) {
+    this.initialPosition = pos;
+    logger.debug('Chain position changed', { id: this.id, ...pos });
   }
 
   step(logpInstance) {

@@ -1,5 +1,6 @@
 import { BaseSampler } from './BaseSampler';
 import { sampleSlice } from '../utils/sliceSampler';
+import { logger } from '../utils/logger';
 
 export class GibbsSampler extends BaseSampler {
   /**
@@ -10,6 +11,7 @@ export class GibbsSampler extends BaseSampler {
   constructor(params = {}, seed = null) {
     super(seed);
     this.params = { w: 1.0, ...params };
+    logger.debug('GibbsSampler initialised', { ...this.params, seed });
   }
 
   /**
@@ -18,6 +20,7 @@ export class GibbsSampler extends BaseSampler {
    */
   setParams(params) {
     this.params = { ...this.params, ...params };
+    logger.debug('GibbsSampler params updated', { ...params });
   }
 
   /**

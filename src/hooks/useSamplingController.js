@@ -9,6 +9,7 @@ import {
   prepareHistogramData,
   prepareHistogramDataPerChain,
 } from '../utils/histogramUtils';
+import { logger } from '../utils/logger';
 
 /**
  * Returns true when all chains share the same samplerType and sampler params
@@ -211,6 +212,12 @@ export default function useSamplingController() {
 
       const perChainEss = chains.map((c) => {
         const postBurnin = (c.samples || []).slice(burnIn);
+        if (postBurnin.length <= 1) {
+          logger.warn('ESS skipped — insufficient samples', {
+            chainId: c.id,
+            count: postBurnin.length,
+          });
+        }
         return {
           chainId: c.id,
           ess: postBurnin.length > 1 ? calculateESS([postBurnin]) : null,
@@ -228,15 +235,18 @@ export default function useSamplingController() {
         if (str) {
           logpInstanceRef.current = new Logp(str);
           computeContour();
+          logger.info('logP set', { expr: str.slice(0, 60) });
         } else {
           logpInstanceRef.current = null;
           setContourData(null);
+          logger.info('logP cleared');
         }
         reset();
       } catch (e) {
         setError(e.message);
         logpInstanceRef.current = null;
         setContourData(null);
+        logger.error('logP parse error', { message: e.message });
       }
     },
     [reset, computeContour]
@@ -268,7 +278,7 @@ export default function useSamplingController() {
             if (configUpdates.params !== undefined)
               impl.setParams(configUpdates.params);
             if (configUpdates.initialPosition !== undefined)
-              impl.initialPosition = configUpdates.initialPosition;
+              impl.setInitialPosition(configUpdates.initialPosition);
             if (configUpdates.seed !== undefined)
               impl.setSeed(configUpdates.seed);
           }
@@ -317,6 +327,7 @@ export default function useSamplingController() {
     // Create the ref instance here; the useEffect will skip it since the id is already present
     samplingChainsRef.current.set(id, new SamplingChain(newConfig));
     setChains((prev) => [...prev, newConfig]);
+    logger.info('Chain added', { id, sampler: samplerType });
   }, []);
 
   const removeChain = useCallback(
@@ -325,6 +336,7 @@ export default function useSamplingController() {
       if (isRunning) return;
       samplingChainsRef.current.delete(id);
       setChains((prev) => prev.filter((c) => c.id !== id));
+      logger.info('Chain removed', { id });
     },
     [isRunning]
   );
@@ -360,6 +372,10 @@ export default function useSamplingController() {
   const sampleSteps = useCallback(
     (n) => {
       cancelRef.current = false;
+      logger.debug('Sampling started', {
+        steps: n,
+        mode: useFastMode ? 'fast' : 'standard',
+      });
       setIsRunning(true);
       if (!logpInstanceRef.current) {
         console.warn('No logP function set');
@@ -405,12 +421,16 @@ export default function useSamplingController() {
             if (chain.error) newErrors[id] = chain.error;
           });
           setChainErrors(newErrors);
+          Object.entries(newErrors).forEach(([id, msg]) =>
+            logger.warn('Chain error', { id, error: msg })
+          );
           syncChainsState();
           setIterationCount((prev) => prev + 1);
           stepsCompleted++;
 
           if (cancelRef.current) {
             setIsRunning(false);
+            logger.info('Sampling cancelled', { completed: stepsCompleted });
             return;
           }
 
@@ -418,10 +438,12 @@ export default function useSamplingController() {
             requestAnimationFrame(executeStep);
           } else {
             setIsRunning(false);
+            logger.info('Sampling completed', { steps: stepsCompleted });
           }
         } catch (e) {
           setError(e.message);
           setIsRunning(false);
+          logger.error('Sampling error', { message: e.message });
         }
       };
       executeStep();

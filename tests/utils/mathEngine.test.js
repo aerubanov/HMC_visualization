@@ -2,6 +2,12 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as mathjs from 'mathjs';
 import { Logp } from '../../src/utils/mathEngine';
 
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { logger } from '../../src/utils/logger';
+
 // Mock mathjs to allow overriding simplify for specific tests
 vi.mock('mathjs', async (importOriginal) => {
   const actual = await importOriginal();
@@ -44,21 +50,16 @@ describe('Logp Class', () => {
 
     it('should handle simplify failure gracefully (fallback to original node)', () => {
       // Force simplify to throw an error once
-      const error = new Error('Simpson error');
       vi.mocked(mathjs.simplify).mockImplementationOnce(() => {
-        throw error;
+        throw new Error('Simpson error');
       });
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      // Should not throw, should log warn
+      // Should not throw, should log warn via logger
       expect(() => new Logp('exp(x)')).not.toThrow();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Simplification failed, using original expression',
-        error
+      expect(logger.warn).toHaveBeenCalledWith(
+        'logP simplification fallback',
+        expect.objectContaining({ message: 'Simpson error' })
       );
-
-      consoleSpy.mockRestore();
     });
 
     it('should throw error when gradient calculation fails', () => {
@@ -89,6 +90,22 @@ describe('Logp Class', () => {
     it('should throw an error for undefined functions', () => {
       expect(() => new Logp('unknownFunc(x)')).toThrow(
         /Invalid function: unable to evaluate/
+      );
+    });
+
+    it('valid Logp construction calls logger.info', () => {
+      new Logp('exp(-(x^2 + y^2))');
+      expect(logger.info).toHaveBeenCalledWith(
+        'logP compiled',
+        expect.objectContaining({ expr: expect.any(String) })
+      );
+    });
+
+    it('parse error calls logger.error', () => {
+      expect(() => new Logp('exp(-(x^2 + y^2')).toThrow();
+      expect(logger.error).toHaveBeenCalledWith(
+        'logP compile error',
+        expect.objectContaining({ message: expect.any(String) })
       );
     });
   });

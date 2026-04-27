@@ -1,4 +1,5 @@
 import { SeededRandom } from '../utils/seededRandom';
+import { logger } from '../utils/logger';
 
 /**
  * Base abstract class for all samplers.
@@ -23,6 +24,9 @@ export class BaseSampler {
   setSeed(seed) {
     this.seed = seed;
     this.rng = seed !== null ? new SeededRandom(seed) : null;
+    if (seed !== null) {
+      logger.debug('BaseSampler seed set', { seed });
+    }
   }
 
   /**

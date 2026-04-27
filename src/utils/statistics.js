@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 /**
  * Calculates the Gelman-Rubin potential scale reduction factor (R-hat) for MCMC chains.
  *
@@ -19,6 +21,7 @@ export function calculateGelmanRubin(chains) {
   for (const chain of chains) {
     if (!chain || chain.length < 2) {
       // Need at least 2 samples for variance
+      logger.warn('R-hat skipped — insufficient samples');
       return null;
     }
   }
@@ -26,7 +29,10 @@ export function calculateGelmanRubin(chains) {
   // Use the minimum length to ensure chains are comparable (truncate to min length)
   const n = Math.min(...chains.map((c) => c.length));
 
-  if (n < 2) return null;
+  if (n < 2) {
+    logger.warn('R-hat skipped — insufficient samples');
+    return null;
+  }
 
   const m = chains.length; // Number of chains
 
@@ -77,6 +83,7 @@ export function calculateGelmanRubin(chains) {
       // If W is 0, it means all chains have 0 variance (constant).
       // If B is also 0, then R_hat is 1 (perfect convergence/constant).
       // If B > 0, then R_hat is inf.
+      logger.warn('R-hat skipped — within-chain variance is zero');
       results[dim] = B === 0 ? 1 : Infinity;
     } else {
       results[dim] = Math.sqrt(V_hat / W);
@@ -144,6 +151,7 @@ export function calculateESS(chains) {
       // Constant chains, ESS is undefined or could be considered max?
       // If variance is 0, information is infinite or 0 depending on interpretation.
       // Usually return total samples if it's "perfect" but here let's be safe.
+      logger.warn('ESS skipped — zero autocorrelation denominator');
       return totalSamples;
     }
 

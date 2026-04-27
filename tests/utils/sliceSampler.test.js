@@ -1,6 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { sampleSlice } from '../../src/utils/sliceSampler';
 import { SeededRandom } from '../../src/utils/seededRandom';
+
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { logger } from '../../src/utils/logger';
 
 describe('sliceSampler', () => {
   // Standard Gaussian: logP(x) = -0.5 * x^2
@@ -20,6 +26,17 @@ describe('sliceSampler', () => {
     const sample2 = sampleSlice(gaussianLogP, 0, 1.0, rng2);
 
     expect(sample1).toBe(sample2);
+  });
+
+  it('logger.warn called when max shrinkage reached', () => {
+    // logP returns high value only at exactly x0=0; everywhere else returns -Infinity.
+    // The threshold logY = logP(0) - e will be just below 0, but any sampled point
+    // will have logP = -Infinity < logY, so shrinkage is exhausted immediately.
+    const spikeLogP = (x) => (x === 0 ? 0 : -Infinity);
+    sampleSlice(spikeLogP, 0.0, 1.0);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('max shrinkage')
+    );
   });
 
   it('should sample from a Gaussian distribution with correct mean and variance (approx)', () => {

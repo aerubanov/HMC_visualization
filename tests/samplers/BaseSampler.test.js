@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { BaseSampler } from '../../src/samplers/BaseSampler';
+
+vi.mock('../../src/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { logger } from '../../src/utils/logger';
 
 class TestSampler extends BaseSampler {
   constructor(seed) {
@@ -45,5 +51,15 @@ describe('BaseSampler', () => {
     sampler.setSeed(123);
     expect(sampler.seed).toBe(123);
     expect(sampler.rng).toBeDefined();
+  });
+
+  it('setSeed(42) calls logger.debug', () => {
+    const sampler = new TestSampler(null);
+    vi.clearAllMocks();
+    sampler.setSeed(42);
+    expect(logger.debug).toHaveBeenCalledWith(
+      'BaseSampler seed set',
+      expect.objectContaining({ seed: 42 })
+    );
   });
 });
