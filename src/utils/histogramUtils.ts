@@ -2,7 +2,7 @@
  * Utility functions for histogram data preparation and calculations
  */
 
-import type { Point, HistogramDataPerChain } from '../types';
+import type { Point, HistogramDataPerChain, ChainState } from '../types';
 
 /**
  * Prepares histogram data by filtering out burn-in samples and combining chains
@@ -37,12 +37,6 @@ export function prepareHistogramData(
   return { samples: combinedSamples };
 }
 
-interface ChainInput {
-  id: number | string;
-  samplerType: string;
-  samples: Point[];
-}
-
 /**
  * Prepares per-chain histogram data for mixed sampler type scenarios.
  * Each chain's burn-in samples are removed independently; chains are NOT merged.
@@ -51,7 +45,7 @@ interface ChainInput {
  * @param burnIn - Number of initial samples to exclude as burn-in
  */
 export function prepareHistogramDataPerChain(
-  chains: ChainInput[],
+  chains: Pick<ChainState, 'id' | 'samplerType' | 'samples'>[],
   burnIn: number
 ): HistogramDataPerChain[] {
   return chains.map((chain, index) => {

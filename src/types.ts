@@ -73,3 +73,9 @@ export interface HistogramDataPerChain {
   label: string;
   samples: Point[];
 }
+
+/** A predefined probability density function entry shown in the UI selector. */
+export interface PredefinedFunction {
+  label: string;
+  value: string;
+}

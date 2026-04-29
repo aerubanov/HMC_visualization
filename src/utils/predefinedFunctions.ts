@@ -3,10 +3,9 @@
  * for demonstration and testing purposes.
  */
 
-export interface PredefinedFunction {
-  label: string;
-  value: string;
-}
+import type { PredefinedFunction } from '../types';
+
+export type { PredefinedFunction };
 
 export const PREDEFINED_FUNCTIONS: PredefinedFunction[] = [
   {

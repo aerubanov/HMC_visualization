@@ -61,6 +61,24 @@ Each file: rename `.js` → `.ts`, add parameter and return types, import shared
 - **`src/utils/predefinedFunctions.ts`** — type the exported array.
 - **`src/utils/logger.ts`** — type `createLogger` and the singleton; data param typed as `Record<string, unknown>`.
 
+### Phase 3b — Interface cleanup (post-Phase-3 audit)
+
+After Phase 3 was implemented, an audit found locally-defined interfaces that should be tidied:
+
+- **`src/utils/histogramUtils.ts` — replace `ChainInput`** with `Pick<ChainState, 'id' | 'samplerType' | 'samples'>`.
+  - `ChainInput` is a manual subset of `ChainState`; using `Pick` keeps it in sync automatically if `ChainState` changes.
+  - Import `ChainState` from `../types` and remove the `ChainInput` interface.
+
+- **`src/utils/histogramUtils.ts` — `HistogramBins`** — keep as-is; it is an internal return type for `calculateHistogramBins` and does not belong in shared types.
+
+- **`src/utils/plotFunctions.ts` — `ScatterLineShape` and `PlotlyDash`** — keep as-is; they are Plotly-specific type guards used only for type assertions inside this file.
+
+- **`src/utils/plotFunctions.ts` — `GridResult`** — keep as-is; it is an internal return type for `generateGrid` and is not reused elsewhere.
+
+- **`src/utils/predefinedFunctions.ts` — `PredefinedFunction`** — move to `src/types.ts`; it will be used in component Props when `Controls.tsx` is migrated in Phase 7.
+
+- **`src/utils/logger.ts` — `Logger` and `ViteImportMeta`** — keep as-is; `Logger` is properly exported and used across multiple files; `ViteImportMeta` is a single-use internal cast.
+
 ### Phase 4 — Math engine
 
 **`src/utils/mathEngine.ts`** — `Logp` class: constructor param `exprStr: string`. Use mathjs bundled types for compiled expressions; use `unknown` + type guards where mathjs types are insufficient.
