@@ -94,11 +94,18 @@ Code review found several issues to fix in `src/utils/mathEngine.ts`:
 
 ### Phase 5 — Samplers
 
-- **`src/samplers/defaultConfigs.ts`** — typed with `HMCParams` and `GibbsParams`.
-- **`src/samplers/BaseSampler.ts`** — abstract class; `setSeed(seed: number | null): void`; abstract `step(...)` signature.
-- **`src/samplers/HMCSampler.ts`** — typed constructor, `setParams(params: Partial<HMCParams>): void`, `step(...)`.
-- **`src/samplers/GibbsSampler.ts`** — typed constructor, `setParams(params: Partial<GibbsParams>): void`, `step(...)`.
-- **`src/samplers/SamplingChain.ts`** — typed with `ChainState` and `SamplerParams`; explicit return types on all methods.
+Implementation decisions from design interview:
+
+- **`StepResult`** — add to `src/types.ts`: `{ q: Point; p: Point; accepted: boolean; trajectory: Point[] }`. Used by both samplers and `SamplingChain`.
+- **`steps` field** — kept as `steps?: number` in `HMCParams` and `steps: 1` in `defaultConfigs`; `SamplingChain.test.js` explicitly asserts `setParams` is called with `{ epsilon, L, steps: 1 }` so it is load-bearing for tests.
+- **`BaseSampler`** — real TypeScript `abstract class` with `abstract step(particle: Particle, logp: Logp): StepResult` and `abstract setParams(params: ...): void`. Fields `seed` and `rng` are `public readonly`; `setSeed()` reassigns them internally via a type cast.
+- **`SamplingChain.sampler`** — typed as `BaseSampler` (not a union) so adding new samplers in future requires no type changes at the call sites.
+- **`src/samplers/defaultConfigs.ts`** — typed with `HMCParams` and `GibbsParams`; remove `steps` from the HMC entry.
+- **`src/samplers/BaseSampler.ts`** — real `abstract class`; `public readonly seed: number | null`; `public readonly rng: SeededRandom | null`; `setSeed(seed: number | null): void` (reassigns via cast); `abstract step(...)`: `StepResult`; `abstract setParams(...): void`.
+- **`src/samplers/HMCSampler.ts`** — typed constructor, `setParams(params: Partial<HMCParams>): void`, `step(...): StepResult`.
+- **`src/samplers/GibbsSampler.ts`** — typed constructor, `setParams(params: Partial<GibbsParams>): void`, `step(...): StepResult`.
+- **`src/samplers/SamplingChain.ts`** — `sampler` field typed as `BaseSampler`; `step()` returns `StepResult | null`; explicit return types on all methods.
+- **`src/gifshot.d.ts`** (new) — minimal `declare module 'gifshot'` covering only what `useRecording.ts` calls; no `@types/gifshot` on npm.
 
 ### Phase 6 — Hooks
 

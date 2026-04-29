@@ -13,6 +13,20 @@ export interface Point {
 export interface HMCParams {
   epsilon: number;
   L: number;
+  /** Legacy field kept for backward compatibility; unused in sampler logic. */
+  steps?: number;
+}
+
+/** Result returned by a single sampler step. */
+export interface StepResult {
+  /** New position after the step. */
+  q: Point;
+  /** New momentum after the step (zero vector for Gibbs). */
+  p: Point;
+  /** Whether the proposal was accepted. */
+  accepted: boolean;
+  /** Trajectory points visited during the step (leapfrog path for HMC, Manhattan path for Gibbs). */
+  trajectory: Point[];
 }
 
 /** Parameters for the Gibbs sampler. */
