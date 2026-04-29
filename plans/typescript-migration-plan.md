@@ -25,7 +25,7 @@ Define these once in `src/types.ts` and import across all modules:
 
 ## Modules / Classes
 
-### Phase 1 — Tooling
+### ~~Phase 1 — Tooling~~ ✓ Done
 
 **`package.json`** — install:
 
@@ -45,11 +45,11 @@ Define these once in `src/types.ts` and import across all modules:
 
 **`package.json` scripts** — update `lint`, `lint:fix`, `format`, `format:check` to include `.ts`/`.tsx` patterns.
 
-### Phase 2 — Shared types
+### ~~Phase 2 — Shared types~~ ✓ Done
 
 **`src/types.ts`** (new) — all shared interfaces and type aliases listed above.
 
-### Phase 3 — Leaf utilities (rename + annotate)
+### ~~Phase 3 — Leaf utilities (rename + annotate)~~ ✓ Done
 
 Each file: rename `.js` → `.ts`, add parameter and return types, import shared types where needed.
 
@@ -61,7 +61,7 @@ Each file: rename `.js` → `.ts`, add parameter and return types, import shared
 - **`src/utils/predefinedFunctions.ts`** — type the exported array.
 - **`src/utils/logger.ts`** — type `createLogger` and the singleton; data param typed as `Record<string, unknown>`.
 
-### Phase 3b — Interface cleanup (post-Phase-3 audit)
+### ~~Phase 3b — Interface cleanup (post-Phase-3 audit)~~ ✓ Done
 
 After Phase 3 was implemented, an audit found locally-defined interfaces that should be tidied:
 
@@ -79,9 +79,18 @@ After Phase 3 was implemented, an audit found locally-defined interfaces that sh
 
 - **`src/utils/logger.ts` — `Logger` and `ViteImportMeta`** — keep as-is; `Logger` is properly exported and used across multiple files; `ViteImportMeta` is a single-use internal cast.
 
-### Phase 4 — Math engine
+### ~~Phase 4 — Math engine~~ ✓ Done
 
 **`src/utils/mathEngine.ts`** — `Logp` class: constructor param `exprStr: string`. Use mathjs bundled types for compiled expressions; use `unknown` + type guards where mathjs types are insufficient.
+
+### ~~Phase 4b — mathEngine.ts post-review fixes~~ ✓ Done
+
+Code review found several issues to fix in `src/utils/mathEngine.ts`:
+
+- **Ensure JSDoc on exported members** — `getLogProbability` and `getLogProbabilityGradient` should have `@param` and `@returns` JSDoc. Private fields do not need JSDoc unless behaviour is non-obvious; remove field-level docs that only restate the name.
+- **Simplify empty-string guard** — `typeof pdfString !== 'string'` is dead code under TypeScript; change `if (!pdfString || typeof pdfString !== 'string')` to just `if (!pdfString)`.
+- **`let` → `const`** — `dxRaw` and `dyRaw` in `getLogProbabilityGradient` are never reassigned; declare them with `const`.
+- ~~**Remove redundant first parse**~~ — kept intentionally; tests assert distinct error messages for the two parse failures (raw syntax error vs. error in the `log(...)` wrapper), so both parse calls are load-bearing.
 
 ### Phase 5 — Samplers
 
