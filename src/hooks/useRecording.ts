@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import type React from 'react';
 import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
 import { logger } from '../utils/logger';
@@ -16,18 +17,12 @@ const GIF_FILENAME = 'sampling-recording.gif';
 /**
  * Custom hook that owns all recording state and logic.
  *
- * @returns {{
- *   isRecording: boolean,
- *   isEncoding: boolean,
- *   startRecording: () => void,
- *   stopRecording: () => void,
- *   captureFrame: (graphDiv: HTMLElement) => Promise<void>
- * }}
+ * @returns Recording state and control functions
  */
 function useRecording() {
   const [isRecording, setIsRecording] = useState(false);
   const [isEncoding, setIsEncoding] = useState(false);
-  const framesRef = useRef([]);
+  const framesRef = useRef<string[]>([]) as React.MutableRefObject<string[]>;
 
   /** Clears accumulated frames and begins recording. */
   const startRecording = () => {
@@ -39,9 +34,8 @@ function useRecording() {
   /**
    * Captures a single frame from the Plotly graph DOM node.
    * No-op when not recording.
-   * @param {HTMLElement} graphDiv - The Plotly graph DOM node.
    */
-  const captureFrame = async (graphDiv) => {
+  const captureFrame = async (graphDiv: HTMLElement): Promise<void> => {
     if (!isRecording) return;
     try {
       const dataUrl = await Plotly.toImage(graphDiv, {
@@ -51,7 +45,7 @@ function useRecording() {
       });
       framesRef.current.push(dataUrl);
     } catch (e) {
-      logger.warn('Frame capture failed', { message: e.message });
+      logger.warn('Frame capture failed', { message: (e as Error).message });
     }
   };
 

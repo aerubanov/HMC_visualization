@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type * as Plotly from 'plotly.js';
+import type React from 'react';
 import { Logp } from '../utils/mathEngine';
 import { SamplingChain } from '../samplers/SamplingChain';
 import { DEFAULT_SAMPLER_PARAMS } from '../samplers/defaultConfigs';
@@ -10,37 +12,51 @@ import {
   prepareHistogramDataPerChain,
 } from '../utils/histogramUtils';
 import { logger } from '../utils/logger';
+import type {
+  ChainState,
+  ChainConfigUpdate,
+  Point,
+  AxisLimits,
+  EssResult,
+  PerChainEss,
+  HistogramDataPerChain,
+} from '../types';
 
 /**
  * Returns true when all chains share the same samplerType and sampler params
  * (ignoring chain-specific fields: initialPosition and seed), or when there is
  * at most one chain. When this returns false, R-hat is meaningless and ESS
  * should be computed per-chain.
- *
- * @param {Array<{samplerType: string, params?: object}>} chains
- * @returns {boolean}
  */
-export function allChainsCompatible(chains) {
+export function allChainsCompatible(chains: ChainState[]): boolean {
   if (chains.length <= 1) return true;
   const ref = chains[0];
   return chains.every((c) => {
     if (c.samplerType !== ref.samplerType) return false;
     const refParams = ref.params || {};
     const cParams = c.params || {};
-    const keys = new Set([...Object.keys(refParams), ...Object.keys(cParams)]);
-    return [...keys].every((k) => cParams[k] === refParams[k]);
+    const keys = new Set([
+      ...Object.keys(refParams),
+      ...Object.keys(cParams),
+    ]);
+    return [...keys].every(
+      (k) =>
+        (cParams as Record<string, unknown>)[k] ===
+        (refParams as Record<string, unknown>)[k]
+    );
   });
 }
 
 /**
- * Custom hook to control the HMC sampling process using independent chains
- * @returns {Object} Controller interface and state
+ * Custom hook to control the HMC sampling process using independent chains.
+ *
+ * @returns Controller interface and state
  */
 export default function useSamplingController() {
   const [logP, setLogPString] = useState('');
 
   // Now tracks an array of chain states instead of duplicated specific keys
-  const [chains, setChains] = useState([
+  const [chains, setChains] = useState<ChainState[]>([
     {
       id: 0,
       samplerType: 'HMC',
@@ -58,38 +74,46 @@ export default function useSamplingController() {
 
   const [isRunning, setIsRunning] = useState(false);
   const [iterationCount, setIterationCount] = useState(0);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   // Per-chain error object: id → message
-  const [chainErrors, setChainErrors] = useState({});
-  const [contourData, setContourData] = useState(null);
+  const [chainErrors, setChainErrors] = useState<Record<number, string>>({});
+  const [contourData, setContourData] = useState<
+    Partial<Plotly.PlotData> | null
+  >(null);
 
   // Fast sampling mode
   const [useFastMode, setUseFastMode] = useState(false);
 
   // Statistics
-  const [rHat, setRHat] = useState(null);
-  const [ess, setEss] = useState(null);
-  const [histogramData, setHistogramData] = useState({ samples: [] });
+  const [rHat, setRHat] = useState<number | null>(null);
+  const [ess, setEss] = useState<EssResult | null>(null);
+  const [histogramData, setHistogramData] = useState<{ samples: Point[] }>({
+    samples: [],
+  });
   // Per-chain stats — populated only when chains have different sampler types
-  const [histogramDataPerChain, setHistogramDataPerChain] = useState(null);
-  const [essPerChain, setEssPerChain] = useState(null);
+  const [histogramDataPerChain, setHistogramDataPerChain] = useState<
+    HistogramDataPerChain[] | null
+  >(null);
+  const [essPerChain, setEssPerChain] = useState<PerChainEss[] | null>(null);
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
-  const [axisLimits, setAxisLimitsState] = useState({
+  const [axisLimits, setAxisLimitsState] = useState<AxisLimits>({
     xMin: CONTOUR.grid.xRange[0],
     xMax: CONTOUR.grid.xRange[1],
     yMin: CONTOUR.grid.yRange[0],
     yMax: CONTOUR.grid.yRange[1],
   });
 
-  const logpInstanceRef = useRef(null);
+  const logpInstanceRef = useRef<Logp | null>(null) as React.MutableRefObject<Logp | null>;
 
   // Cancellation flag for non-fast sampling loop
-  const cancelRef = useRef(false);
+  const cancelRef = useRef<boolean>(false) as React.MutableRefObject<boolean>;
 
   // Real OOP sampling chains held in refs
-  const samplingChainsRef = useRef(new Map());
+  const samplingChainsRef = useRef<Map<number, SamplingChain>>(
+    new Map()
+  ) as React.MutableRefObject<Map<number, SamplingChain>>;
 
   // Ensure refs match state size (initialize chains).
   // Depend only on chain IDs so this does not fire on every syncChainsState call.
@@ -117,7 +141,10 @@ export default function useSamplingController() {
       const z = y.map((yVal) =>
         x.map((xVal) => {
           try {
-            return logpInstanceRef.current.getLogProbability(xVal, yVal);
+            return (logpInstanceRef.current as Logp).getLogProbability(
+              xVal,
+              yVal
+            );
           } catch {
             return NaN;
           }
@@ -210,7 +237,7 @@ export default function useSamplingController() {
 
       setHistogramDataPerChain(prepareHistogramDataPerChain(chains, burnIn));
 
-      const perChainEss = chains.map((c) => {
+      const perChainEss: PerChainEss[] = chains.map((c) => {
         const postBurnin = (c.samples || []).slice(burnIn);
         if (postBurnin.length <= 1) {
           logger.warn('ESS skipped — insufficient samples', {
@@ -228,7 +255,7 @@ export default function useSamplingController() {
   }, [isRunning, chains, burnIn]);
 
   const setLogP = useCallback(
-    (str) => {
+    (str: string) => {
       setLogPString(str);
       setError(null);
       try {
@@ -243,74 +270,78 @@ export default function useSamplingController() {
         }
         reset();
       } catch (e) {
-        setError(e.message);
+        setError((e as Error).message);
         logpInstanceRef.current = null;
         setContourData(null);
-        logger.error('logP parse error', { message: e.message });
+        logger.error('logP parse error', { message: (e as Error).message });
       }
     },
     [reset, computeContour]
   );
 
-  const setAxisLimits = useCallback((newLimits) => {
+  const setAxisLimits = useCallback((newLimits: Partial<AxisLimits>) => {
     setAxisLimitsState((prev) => ({ ...prev, ...newLimits }));
   }, []);
 
-  // Update configuration for a specific chain
-  const setChainConfig = useCallback((id, configUpdates) => {
-    setChains((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const result = { ...c };
-          // Merge params if provided (not replace)
-          if (configUpdates.params !== undefined) {
-            result.params = { ...c.params, ...configUpdates.params };
+  /** Update configuration for a specific chain. */
+  const setChainConfig = useCallback(
+    (id: number, configUpdates: ChainConfigUpdate): void => {
+      setChains((prev) =>
+        prev.map((c) => {
+          if (c.id === id) {
+            const result = { ...c };
+            // Merge params if provided (not replace)
+            if (configUpdates.params !== undefined) {
+              result.params = { ...c.params, ...configUpdates.params };
+            }
+            // Apply remaining non-params updates
+            const { params: _params, ...otherUpdates } = configUpdates;
+            Object.assign(result, otherUpdates);
+
+            const impl = samplingChainsRef.current.get(id);
+            if (impl) {
+              // Sync samplerType on the ref BEFORE updating React state to keep them consistent
+              if (configUpdates.samplerType !== undefined)
+                impl.setSamplerType(configUpdates.samplerType);
+              if (configUpdates.params !== undefined)
+                impl.setParams(configUpdates.params);
+              if (configUpdates.initialPosition !== undefined)
+                impl.setInitialPosition(configUpdates.initialPosition);
+              if (configUpdates.seed !== undefined)
+                impl.setSeed(configUpdates.seed);
+            }
+
+            // If samplerType changed, ensure params map default properly into react state
+            if (
+              configUpdates.samplerType !== undefined &&
+              configUpdates.samplerType !== c.samplerType
+            ) {
+              result.params = {
+                ...DEFAULT_SAMPLER_PARAMS[configUpdates.samplerType],
+              };
+              // Implicit reset inside sampling chain needs a sync or manual reset:
+              result.samples = [];
+              result.trajectory = [];
+              result.rejectedCount = 0;
+              result.acceptedCount = 0;
+              result.error = null;
+              result.currentParticle = null;
+            }
+
+            return result;
           }
-          // Apply remaining non-params updates
-          const { params: _params, ...otherUpdates } = configUpdates;
-          Object.assign(result, otherUpdates);
+          return c;
+        })
+      );
+    },
+    []
+  );
 
-          const impl = samplingChainsRef.current.get(id);
-          if (impl) {
-            // Sync samplerType on the ref BEFORE updating React state to keep them consistent
-            if (configUpdates.samplerType !== undefined)
-              impl.setSamplerType(configUpdates.samplerType);
-            if (configUpdates.params !== undefined)
-              impl.setParams(configUpdates.params);
-            if (configUpdates.initialPosition !== undefined)
-              impl.setInitialPosition(configUpdates.initialPosition);
-            if (configUpdates.seed !== undefined)
-              impl.setSeed(configUpdates.seed);
-          }
-
-          // If samplerType changed, ensure params map default properly into react state
-          if (
-            configUpdates.samplerType !== undefined &&
-            configUpdates.samplerType !== c.samplerType
-          ) {
-            result.params = {
-              ...DEFAULT_SAMPLER_PARAMS[configUpdates.samplerType],
-            };
-            // Implicit reset inside sampling chain needs a sync or manual reset:
-            result.samples = [];
-            result.trajectory = [];
-            result.rejectedCount = 0;
-            result.acceptedCount = 0;
-            result.error = null;
-            result.currentParticle = null;
-          }
-
-          return result;
-        }
-        return c;
-      })
-    );
-  }, []);
-
-  const addChain = useCallback((config = {}) => {
+  /** Add a new chain, optionally pre-seeded with partial config. */
+  const addChain = useCallback((config: Partial<ChainState> = {}): void => {
     const id = config.id || Date.now();
     const samplerType = config.samplerType || 'HMC';
-    const newConfig = {
+    const newConfig: ChainState = {
       id,
       samplerType,
       params: { ...DEFAULT_SAMPLER_PARAMS[samplerType] },
@@ -330,8 +361,9 @@ export default function useSamplingController() {
     logger.info('Chain added', { id, sampler: samplerType });
   }, []);
 
+  /** Remove a chain by id. No-op while sampling is running. */
   const removeChain = useCallback(
-    (id) => {
+    (id: number): void => {
       // Guard: do not remove while sampling is in progress
       if (isRunning) return;
       samplingChainsRef.current.delete(id);
@@ -344,7 +376,7 @@ export default function useSamplingController() {
   /**
    * Reset a single chain by id without affecting other chains.
    */
-  const resetChain = useCallback((id) => {
+  const resetChain = useCallback((id: number): void => {
     const impl = samplingChainsRef.current.get(id);
     if (impl) {
       impl.reset();
@@ -370,7 +402,7 @@ export default function useSamplingController() {
   }, []);
 
   const sampleSteps = useCallback(
-    (n) => {
+    (n: number): void => {
       cancelRef.current = false;
       logger.debug('Sampling started', {
         steps: n,
@@ -389,11 +421,11 @@ export default function useSamplingController() {
             // Process all iteration batch before returning to main thread loop
             for (let i = 0; i < n; i++) {
               samplingChainsRef.current.forEach((chain) =>
-                chain.step(logpInstanceRef.current)
+                chain.step(logpInstanceRef.current as Logp)
               );
             }
             // Collect per-chain errors after batch
-            const newErrors = {};
+            const newErrors: Record<number, string> = {};
             samplingChainsRef.current.forEach((chain, id) => {
               if (chain.error) newErrors[id] = chain.error;
             });
@@ -402,7 +434,7 @@ export default function useSamplingController() {
             setIterationCount((prev) => prev + n);
             setIsRunning(false);
           } catch (e) {
-            setError(e.message);
+            setError((e as Error).message);
             setIsRunning(false);
           }
         }, 0);
@@ -413,10 +445,10 @@ export default function useSamplingController() {
       const executeStep = () => {
         try {
           samplingChainsRef.current.forEach((chain) =>
-            chain.step(logpInstanceRef.current)
+            chain.step(logpInstanceRef.current as Logp)
           );
           // Collect per-chain errors
-          const newErrors = {};
+          const newErrors: Record<number, string> = {};
           samplingChainsRef.current.forEach((chain, id) => {
             if (chain.error) newErrors[id] = chain.error;
           });
@@ -441,9 +473,9 @@ export default function useSamplingController() {
             logger.info('Sampling completed', { steps: stepsCompleted });
           }
         } catch (e) {
-          setError(e.message);
+          setError((e as Error).message);
           setIsRunning(false);
-          logger.error('Sampling error', { message: e.message });
+          logger.error('Sampling error', { message: (e as Error).message });
         }
       };
       executeStep();

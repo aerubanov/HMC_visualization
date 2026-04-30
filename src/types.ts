@@ -93,3 +93,12 @@ export interface PredefinedFunction {
   label: string;
   value: string;
 }
+
+/**
+ * The subset of {@link ChainState} fields that callers may update via
+ * `setChainConfig`. Excludes read-only internal fields (`id`, `samples`,
+ * `trajectory`, counters, `error`, `currentParticle`).
+ */
+export type ChainConfigUpdate = Partial<
+  Pick<ChainState, 'samplerType' | 'params' | 'initialPosition' | 'seed'>
+>;

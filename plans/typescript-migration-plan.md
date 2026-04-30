@@ -92,7 +92,7 @@ Code review found several issues to fix in `src/utils/mathEngine.ts`:
 - **`let` → `const`** — `dxRaw` and `dyRaw` in `getLogProbabilityGradient` are never reassigned; declare them with `const`.
 - ~~**Remove redundant first parse**~~ — kept intentionally; tests assert distinct error messages for the two parse failures (raw syntax error vs. error in the `log(...)` wrapper), so both parse calls are load-bearing.
 
-### Phase 5 — Samplers
+### ~~Phase 5 — Samplers~~ ✓ Done
 
 Implementation decisions from design interview:
 
@@ -107,10 +107,42 @@ Implementation decisions from design interview:
 - **`src/samplers/SamplingChain.ts`** — `sampler` field typed as `BaseSampler`; `step()` returns `StepResult | null`; explicit return types on all methods.
 - **`src/gifshot.d.ts`** (new) — minimal `declare module 'gifshot'` covering only what `useRecording.ts` calls; no `@types/gifshot` on npm.
 
-### Phase 6 — Hooks
+### ~~Phase 6 — Hooks~~ ✓ Done
 
-- **`src/hooks/useSamplingController.ts`** — `allChainsCompatible` typed; hook return type explicit using shared types; `chains` state typed as `ChainState[]`.
-- **`src/hooks/useRecording.ts`** — return type explicit; `captureFrame` param typed as `HTMLElement`.
+Implementation decisions from design interview:
+
+- **`ChainConfigUpdate`** — add to `src/types.ts`: `Partial<Pick<ChainState, 'samplerType' | 'params' | 'initialPosition' | 'seed'>>`. Prevents callers of `setChainConfig` from passing read-only internal fields (`id`, `samples`, `trajectory`, counters). Used as the second parameter type of `setChainConfig`.
+- **`allChainsCompatible` param type** — `ChainState[]`. All TS call sites pass full chain state; the defensive `params || {}` inside is a runtime guard, not a signal that partial objects are valid TS inputs.
+- **`useSamplingController` return type** — inferred (no named interface). Avoids a large brittle interface; Phase 7 components destructure directly.
+- **`captureFrame` param type** — `HTMLElement`. Hook only ever receives a real DOM node; `Plotly.Root` (`string | HTMLElement`) would be unnecessarily broad.
+
+**`src/hooks/useSamplingController.ts`**:
+
+- `chains` state: `ChainState[]`
+- `chainErrors` state: `Record<number, string>`
+- `contourData` state: `Partial<Plotly.PlotData> | null`
+- `histogramData` state: `{ samples: Point[] }`
+- `histogramDataPerChain` state: `HistogramDataPerChain[] | null`
+- `essPerChain` state: `PerChainEss[] | null`
+- `rHat` state: `number | null`
+- `ess` state: `EssResult | null`
+- `axisLimits` state: `AxisLimits`
+- `logpInstanceRef`: `React.MutableRefObject<Logp | null>`
+- `cancelRef`: `React.MutableRefObject<boolean>`
+- `samplingChainsRef`: `React.MutableRefObject<Map<number, SamplingChain>>`
+- `allChainsCompatible(chains: ChainState[]): boolean`
+- `setChainConfig(id: number, configUpdates: ChainConfigUpdate): void`
+- `addChain(config?: Partial<ChainState>): void`
+- `removeChain(id: number): void`
+- `resetChain(id: number): void`
+- `sampleSteps(n: number): void`
+- hook return type: inferred
+
+**`src/hooks/useRecording.ts`**:
+
+- `framesRef`: `React.MutableRefObject<string[]>`
+- `captureFrame(graphDiv: HTMLElement): Promise<void>`
+- return type: inferred
 
 ### Phase 7 — Components (rename .jsx → .tsx, remove PropTypes)
 
