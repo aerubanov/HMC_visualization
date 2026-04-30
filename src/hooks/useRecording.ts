@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import type React from 'react';
+// @ts-ignore — plotly.js/dist/plotly lacks type declarations but works at runtime
 import Plotly from 'plotly.js/dist/plotly';
 import gifshot from 'gifshot';
 import { logger } from '../utils/logger';

@@ -144,16 +144,84 @@ Implementation decisions from design interview:
 - `captureFrame(graphDiv: HTMLElement): Promise<void>`
 - return type: inferred
 
-### Phase 7 — Components (rename .jsx → .tsx, remove PropTypes)
+### ~~Phase 7 — Components (rename .jsx → .tsx, remove PropTypes)~~ ✓ Done
 
 Each component: rename, define a `Props` interface at the top of the file (replacing PropTypes), remove the `PropTypes` import and `.propTypes` assignment.
 
-- **`src/components/Visualizer.tsx`**
-- **`src/components/TracePlots.tsx`**
-- **`src/components/HistogramPlots.tsx`**
-- **`src/components/Controls.tsx`**
-- **`src/App.tsx`**
-- **`src/main.tsx`**
+Implementation decisions from design interview:
+
+- **Props interfaces location** — local to each `.tsx` file; no external consumers reference them.
+- **Callback prop typing in `Controls`** — explicit per-prop types (not `Pick<ReturnType<typeof useSamplingController>, ...>`); self-documenting and hook signatures are now stable TypeScript.
+- **`captureFrame` in `Visualizer`** — optional (`captureFrame?: (graphDiv: HTMLElement) => Promise<void>`); matches existing PropTypes signal; `isRecording = false` default means component is safe without it.
+- **`main.tsx` null handling** — non-null assertion: `createRoot(document.getElementById('root')!)`. Bootstrap entrypoint; `#root` absence means the app is broken regardless.
+
+**`src/components/Visualizer.tsx`** — Props:
+
+- `contourData?: Partial<Plotly.PlotData> | null`
+- `chains?: ChainState[]`
+- `axisLimits?: AxisLimits`
+- `isRecording?: boolean`
+- `captureFrame?: (graphDiv: HTMLElement) => Promise<void>`
+
+**`src/components/TracePlots.tsx`** — Props:
+
+- `chains?: ChainState[]`
+- `burnIn?: number`
+- `rHat?: EssResult | null` — note: plan said `number | null` but `calculateGelmanRubin` returns per-dimension `{ x, y }`, so `EssResult | null` is correct
+- `ess?: EssResult | null`
+- `essPerChain?: PerChainEss[] | null`
+
+**`src/components/HistogramPlots.tsx`** — Props:
+
+- `histogramData: { samples: Point[] }` — required (was `.isRequired` in PropTypes)
+- `histogramDataPerChain?: HistogramDataPerChain[] | null`
+- `axisLimits?: AxisLimits`
+
+**`src/components/Controls.tsx`** — Props (all explicit per-prop types):
+
+- `logP?: string`
+- `chains?: ChainState[]`
+- `iterationCount?: number`
+- `isRunning?: boolean`
+- `error?: string | null`
+- `setLogP?: (str: string) => void`
+- `setChainConfig?: (id: number, updates: ChainConfigUpdate) => void`
+- `addChain?: (config?: Partial<ChainState>) => void`
+- `removeChain?: (id: number) => void`
+- `step?: () => void`
+- `sampleSteps?: (n: number) => void`
+- `reset?: () => void`
+- `burnIn?: number`
+- `setBurnIn?: (value: number) => void`
+- `axisLimits?: AxisLimits`
+- `setAxisLimits?: (limits: Partial<AxisLimits>) => void`
+- `useFastMode?: boolean`
+- `setUseFastMode?: (value: boolean) => void`
+- `isRecording?: boolean`
+- `isEncoding?: boolean`
+- `startRecording?: () => void`
+- `stopRecording?: () => void`
+- `stopSampling?: () => void`
+
+**`src/App.tsx`** — no Props interface needed (root component, no incoming props).
+
+**`src/main.tsx`** — rename only; fix null: `createRoot(document.getElementById('root')!)`; update import from `App.jsx` → `App`.
+
+### Phase 7b — Post-review fixes
+
+Code review of the full migration found four issues to fix:
+
+- **`src/utils/mathEngine.ts:40` — remove dead-code `typeof` guard** — Phase 4b missed this. Change `if (!pdfString || typeof pdfString !== 'string')` to `if (!pdfString)`. Under `strict: true`, `pdfString: string` can never fail the `typeof` check.
+
+- **`src/samplers/SamplingChain.ts` — replace inline dynamic imports with static imports** — Lines 105 and 140 use `import('./GibbsSampler').GibbsSampler['params']` and `import('../types').GibbsParams` as inline type casts. Add `GibbsParams` to the static `import type` from `../types` and use it directly. `GibbsSampler['params']` is just `GibbsParams`.
+
+- **`src/components/Controls.tsx` — replace inline dynamic imports with static imports** — Lines 262, 286, 310, 336 use `import('../types').SamplerType`, `import('../types').HMCParams`, `import('../types').GibbsParams` inline. Add `SamplerType`, `HMCParams`, `GibbsParams` to the static `import type` block at the top.
+
+- **`src/hooks/useSamplingController.ts:41-42` — remove unnecessary double cast** — `(cParams as unknown as Record<string, unknown>)[k]` has an unnecessary `unknown` hop. Change to `(cParams as Record<string, unknown>)[k]`.
+
+Noted but not changed:
+
+- **`useRecording.ts` `@ts-ignore`** — acceptable since `plotly.js/dist/plotly` has no type declarations; could be `@ts-expect-error` but not a blocker.
 
 ---
 

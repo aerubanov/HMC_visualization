@@ -1,23 +1,32 @@
 import './TracePlots.css';
 import Plot from 'react-plotly.js';
-import PropTypes from 'prop-types';
+import type * as Plotly from 'plotly.js';
 import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
 import { createTracePlotTrace } from '../utils/plotFunctions';
+import type { ChainState, EssResult, PerChainEss } from '../types';
+
+interface Props {
+  chains?: ChainState[];
+  burnIn?: number;
+  rHat?: EssResult | null;
+  ess?: EssResult | null;
+  essPerChain?: PerChainEss[] | null;
+}
 
 /**
  * @param {Array<{chainId: *, ess: {x: number, y: number}}>|null|undefined} essPerChain
  *   When provided, each chain's ESS is sourced from this array instead of the aggregate `ess` prop.
  */
-function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
+function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
-    legend: { orientation: 'h', y: -0.2 },
+    legend: { orientation: 'h' as const, y: -0.2 },
   };
   const xConfig = { displayModeBar: false, responsive: true };
 
-  const xTraces = [];
-  const yTraces = [];
+  const xTraces: Partial<Plotly.PlotData>[] = [];
+  const yTraces: Partial<Plotly.PlotData>[] = [];
 
   chains.forEach((chain, index) => {
     if (chain.samples && chain.samples.length > 0) {
@@ -35,10 +44,11 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
     }
   });
 
-  const formatRHat = (val) =>
-    !isFinite(val) ? ' (R̂ = ∞)' : val ? ` (R̂ = ${val.toFixed(2)})` : '';
-  const formatESS = (val) => (val ? ` (ESS = ${Math.round(val)})` : '');
-  const formatRate = (chain) => {
+  const formatRHat = (val: number | null | undefined) =>
+    val == null ? '' : !isFinite(val) ? ' (R̂ = ∞)' : ` (R̂ = ${val.toFixed(2)})`;
+  const formatESS = (val: number | null | undefined) =>
+    val ? ` (ESS = ${Math.round(val)})` : '';
+  const formatRate = (chain: ChainState) => {
     const acc = chain.acceptedCount ?? chain.samples.length;
     const total = acc + (chain.rejectedCount ?? 0);
     return total === 0 ? '0.0%' : `${((acc / total) * 100).toFixed(1)}%`;
@@ -86,7 +96,7 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
                   : `Chain ${entry.chainId}`;
               return (
                 entry.ess && (
-                  <span key={entry.chainId} className="stat-label">
+                  <span key={String(entry.chainId)} className="stat-label">
                     {label}: ESS={Math.round(entry.ess.x)}
                   </span>
                 )
@@ -95,7 +105,9 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
         </h4>
         <Plot
           data={xTraces}
-          layout={{ ...commonLayout, title: '' }}
+          layout={
+            { ...commonLayout, title: '' } as unknown as Partial<Plotly.Layout>
+          }
           config={xConfig}
           style={{ width: '100%', height: '300px' }}
           useResizeHandler={true}
@@ -119,7 +131,7 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
                   : `Chain ${entry.chainId}`;
               return (
                 entry.ess && (
-                  <span key={entry.chainId} className="stat-label">
+                  <span key={String(entry.chainId)} className="stat-label">
                     {label}: ESS={Math.round(entry.ess.y)}
                   </span>
                 )
@@ -128,7 +140,9 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
         </h4>
         <Plot
           data={yTraces}
-          layout={{ ...commonLayout, title: '' }}
+          layout={
+            { ...commonLayout, title: '' } as unknown as Partial<Plotly.Layout>
+          }
           config={xConfig}
           style={{ width: '100%', height: '300px' }}
           useResizeHandler={true}
@@ -137,39 +151,5 @@ function TracePlots({ chains, burnIn, rHat, ess, essPerChain }) {
     </div>
   );
 }
-
-TracePlots.propTypes = {
-  chains: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-      samplerType: PropTypes.string,
-      params: PropTypes.object,
-      initialPosition: PropTypes.shape({
-        x: PropTypes.number,
-        y: PropTypes.number,
-      }),
-      seed: PropTypes.number,
-      samples: PropTypes.array,
-      trajectory: PropTypes.array,
-      rejectedCount: PropTypes.number,
-      acceptedCount: PropTypes.number,
-      error: PropTypes.string,
-    })
-  ),
-  burnIn: PropTypes.number,
-  rHat: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
-  ess: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
-  /** Optional: when provided, per-chain ESS is shown instead of aggregate ESS */
-  essPerChain: PropTypes.arrayOf(
-    PropTypes.shape({
-      chainId: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
-        .isRequired,
-      ess: PropTypes.shape({
-        x: PropTypes.number.isRequired,
-        y: PropTypes.number.isRequired,
-      }),
-    })
-  ),
-};
 
 export default TracePlots;

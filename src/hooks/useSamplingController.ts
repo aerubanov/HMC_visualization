@@ -35,14 +35,11 @@ export function allChainsCompatible(chains: ChainState[]): boolean {
     if (c.samplerType !== ref.samplerType) return false;
     const refParams = ref.params || {};
     const cParams = c.params || {};
-    const keys = new Set([
-      ...Object.keys(refParams),
-      ...Object.keys(cParams),
-    ]);
+    const keys = new Set([...Object.keys(refParams), ...Object.keys(cParams)]);
     return [...keys].every(
       (k) =>
-        (cParams as Record<string, unknown>)[k] ===
-        (refParams as Record<string, unknown>)[k]
+        (cParams as unknown as Record<string, unknown>)[k] ===
+        (refParams as unknown as Record<string, unknown>)[k]
     );
   });
 }
@@ -77,15 +74,14 @@ export default function useSamplingController() {
   const [error, setError] = useState<string | null>(null);
   // Per-chain error object: id → message
   const [chainErrors, setChainErrors] = useState<Record<number, string>>({});
-  const [contourData, setContourData] = useState<
-    Partial<Plotly.PlotData> | null
-  >(null);
+  const [contourData, setContourData] =
+    useState<Partial<Plotly.PlotData> | null>(null);
 
   // Fast sampling mode
   const [useFastMode, setUseFastMode] = useState(false);
 
   // Statistics
-  const [rHat, setRHat] = useState<number | null>(null);
+  const [rHat, setRHat] = useState<EssResult | null>(null);
   const [ess, setEss] = useState<EssResult | null>(null);
   const [histogramData, setHistogramData] = useState<{ samples: Point[] }>({
     samples: [],
@@ -105,7 +101,9 @@ export default function useSamplingController() {
     yMax: CONTOUR.grid.yRange[1],
   });
 
-  const logpInstanceRef = useRef<Logp | null>(null) as React.MutableRefObject<Logp | null>;
+  const logpInstanceRef = useRef<Logp | null>(
+    null
+  ) as React.MutableRefObject<Logp | null>;
 
   // Cancellation flag for non-fast sampling loop
   const cancelRef = useRef<boolean>(false) as React.MutableRefObject<boolean>;
@@ -134,7 +132,7 @@ export default function useSamplingController() {
     }
 
     try {
-      const { x, y } = generateGrid(
+      const { x, y, xGrid, yGrid } = generateGrid(
         [axisLimits.xMin, axisLimits.xMax],
         [axisLimits.yMin, axisLimits.yMax]
       );
@@ -150,7 +148,7 @@ export default function useSamplingController() {
           }
         })
       );
-      setContourData(createContourTrace(x, y, z));
+      setContourData(createContourTrace(xGrid, yGrid, z));
     } catch (e) {
       console.error('Error computing contour:', e);
       setContourData(null);
