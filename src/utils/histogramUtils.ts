@@ -2,21 +2,22 @@
  * Utility functions for histogram data preparation and calculations
  */
 
+import type { Point, HistogramDataPerChain, ChainState } from '../types';
+
 /**
  * Prepares histogram data by filtering out burn-in samples and combining chains
- * @param {Array<{x: number, y: number}>} samples - Array of sample objects from chain 1
- * @param {Array<{x: number, y: number}>} samples2 - Array of sample objects from chain 2 (optional)
- * @param {number} burnIn - Number of samples to exclude as burn-in
- * @param {boolean} useSecondChain - Whether to include second chain data
- * @returns {{samples: Array<{x: number, y: number}>}} Combined filtered samples
+ * @param samples - Array of sample objects from chain 1
+ * @param samples2 - Array of sample objects from chain 2 (optional)
+ * @param burnIn - Number of samples to exclude as burn-in
+ * @param useSecondChain - Whether to include second chain data
  */
 export function prepareHistogramData(
-  samples,
-  samples2,
-  burnIn,
-  useSecondChain
-) {
-  let combinedSamples = [];
+  samples: Point[],
+  samples2: Point[],
+  burnIn: number,
+  useSecondChain: boolean
+): { samples: Point[] } {
+  let combinedSamples: Point[] = [];
 
   // Handle chain 1
   if (samples && Array.isArray(samples) && burnIn < samples.length) {
@@ -40,13 +41,13 @@ export function prepareHistogramData(
  * Prepares per-chain histogram data for mixed sampler type scenarios.
  * Each chain's burn-in samples are removed independently; chains are NOT merged.
  *
- * @param {Array<{id: *, samplerType: string, samples: Array<{x: number, y: number}>}>} chains
- *   Array of chain objects (each must have id, samplerType, and samples fields)
- * @param {number} burnIn - Number of initial samples to exclude as burn-in
- * @returns {Array<{chainId: *, samplerType: string, label: string, samples: Array<{x: number, y: number}>}>}
- *   One entry per chain, each with post-burnin samples only
+ * @param chains - Array of chain objects (each must have id, samplerType, and samples fields)
+ * @param burnIn - Number of initial samples to exclude as burn-in
  */
-export function prepareHistogramDataPerChain(chains, burnIn) {
+export function prepareHistogramDataPerChain(
+  chains: Pick<ChainState, 'id' | 'samplerType' | 'samples'>[],
+  burnIn: number
+): HistogramDataPerChain[] {
   return chains.map((chain, index) => {
     const postBurnin =
       chain.samples && Array.isArray(chain.samples)
@@ -61,13 +62,20 @@ export function prepareHistogramDataPerChain(chains, burnIn) {
   });
 }
 
+interface HistogramBins {
+  binEdges: number[];
+  binWidth: number;
+}
+
 /**
  * Calculates optimal bin edges for 1D histograms using Freedman-Diaconis rule
- * @param {Array<number>} values - Array of values for a single dimension
- * @param {number} numBins - Desired number of bins (optional, will calculate if not provided)
- * @returns {{binEdges: Array<number>, binWidth: number}} Bin configuration
+ * @param values - Array of values for a single dimension
+ * @param numBins - Desired number of bins (optional, will calculate if not provided)
  */
-export function calculateHistogramBins(values, numBins = null) {
+export function calculateHistogramBins(
+  values: number[],
+  numBins: number | null = null
+): HistogramBins {
   // Handle empty or invalid input
   if (!values || !Array.isArray(values) || values.length === 0) {
     return {
@@ -123,7 +131,7 @@ export function calculateHistogramBins(values, numBins = null) {
   }
 
   const binWidth = range / bins;
-  const binEdges = [];
+  const binEdges: number[] = [];
 
   for (let i = 0; i <= bins; i++) {
     binEdges.push(min + i * binWidth);

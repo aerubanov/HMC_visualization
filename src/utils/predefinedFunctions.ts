@@ -2,7 +2,12 @@
  * Collection of pre-defined probability density functions (unnormalized)
  * for demonstration and testing purposes.
  */
-export const PREDEFINED_FUNCTIONS = [
+
+import type { PredefinedFunction } from '../types';
+
+export type { PredefinedFunction };
+
+export const PREDEFINED_FUNCTIONS: PredefinedFunction[] = [
   {
     label: 'Gaussian',
     value: 'exp(-(x^2 + y^2)/2)',

@@ -1,39 +1,48 @@
 import './HistogramPlots.css';
 import Plot from 'react-plotly.js';
-import PropTypes from 'prop-types';
+import type * as Plotly from 'plotly.js';
 import { HISTOGRAM, HMC_SAMPLER } from '../utils/plotConfig.json';
 import {
   createHistogram2DTrace,
   createMarginalHistogramTrace,
 } from '../utils/plotFunctions';
+import type { Point, AxisLimits, HistogramDataPerChain } from '../types';
+
+interface Props {
+  histogramData: { samples: Point[] };
+  histogramDataPerChain?: HistogramDataPerChain[] | null;
+  axisLimits?: AxisLimits;
+}
+
+interface SingleHistogramPanelProps {
+  samples: Point[];
+  axisLimits?: AxisLimits;
+}
 
 /**
  * HistogramPlots component displays 2D histogram and marginal distributions
  * Layout: Y marginal (left, vertical) | 2D histogram (center)
  *         Empty (bottom-left)         | X marginal (bottom, horizontal)
  */
-/**
- * HistogramPlots component displays 2D histogram and marginal distributions
- * Layout: Y marginal (left, vertical) | 2D histogram (center)
- *         Empty (bottom-left)         | X marginal (bottom, horizontal)
- */
+
 /**
  * Renders histogram panels for a single `samples` array.
  * Extracted so that it can be used both in the legacy single-panel path
  * and the new per-chain multi-panel path.
- *
- * @param {{ samples: Array<{x:number,y:number}>, axisLimits: object|undefined }} props
  */
-function SingleHistogramPanel({ samples, axisLimits }) {
+function SingleHistogramPanel({
+  samples,
+  axisLimits,
+}: SingleHistogramPanelProps) {
   if (!samples || samples.length === 0) return null;
 
   // 2D Joint Histogram Trace
-  const traces2D = [];
+  const traces2D: Partial<Plotly.PlotData>[] = [];
   const h2d = createHistogram2DTrace(samples, 'Blues', 'Posterior');
   if (h2d) traces2D.push(h2d);
 
   // X Marginal Trace
-  const tracesX = [];
+  const tracesX: Partial<Plotly.PlotData>[] = [];
   const hx = createMarginalHistogramTrace(
     samples,
     'x',
@@ -43,7 +52,7 @@ function SingleHistogramPanel({ samples, axisLimits }) {
   if (hx) tracesX.push(hx);
 
   // Y Marginal Trace (Vertical/Rotated)
-  const tracesY = [];
+  const tracesY: Partial<Plotly.PlotData>[] = [];
   const hy = createMarginalHistogramTrace(
     samples,
     'y',
@@ -67,17 +76,19 @@ function SingleHistogramPanel({ samples, axisLimits }) {
       <div className="histogram-y-marginal">
         <Plot
           data={tracesY}
-          layout={{
-            ...commonLayout,
-            yaxis: {
-              title: 'y',
-              showgrid: true,
-              range: axisLimits
-                ? [axisLimits.yMin, axisLimits.yMax]
-                : undefined,
-            },
-            xaxis: { showgrid: false, showticklabels: false },
-          }}
+          layout={
+            {
+              ...commonLayout,
+              yaxis: {
+                title: 'y',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.yMin, axisLimits.yMax]
+                  : undefined,
+              },
+              xaxis: { showgrid: false, showticklabels: false },
+            } as unknown as Partial<Plotly.Layout>
+          }
           config={xConfig}
           style={{ width: '100%', height: '100%' }}
           useResizeHandler={true}
@@ -88,23 +99,25 @@ function SingleHistogramPanel({ samples, axisLimits }) {
       <div className="histogram-2d">
         <Plot
           data={traces2D}
-          layout={{
-            ...commonLayout,
-            xaxis: {
-              title: 'x',
-              showgrid: true,
-              range: axisLimits
-                ? [axisLimits.xMin, axisLimits.xMax]
-                : undefined,
-            },
-            yaxis: {
-              title: 'y',
-              showgrid: true,
-              range: axisLimits
-                ? [axisLimits.yMin, axisLimits.yMax]
-                : undefined,
-            },
-          }}
+          layout={
+            {
+              ...commonLayout,
+              xaxis: {
+                title: 'x',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.xMin, axisLimits.xMax]
+                  : undefined,
+              },
+              yaxis: {
+                title: 'y',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.yMin, axisLimits.yMax]
+                  : undefined,
+              },
+            } as unknown as Partial<Plotly.Layout>
+          }
           config={xConfig}
           style={{ width: '100%', height: '100%' }}
           useResizeHandler={true}
@@ -118,17 +131,19 @@ function SingleHistogramPanel({ samples, axisLimits }) {
       <div className="histogram-x-marginal">
         <Plot
           data={tracesX}
-          layout={{
-            ...commonLayout,
-            xaxis: {
-              title: 'x',
-              showgrid: true,
-              range: axisLimits
-                ? [axisLimits.xMin, axisLimits.xMax]
-                : undefined,
-            },
-            yaxis: { showgrid: false, showticklabels: false },
-          }}
+          layout={
+            {
+              ...commonLayout,
+              xaxis: {
+                title: 'x',
+                showgrid: true,
+                range: axisLimits
+                  ? [axisLimits.xMin, axisLimits.xMax]
+                  : undefined,
+              },
+              yaxis: { showgrid: false, showticklabels: false },
+            } as unknown as Partial<Plotly.Layout>
+          }
           config={xConfig}
           style={{ width: '100%', height: '100%' }}
           useResizeHandler={true}
@@ -138,22 +153,11 @@ function SingleHistogramPanel({ samples, axisLimits }) {
   );
 }
 
-SingleHistogramPanel.propTypes = {
-  samples: PropTypes.arrayOf(
-    PropTypes.shape({
-      x: PropTypes.number.isRequired,
-      y: PropTypes.number.isRequired,
-    })
-  ),
-  axisLimits: PropTypes.shape({
-    xMin: PropTypes.number,
-    xMax: PropTypes.number,
-    yMin: PropTypes.number,
-    yMax: PropTypes.number,
-  }),
-};
-
-function HistogramPlots({ histogramData, histogramDataPerChain, axisLimits }) {
+function HistogramPlots({
+  histogramData,
+  histogramDataPerChain,
+  axisLimits,
+}: Props) {
   // Per-chain split layout: one panel per chain with its sampler label
   if (histogramDataPerChain && histogramDataPerChain.length > 0) {
     return (
@@ -161,7 +165,10 @@ function HistogramPlots({ histogramData, histogramDataPerChain, axisLimits }) {
         <h3 className="section-title">Posterior Distributions</h3>
         <div className="histogram-per-chain-row">
           {histogramDataPerChain.map((entry) => (
-            <div key={entry.chainId} className="histogram-per-chain-panel">
+            <div
+              key={String(entry.chainId)}
+              className="histogram-per-chain-panel"
+            >
               <h4 className="histogram-chain-label">{entry.label}</h4>
               <SingleHistogramPanel
                 samples={entry.samples}
@@ -188,37 +195,5 @@ function HistogramPlots({ histogramData, histogramDataPerChain, axisLimits }) {
     </div>
   );
 }
-
-HistogramPlots.propTypes = {
-  histogramData: PropTypes.shape({
-    samples: PropTypes.arrayOf(
-      PropTypes.shape({
-        x: PropTypes.number.isRequired,
-        y: PropTypes.number.isRequired,
-      })
-    ),
-  }).isRequired,
-  /** Optional: when provided, renders one labelled panel per chain instead of the merged panel */
-  histogramDataPerChain: PropTypes.arrayOf(
-    PropTypes.shape({
-      chainId: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
-        .isRequired,
-      samplerType: PropTypes.string.isRequired,
-      label: PropTypes.string.isRequired,
-      samples: PropTypes.arrayOf(
-        PropTypes.shape({
-          x: PropTypes.number.isRequired,
-          y: PropTypes.number.isRequired,
-        })
-      ).isRequired,
-    })
-  ),
-  axisLimits: PropTypes.shape({
-    xMin: PropTypes.number,
-    xMax: PropTypes.number,
-    yMin: PropTypes.number,
-    yMax: PropTypes.number,
-  }),
-};
 
 export default HistogramPlots;

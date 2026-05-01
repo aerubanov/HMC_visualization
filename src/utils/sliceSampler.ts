@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { SeededRandom } from './seededRandom';
 
 /**
  * Perform one step of Slice Sampling to sample from a 1D distribution.
@@ -11,13 +12,17 @@ import { logger } from './logger';
  * 4. If logP(x_new) < log_y, shrink interval [L, R] and retry.
  *    (Shrinkage procedure)
  *
- * @param {Function} logDensityFn - Function (x) => number (log probability density)
- * @param {number} x0 - Current sample value
- * @param {number} [w=1.0] - Estimate of the typical width of the slice
- * @param {Object} [rng] - Optional seeded RNG with .random() method. If null, uses Math.random.
- * @returns {number} New sample value
+ * @param logDensityFn - Function (x) => number (log probability density)
+ * @param x0 - Current sample value
+ * @param w - Estimate of the typical width of the slice
+ * @param rng - Optional seeded RNG. If null, uses Math.random.
  */
-export function sampleSlice(logDensityFn, x0, w = 1.0, rng = null) {
+export function sampleSlice(
+  logDensityFn: (x: number) => number,
+  x0: number,
+  w: number = 1.0,
+  rng: SeededRandom | null = null
+): number {
   const random = rng ? () => rng.random() : Math.random;
 
   // 1. Calculate log probability threshold
@@ -50,7 +55,7 @@ export function sampleSlice(logDensityFn, x0, w = 1.0, rng = null) {
   // 4. Shrinkage (Sample from [L, R] until accepted)
   const MAX_SHRINK_STEPS = 1000;
   let shrinkSteps = 0;
-  let x1;
+  let x1: number | undefined;
 
   while (shrinkSteps < MAX_SHRINK_STEPS) {
     x1 = L + random() * (R - L);

@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import type { Point, EssResult } from '../types';
 
 /**
  * Calculates the Gelman-Rubin potential scale reduction factor (R-hat) for MCMC chains.
@@ -8,10 +9,10 @@ import { logger } from './logger';
  * Algorithm references:
  * Gelman, A., & Rubin, D. B. (1992). Inference from Iterative Simulation Using Multiple Sequences.
  *
- * @param {Array<Array<Object>>} chains - Array of chains, where each chain is an array of samples {x, y}.
- * @returns {Object|null} - { x: number, y: number } representing R-hat for each dimension, or null if insufficient data.
+ * @param chains - Array of chains, where each chain is an array of samples {x, y}.
+ * @returns { x: number, y: number } representing R-hat for each dimension, or null if insufficient data.
  */
-export function calculateGelmanRubin(chains) {
+export function calculateGelmanRubin(chains: Point[][]): EssResult | null {
   // 1. Validation
   if (!chains || !Array.isArray(chains) || chains.length < 2) {
     return null;
@@ -37,7 +38,9 @@ export function calculateGelmanRubin(chains) {
   const m = chains.length; // Number of chains
 
   // Helper to compute stats for a simple array of numbers
-  const computeStats = (values) => {
+  const computeStats = (
+    values: number[]
+  ): { mean: number; variance: number } => {
     const sum = values.reduce((a, b) => a + b, 0);
     const mean = sum / n;
 
@@ -48,9 +51,9 @@ export function calculateGelmanRubin(chains) {
     return { mean, variance };
   };
 
-  const results = {};
+  const results: Record<string, number> = {};
 
-  ['x', 'y'].forEach((dim) => {
+  (['x', 'y'] as const).forEach((dim) => {
     // Collect data for this dimension: m chains, each length n
     // chainStats[j] = { mean, variance }
 
@@ -90,7 +93,7 @@ export function calculateGelmanRubin(chains) {
     }
   });
 
-  return results;
+  return results as unknown as EssResult;
 }
 
 /**
@@ -99,10 +102,10 @@ export function calculateGelmanRubin(chains) {
  * Uses the Geyer's initial positive sequence truncation method for estimating
  * integrated autocorrelation time.
  *
- * @param {Array<Array<Object>>} chains - Array of chains, where each chain is an array of samples {x, y}.
- * @returns {Object|null} - { x: number, y: number } representing ESS for each dimension, or null if insufficient data.
+ * @param chains - Array of chains, where each chain is an array of samples {x, y}.
+ * @returns { x: number, y: number } representing ESS for each dimension, or null if insufficient data.
  */
-export function calculateESS(chains) {
+export function calculateESS(chains: Point[][]): EssResult | null {
   // 1. Validation
   if (!chains || !Array.isArray(chains) || chains.length < 1) {
     return null;
@@ -124,7 +127,7 @@ export function calculateESS(chains) {
   const totalSamples = m * n;
 
   // Helper to compute stats for a simple array of numbers
-  const computeESSForDimension = (values2D) => {
+  const computeESSForDimension = (values2D: number[][]): number => {
     // values2D is an array of arrays: [chain1Values, chain2Values, ...]
     // Each inner array has length n
 
@@ -156,7 +159,7 @@ export function calculateESS(chains) {
     }
 
     // Function to compute pooled autocorrelation at lag k
-    const getRhoK = (k) => {
+    const getRhoK = (k: number): number => {
       let sumGammaK = 0;
       for (let j = 0; j < m; j++) {
         const chainOps = values2D[j];
@@ -233,14 +236,14 @@ export function calculateESS(chains) {
     return Math.min(ess, totalSamples);
   };
 
-  const results = {};
+  const results: Record<string, number> = {};
 
-  ['x', 'y'].forEach((dim) => {
+  (['x', 'y'] as const).forEach((dim) => {
     const values2D = chains.map((chain) =>
       chain.slice(0, n).map((s) => s[dim])
     );
     results[dim] = computeESSForDimension(values2D);
   });
 
-  return results;
+  return results as unknown as EssResult;
 }

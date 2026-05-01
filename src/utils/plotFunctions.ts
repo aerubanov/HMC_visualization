@@ -1,13 +1,26 @@
+import type * as Plotly from 'plotly.js';
+type ScatterLineShape = 'linear' | 'spline' | 'hv' | 'vh' | 'hvh' | 'vhv';
+type PlotlyDash =
+  | 'solid'
+  | 'dot'
+  | 'dash'
+  | 'longdash'
+  | 'dashdot'
+  | 'longdashdot';
 import { CONTOUR, HMC_SAMPLER, TRACE_PLOT } from './plotConfig.json';
+import type { Point } from '../types';
 
 /**
  * Creates a Plotly contour trace configuration
- * @param {number[][]} x - 2D array of x coordinates
- * @param {number[][]} y - 2D array of y coordinates
- * @param {number[][]} z - 2D array of log-probability values
- * @returns {object} Plotly trace object
+ * @param x - 2D array of x coordinates
+ * @param y - 2D array of y coordinates
+ * @param z - 2D array of log-probability values
  */
-export function createContourTrace(x, y, z) {
+export function createContourTrace(
+  x: number[][],
+  y: number[][],
+  z: number[][]
+): Partial<Plotly.PlotData> {
   // Calculate z-axis range for proper colorbar scaling
   const zFlat = z.flat();
   const zMin = Math.min(...zFlat.filter((v) => !isNaN(v) && isFinite(v)));
@@ -48,13 +61,19 @@ export function createContourTrace(x, y, z) {
   };
 }
 
+interface GridResult {
+  x: number[];
+  y: number[];
+  xGrid: number[][];
+  yGrid: number[][];
+}
+
 /**
  * Generates a meshgrid of points for contour computation
- * @param {number[]} [xR] - Optional x-axis range [min, max]
- * @param {number[]} [yR] - Optional y-axis range [min, max]
- * @returns {{x: number[], y: number[], xGrid: number[][], yGrid: number[][]}}
+ * @param xR - Optional x-axis range [min, max]
+ * @param yR - Optional y-axis range [min, max]
  */
-export function generateGrid(xR, yR) {
+export function generateGrid(xR?: number[], yR?: number[]): GridResult {
   const { resolution, xRange: defaultX, yRange: defaultY } = CONTOUR.grid;
   const xRange = xR || defaultX;
   const yRange = yR || defaultY;
@@ -77,16 +96,15 @@ export function generateGrid(xR, yR) {
 
 /**
  * Creates a Plotly scatter trace for HMC trajectory visualization
- * @param {Array<{x: number, y: number}>} trajectory - Array of trajectory points from leapfrog integrator
- * @param {string} [color] - Optional color for the trajectory (defaults to primary color)
- * @param {string} [name] - Optional name for the trace (defaults to 'Trajectory')
- * @returns {object|null} Plotly trace object or null if trajectory is empty
+ * @param trajectory - Array of trajectory points from leapfrog integrator
+ * @param color - Optional color for the trajectory (defaults to primary color)
+ * @param name - Optional name for the trace (defaults to 'Trajectory')
  */
 export function createTrajectoryTrace(
-  trajectory,
-  color = HMC_SAMPLER.styles.primaryColor,
-  name = 'Trajectory'
-) {
+  trajectory: Point[],
+  color: string = HMC_SAMPLER.styles.primaryColor,
+  name: string = 'Trajectory'
+): Partial<Plotly.PlotData> | null {
   // Handle invalid or empty trajectory
   if (!trajectory || !Array.isArray(trajectory) || trajectory.length === 0) {
     return null;
@@ -99,7 +117,8 @@ export function createTrajectoryTrace(
     y: trajectory.map((p) => p.y),
     line: {
       color: color,
-      ...HMC_SAMPLER.trajectory.line,
+      width: HMC_SAMPLER.trajectory.line.width,
+      shape: HMC_SAMPLER.trajectory.line.shape as ScatterLineShape,
     },
     marker: {
       color: color,
@@ -113,16 +132,15 @@ export function createTrajectoryTrace(
 
 /**
  * Creates a Plotly scatter trace for accepted samples visualization
- * @param {Array<{x: number, y: number}>} samples - Array of accepted sample points
- * @param {string} [color] - Optional color for the samples (defaults to primary color)
- * @param {string} [name] - Optional name for the trace (defaults to 'Samples')
- * @returns {object|null} Plotly trace object or null if samples is empty
+ * @param samples - Array of accepted sample points
+ * @param color - Optional color for the samples (defaults to primary color)
+ * @param name - Optional name for the trace (defaults to 'Samples')
  */
 export function createSamplesTrace(
-  samples,
-  color = HMC_SAMPLER.styles.primaryColor,
-  name = 'Samples'
-) {
+  samples: Point[],
+  color: string = HMC_SAMPLER.styles.primaryColor,
+  name: string = 'Samples'
+): Partial<Plotly.PlotData> | null {
   // Handle invalid or empty samples
   if (!samples || !Array.isArray(samples) || samples.length === 0) {
     return null;
@@ -135,7 +153,8 @@ export function createSamplesTrace(
     y: samples.map((p) => p.y),
     line: {
       color: color,
-      ...HMC_SAMPLER.samples.line,
+      width: HMC_SAMPLER.samples.line.width,
+      dash: HMC_SAMPLER.samples.line.dash as PlotlyDash,
     },
     marker: {
       color: color,
@@ -149,11 +168,8 @@ export function createSamplesTrace(
 
 /**
  * Converts a hex color to rgba string
- * @param {string} hex - Hex color string (e.g., "#ff0000")
- * @param {number} alpha - Alpha value (0-1)
- * @returns {string} Rgba color string
  */
-function hexToRgba(hex, alpha) {
+function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -162,32 +178,31 @@ function hexToRgba(hex, alpha) {
 
 /**
  * Creates Plotly traces for trace plots (iteration vs value)
- * @param {Array<{x: number, y: number}>} samples - Array of accepted sample points
- * @param {string} axis - 'x' or 'y' to plot
- * @param {number} burnIn - Number of samples to treat as burn-in
- * @param {string} [color] - Color for the valid samples
- * @param {string} [name] - Name for the valid samples trace
- * @returns {object[]} Array of Plotly trace objects (burn-in and valid)
+ * @param samples - Array of accepted sample points
+ * @param axis - 'x' or 'y' to plot
+ * @param burnIn - Number of samples to treat as burn-in
+ * @param color - Color for the valid samples
+ * @param name - Name for the valid samples trace
  */
 export function createTracePlotTrace(
-  samples,
-  axis,
-  burnIn = 0,
-  color = HMC_SAMPLER.styles.primaryColor,
-  name = 'Trace'
-) {
+  samples: Point[],
+  axis: 'x' | 'y',
+  burnIn: number = 0,
+  color: string = HMC_SAMPLER.styles.primaryColor,
+  name: string = 'Trace'
+): Partial<Plotly.PlotData>[] {
   if (!samples || !Array.isArray(samples) || samples.length === 0) {
     return [];
   }
 
-  const traces = [];
+  const traces: Partial<Plotly.PlotData>[] = [];
   const validOpacity = 1.0;
   const burnInOpacity = TRACE_PLOT.styles.burnInOpacity;
   const lineWidth = TRACE_PLOT.styles.lineWidth;
 
   // Split samples into burn-in and valid
-  let burnInSamples = [];
-  let validSamples = [];
+  let burnInSamples: Point[] = [];
+  let validSamples: Point[] = [];
 
   if (burnIn > 0) {
     // If we have valid samples after burn-in, include the first one in burn-in set to connect lines
@@ -199,7 +214,13 @@ export function createTracePlotTrace(
   }
 
   // Helper to create a single trace part
-  const createSubTrace = (data, startIndex, opacity, traceName, showLegend) => {
+  const createSubTrace = (
+    data: Point[],
+    startIndex: number,
+    opacity: number,
+    traceName: string,
+    showLegend: boolean
+  ): Partial<Plotly.PlotData> => {
     const iterations = data.map((_, i) => i + startIndex);
     const values = data.map((p) => p[axis]);
 
@@ -240,16 +261,15 @@ export function createTracePlotTrace(
 
 /**
  * Creates a Plotly histogram2d trace for joint distribution visualization
- * @param {Array<{x: number, y: number}>} samples - Array of sample points
- * @param {string} [colorscale] - Plotly colorscale name (defaults to 'Blues')
- * @param {string} [name] - Name for the trace (defaults to '2D Histogram')
- * @returns {object|null} Plotly trace object or null if samples is empty
+ * @param samples - Array of sample points
+ * @param colorscale - Plotly colorscale name (defaults to 'Blues')
+ * @param name - Name for the trace (defaults to '2D Histogram')
  */
 export function createHistogram2DTrace(
-  samples,
-  colorscale = 'Blues',
-  name = '2D Histogram'
-) {
+  samples: Point[],
+  colorscale: string = 'Blues',
+  name: string = '2D Histogram'
+): Partial<Plotly.PlotData> | null {
   if (!samples || !Array.isArray(samples) || samples.length === 0) {
     return null;
   }
@@ -267,20 +287,19 @@ export function createHistogram2DTrace(
 
 /**
  * Creates a Plotly histogram trace for marginal distribution visualization
- * @param {Array<{x: number, y: number}>} samples - Array of sample points
- * @param {string} dimension - 'x' or 'y' to plot
- * @param {string} [color] - Color for the histogram bars
- * @param {string} [name] - Name for the trace
- * @param {string} [orientation] - 'v' for vertical (default) or 'h' for horizontal
- * @returns {object|null} Plotly trace object or null if samples is empty
+ * @param samples - Array of sample points
+ * @param dimension - 'x' or 'y' to plot
+ * @param color - Color for the histogram bars
+ * @param name - Name for the trace
+ * @param orientation - 'v' for vertical (default) or 'h' for horizontal
  */
 export function createMarginalHistogramTrace(
-  samples,
-  dimension,
-  color = HMC_SAMPLER.styles.primaryColor,
-  name = 'Histogram',
-  orientation = 'v'
-) {
+  samples: Point[],
+  dimension: 'x' | 'y',
+  color: string = HMC_SAMPLER.styles.primaryColor,
+  name: string = 'Histogram',
+  orientation: 'v' | 'h' = 'v'
+): Partial<Plotly.PlotData> | null {
   if (!samples || !Array.isArray(samples) || samples.length === 0) {
     return null;
   }
