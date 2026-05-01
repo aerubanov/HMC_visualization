@@ -265,8 +265,7 @@ function Controls({
                 value={chain.samplerType}
                 onChange={(e) =>
                   setChainConfig?.(chain.id, {
-                    samplerType: e.target
-                      .value as SamplerType,
+                    samplerType: e.target.value as SamplerType,
                   })
                 }
               >
@@ -289,9 +288,7 @@ function Controls({
                     type="number"
                     className="control-input"
                     step="0.001"
-                    value={
-                      (chain.params as HMCParams).epsilon
-                    }
+                    value={(chain.params as HMCParams).epsilon}
                     onChange={(e) =>
                       setChainConfig?.(chain.id, {
                         params: {
