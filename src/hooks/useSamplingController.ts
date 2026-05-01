@@ -38,8 +38,8 @@ export function allChainsCompatible(chains: ChainState[]): boolean {
     const keys = new Set([...Object.keys(refParams), ...Object.keys(cParams)]);
     return [...keys].every(
       (k) =>
-        (cParams as unknown as Record<string, unknown>)[k] ===
-        (refParams as unknown as Record<string, unknown>)[k]
+        (cParams as Record<string, unknown>)[k] ===
+        (refParams as Record<string, unknown>)[k]
     );
   });
 }

@@ -1,7 +1,14 @@
 import './Controls.css';
 import { useState } from 'react';
 import { PREDEFINED_FUNCTIONS } from '../utils/predefinedFunctions';
-import type { ChainState, ChainConfigUpdate, AxisLimits } from '../types';
+import type {
+  ChainState,
+  ChainConfigUpdate,
+  AxisLimits,
+  SamplerType,
+  HMCParams,
+  GibbsParams,
+} from '../types';
 
 interface Props {
   logP?: string;
@@ -259,7 +266,7 @@ function Controls({
                 onChange={(e) =>
                   setChainConfig?.(chain.id, {
                     samplerType: e.target
-                      .value as import('../types').SamplerType,
+                      .value as SamplerType,
                   })
                 }
               >
@@ -283,7 +290,7 @@ function Controls({
                     className="control-input"
                     step="0.001"
                     value={
-                      (chain.params as import('../types').HMCParams).epsilon
+                      (chain.params as HMCParams).epsilon
                     }
                     onChange={(e) =>
                       setChainConfig?.(chain.id, {
@@ -307,7 +314,7 @@ function Controls({
                     type="number"
                     className="control-input"
                     step="1"
-                    value={(chain.params as import('../types').HMCParams).L}
+                    value={(chain.params as HMCParams).L}
                     onChange={(e) =>
                       setChainConfig?.(chain.id, {
                         params: {
@@ -333,7 +340,7 @@ function Controls({
                   type="number"
                   className="control-input"
                   step="0.1"
-                  value={(chain.params as import('../types').GibbsParams).w}
+                  value={(chain.params as GibbsParams).w}
                   onChange={(e) =>
                     setChainConfig?.(chain.id, {
                       params: {

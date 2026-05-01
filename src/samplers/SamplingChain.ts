@@ -9,6 +9,7 @@ import type {
   SamplerType,
   StepResult,
   HMCParams,
+  GibbsParams,
 } from '../types';
 import type { Logp } from '../utils/mathEngine';
 
@@ -102,7 +103,7 @@ export class SamplingChain {
   private _initializeSampler(): void {
     if (this.samplerType === 'GIBBS') {
       this.sampler = new GibbsSampler(
-        this.params as Partial<import('./GibbsSampler').GibbsSampler['params']>,
+        this.params as Partial<GibbsParams>,
         this.seed
       );
     } else {
@@ -137,7 +138,7 @@ export class SamplingChain {
           this.sampler.setParams({ epsilon, L, steps });
         }
       } else {
-        const { w } = this.params as import('../types').GibbsParams;
+        const { w } = this.params as GibbsParams;
         if (w !== (oldParams as { w?: number }).w) {
           this.sampler.setParams({ w });
         }

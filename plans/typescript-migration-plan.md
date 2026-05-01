@@ -207,17 +207,17 @@ Implementation decisions from design interview:
 
 **`src/main.tsx`** — rename only; fix null: `createRoot(document.getElementById('root')!)`; update import from `App.jsx` → `App`.
 
-### Phase 7b — Post-review fixes
+### ~~Phase 7b — Post-review fixes~~ ✓ Done
 
 Code review of the full migration found four issues to fix:
 
-- **`src/utils/mathEngine.ts:40` — remove dead-code `typeof` guard** — Phase 4b missed this. Change `if (!pdfString || typeof pdfString !== 'string')` to `if (!pdfString)`. Under `strict: true`, `pdfString: string` can never fail the `typeof` check.
+- **`src/utils/mathEngine.ts:40` — `typeof` guard** — kept intentionally. The plan identified this as dead code under `strict: true`, but `tests/utils/mathEngine.test.js:31` calls `new Logp(123)` directly from JS and asserts it throws `'Invalid input'`. `123` is truthy so `if (!pdfString)` alone would not catch it. Removing the guard would break that test without a corresponding test change.
 
-- **`src/samplers/SamplingChain.ts` — replace inline dynamic imports with static imports** — Lines 105 and 140 use `import('./GibbsSampler').GibbsSampler['params']` and `import('../types').GibbsParams` as inline type casts. Add `GibbsParams` to the static `import type` from `../types` and use it directly. `GibbsSampler['params']` is just `GibbsParams`.
+- **`src/samplers/SamplingChain.ts` — replace inline dynamic imports with static imports** ✓ — Added `GibbsParams` to the static `import type` from `../types`; replaced inline casts at lines 105 and 140.
 
-- **`src/components/Controls.tsx` — replace inline dynamic imports with static imports** — Lines 262, 286, 310, 336 use `import('../types').SamplerType`, `import('../types').HMCParams`, `import('../types').GibbsParams` inline. Add `SamplerType`, `HMCParams`, `GibbsParams` to the static `import type` block at the top.
+- **`src/components/Controls.tsx` — replace inline dynamic imports with static imports** ✓ — Added `SamplerType`, `HMCParams`, `GibbsParams` to the static `import type` block; replaced four inline casts.
 
-- **`src/hooks/useSamplingController.ts:41-42` — remove unnecessary double cast** — `(cParams as unknown as Record<string, unknown>)[k]` has an unnecessary `unknown` hop. Change to `(cParams as Record<string, unknown>)[k]`.
+- **`src/hooks/useSamplingController.ts:41-42` — remove unnecessary double cast** ✓ — Changed `(cParams as unknown as Record<string, unknown>)[k]` to `(cParams as Record<string, unknown>)[k]`.
 
 Noted but not changed:
 
