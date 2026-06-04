@@ -2799,7 +2799,7 @@ describe('Code Quality Fix Tests', () => {
 
       await waitFor(() => expect(result.current.chains).toHaveLength(2));
 
-      // Add a new chain — it should get colorIndex 2 (current length), not reuse colorIndex 1
+      // Add a new chain — it should get colorIndex 3 (next unassigned slot), not reuse colorIndex 2
       act(() => {
         result.current.addChain({ id: 3 });
       });
@@ -2807,7 +2807,7 @@ describe('Code Quality Fix Tests', () => {
       await waitFor(() => expect(result.current.chains).toHaveLength(3));
       const newChain = result.current.chains.find((c) => c.id === 3);
       expect(newChain).toBeDefined();
-      expect(newChain.colorIndex).toBe(2);
+      expect(newChain.colorIndex).toBe(3);
     });
   });
 

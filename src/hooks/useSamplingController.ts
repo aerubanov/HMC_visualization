@@ -78,6 +78,9 @@ export default function useSamplingController() {
     null
   ) as React.MutableRefObject<Logp | null>;
 
+  // Monotonically increasing color slot counter; 0 is consumed by the initial chain.
+  const nextColorIndexRef = useRef(1) as React.MutableRefObject<number>;
+
   // Cancellation flag for non-fast sampling loop
   const cancelRef = useRef<boolean>(false) as React.MutableRefObject<boolean>;
 
@@ -286,9 +289,15 @@ export default function useSamplingController() {
 
       const id = config.id || Date.now();
       const samplerType = config.samplerType || 'HMC';
-      // colorIndex is monotonically increasing: use current chain count as the slot
+      // colorIndex is monotonically increasing: never reuse a slot freed by removeChain
       const colorIndex =
-        config.colorIndex !== undefined ? config.colorIndex : prev.length;
+        config.colorIndex !== undefined
+          ? config.colorIndex
+          : nextColorIndexRef.current;
+      nextColorIndexRef.current = Math.max(
+        nextColorIndexRef.current,
+        colorIndex + 1
+      );
       const newConfig: ChainState = {
         id,
         samplerType,
