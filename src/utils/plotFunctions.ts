@@ -12,13 +12,13 @@ import type { Point } from '../types';
 
 /**
  * Creates a Plotly contour trace configuration
- * @param x - 2D array of x coordinates
- * @param y - 2D array of y coordinates
+ * @param x - 1D array of x coordinates
+ * @param y - 1D array of y coordinates
  * @param z - 2D array of log-probability values
  */
 export function createContourTrace(
-  x: number[][],
-  y: number[][],
+  x: number[],
+  y: number[],
   z: number[][]
 ): Partial<Plotly.PlotData> {
   // Calculate z-axis range for proper colorbar scaling

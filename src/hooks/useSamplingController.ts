@@ -132,7 +132,7 @@ export default function useSamplingController() {
     }
 
     try {
-      const { x, y, xGrid, yGrid } = generateGrid(
+      const { x, y } = generateGrid(
         [axisLimits.xMin, axisLimits.xMax],
         [axisLimits.yMin, axisLimits.yMax]
       );
@@ -148,7 +148,7 @@ export default function useSamplingController() {
           }
         })
       );
-      setContourData(createContourTrace(xGrid, yGrid, z));
+      setContourData(createContourTrace(x, y, z));
     } catch (e) {
       console.error('Error computing contour:', e);
       setContourData(null);
