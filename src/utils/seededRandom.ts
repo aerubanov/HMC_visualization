@@ -5,20 +5,22 @@
  * Reference: https://github.com/bryc/code/blob/master/jshash/PRNGs.md
  */
 export class SeededRandom {
+  private seed: number;
+  private state: number;
+
   /**
    * Create a new seeded random number generator
-   * @param {number} [seed] - Optional seed value. If not provided, uses Date.now()
+   * @param seed - Optional seed value. If not provided, uses Date.now()
    */
-  constructor(seed) {
+  constructor(seed?: number) {
     this.seed = seed !== undefined ? seed : Date.now();
     this.state = this.seed;
   }
 
   /**
    * Generate a random number in [0, 1) using the Mulberry32 PRNG
-   * @returns {number} Random value in [0, 1)
    */
-  random() {
+  random(): number {
     // Mulberry32 algorithm
     let t = (this.state += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -28,9 +30,8 @@ export class SeededRandom {
 
   /**
    * Generate a standard normal random variable using Box-Muller transform
-   * @returns {number} Sample from N(0, 1)
    */
-  randn() {
+  randn(): number {
     const u1 = this.random();
     const u2 = this.random();
     return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
@@ -38,18 +39,16 @@ export class SeededRandom {
 
   /**
    * Set a new seed and reset the generator state
-   * @param {number} seed - New seed value
    */
-  setSeed(seed) {
+  setSeed(seed: number): void {
     this.seed = seed;
     this.state = seed;
   }
 
   /**
    * Get the current seed value
-   * @returns {number} Current seed
    */
-  getSeed() {
+  getSeed(): number {
     return this.seed;
   }
 }

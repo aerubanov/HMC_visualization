@@ -65,3 +65,4 @@ All plots use **Plotly.js** via `react-plotly.js`. Trace generation helpers live
 - **Seeded RNG**: `seededRandom.js` provides a `SeededRandom` class for reproducible simulations. Pass it into samplers rather than using `Math.random()`.
 - **Chain state lives in refs**: `SamplingChain` instances are stored in `useRef`, not `useState`, to prevent React re-renders on every sampling step.
 - **Sampler config is separate from chain state**: `defaultConfigs.js` holds initial parameter shapes; runtime state is managed in `SamplingChain`.
+- **JSDoc comments**: Use JSDoc for all exported functions, classes, and their public methods and properties. Include `@param` and `@returns` tags with types and a one-line description. Private/internal members do not need JSDoc unless the behaviour is non-obvious.

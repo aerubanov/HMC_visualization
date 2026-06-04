@@ -1,11 +1,44 @@
 import './Controls.css';
 import { useState } from 'react';
-import PropTypes from 'prop-types';
 import { PREDEFINED_FUNCTIONS } from '../utils/predefinedFunctions';
+import type {
+  ChainState,
+  ChainConfigUpdate,
+  AxisLimits,
+  SamplerType,
+  HMCParams,
+  GibbsParams,
+} from '../types';
+
+interface Props {
+  logP?: string;
+  chains?: ChainState[];
+  iterationCount?: number;
+  isRunning?: boolean;
+  error?: string | null;
+  setLogP?: (str: string) => void;
+  setChainConfig?: (id: number, updates: ChainConfigUpdate) => void;
+  addChain?: (config?: Partial<ChainState>) => void;
+  removeChain?: (id: number) => void;
+  step?: () => void;
+  sampleSteps?: (n: number) => void;
+  reset?: () => void;
+  burnIn?: number;
+  setBurnIn?: (value: number) => void;
+  axisLimits?: AxisLimits;
+  setAxisLimits?: (limits: Partial<AxisLimits>) => void;
+  useFastMode?: boolean;
+  setUseFastMode?: (value: boolean) => void;
+  isRecording?: boolean;
+  isEncoding?: boolean;
+  startRecording?: () => void;
+  stopRecording?: () => void;
+  stopSampling?: () => void;
+}
 
 function Controls({
   logP,
-  chains,
+  chains = [],
   isRunning,
   error,
   setLogP,
@@ -26,15 +59,19 @@ function Controls({
   startRecording,
   stopRecording,
   stopSampling,
-}) {
+}: Props) {
   const [nSteps, setNSteps] = useState(10);
-  const [draftLogP, setDraftLogP] = useState(logP);
-  const [localPositions, setLocalPositions] = useState({});
-  const [localSeeds, setLocalSeeds] = useState({});
-  const [localSeedStrings, setLocalSeedStrings] = useState({});
-  const [localBurnIn, setLocalBurnIn] = useState(burnIn);
-  const [localAxisLimits, setLocalAxisLimits] = useState(
-    axisLimits || { xMin: -5, xMax: 5, yMin: -5, yMax: 5 }
+  const [draftLogP, setDraftLogP] = useState(logP ?? '');
+  const [localPositions, setLocalPositions] = useState<
+    Record<number, { x: string | number; y: string | number }>
+  >({});
+  const [localSeeds, setLocalSeeds] = useState<Record<number, number>>({});
+  const [localSeedStrings, setLocalSeedStrings] = useState<
+    Record<number, string>
+  >({});
+  const [localBurnIn, setLocalBurnIn] = useState(burnIn ?? 0);
+  const [localAxisLimits, setLocalAxisLimits] = useState<AxisLimits>(
+    axisLimits ?? { xMin: -5, xMax: 5, yMin: -5, yMax: 5 }
   );
   const [useSeededMode, setUseSeededMode] = useState(false);
 
@@ -44,27 +81,27 @@ function Controls({
   const [prevChains, setPrevChains] = useState(chains);
 
   if (logP !== prevLogP) {
-    setDraftLogP(logP);
+    setDraftLogP(logP ?? '');
     setPrevLogP(logP);
   }
   if (burnIn !== prevBurnIn) {
-    setLocalBurnIn(burnIn);
+    setLocalBurnIn(burnIn ?? 0);
     setPrevBurnIn(burnIn);
   }
   if (axisLimits !== prevAxisLimits) {
-    setLocalAxisLimits(axisLimits);
+    setLocalAxisLimits(axisLimits ?? { xMin: -5, xMax: 5, yMin: -5, yMax: 5 });
     setPrevAxisLimits(axisLimits);
   }
   if (chains !== prevChains) {
-    const lPos = {};
-    const lSeed = {};
+    const lPos: Record<number, { x: string | number; y: string | number }> = {};
+    const lSeed: Record<number, number> = {};
     let anySeeded = false;
     chains.forEach((c) => {
       lPos[c.id] = c.initialPosition;
       lSeed[c.id] = c.seed !== null ? c.seed : 42 + c.id;
       if (c.seed !== null) anySeeded = true;
     });
-    const lSeedStr = {};
+    const lSeedStr: Record<number, string> = {};
     chains.forEach((c) => {
       lSeedStr[c.id] = String(lSeed[c.id]);
     });
@@ -75,22 +112,26 @@ function Controls({
     setPrevChains(chains);
   }
 
-  const handleApplyLogP = () => setLogP(draftLogP);
+  const handleApplyLogP = () => setLogP?.(draftLogP);
   const hasUnsavedChanges = draftLogP !== logP;
 
-  const handleAxisLimitChange = (key, value) =>
+  const handleAxisLimitChange = (key: keyof AxisLimits, value: string) =>
     setLocalAxisLimits((prev) => ({ ...prev, [key]: value }));
-  const handleAxisLimitBlur = (key) => {
-    const val = parseFloat(localAxisLimits[key]);
-    if (!isNaN(val)) setAxisLimits({ [key]: val });
-    else setLocalAxisLimits((prev) => ({ ...prev, [key]: axisLimits[key] }));
+  const handleAxisLimitBlur = (key: keyof AxisLimits) => {
+    const val = parseFloat(String(localAxisLimits[key]));
+    if (!isNaN(val)) setAxisLimits?.({ [key]: val });
+    else
+      setLocalAxisLimits((prev) => ({
+        ...prev,
+        [key]: axisLimits?.[key] ?? prev[key],
+      }));
   };
 
-  const handlePosChange = (id, axis, value) => {
+  const handlePosChange = (id: number, axis: 'x' | 'y', value: string) => {
     const val = parseFloat(value);
     if (!isNaN(val)) {
-      const current = chains.find((c) => c.id === id).initialPosition;
-      setChainConfig(id, { initialPosition: { ...current, [axis]: val } });
+      const current = chains.find((c) => c.id === id)!.initialPosition;
+      setChainConfig?.(id, { initialPosition: { ...current, [axis]: val } });
     }
   };
 
@@ -171,7 +212,7 @@ function Controls({
               onChange={(e) => {
                 const b = parseInt(e.target.value);
                 setLocalBurnIn(b);
-                if (!isNaN(b) && b >= 0) setBurnIn(b);
+                if (!isNaN(b) && b >= 0) setBurnIn?.(b);
               }}
             />
           </div>
@@ -186,7 +227,7 @@ function Controls({
                 onChange={(e) => {
                   const en = e.target.checked;
                   chains.forEach((c) =>
-                    setChainConfig(c.id, {
+                    setChainConfig?.(c.id, {
                       seed: en ? localSeeds[c.id] || 42 : null,
                     })
                   );
@@ -223,7 +264,9 @@ function Controls({
                 style={{ width: '100%', padding: '6px' }}
                 value={chain.samplerType}
                 onChange={(e) =>
-                  setChainConfig(chain.id, { samplerType: e.target.value })
+                  setChainConfig?.(chain.id, {
+                    samplerType: e.target.value as SamplerType,
+                  })
                 }
               >
                 <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
@@ -245,9 +288,9 @@ function Controls({
                     type="number"
                     className="control-input"
                     step="0.001"
-                    value={chain.params.epsilon}
+                    value={(chain.params as HMCParams).epsilon}
                     onChange={(e) =>
-                      setChainConfig(chain.id, {
+                      setChainConfig?.(chain.id, {
                         params: {
                           ...chain.params,
                           epsilon: parseFloat(e.target.value),
@@ -268,9 +311,9 @@ function Controls({
                     type="number"
                     className="control-input"
                     step="1"
-                    value={chain.params.L}
+                    value={(chain.params as HMCParams).L}
                     onChange={(e) =>
-                      setChainConfig(chain.id, {
+                      setChainConfig?.(chain.id, {
                         params: {
                           ...chain.params,
                           L: parseInt(e.target.value),
@@ -294,9 +337,9 @@ function Controls({
                   type="number"
                   className="control-input"
                   step="0.1"
-                  value={chain.params.w}
+                  value={(chain.params as GibbsParams).w}
                   onChange={(e) =>
-                    setChainConfig(chain.id, {
+                    setChainConfig?.(chain.id, {
                       params: {
                         ...chain.params,
                         w: parseFloat(e.target.value),
@@ -372,7 +415,7 @@ function Controls({
                     const s = parseInt(raw);
                     if (!isNaN(s)) {
                       setLocalSeeds((prev) => ({ ...prev, [chain.id]: s }));
-                      setChainConfig(chain.id, { seed: s });
+                      setChainConfig?.(chain.id, { seed: s });
                     }
                   }}
                 />
@@ -384,7 +427,7 @@ function Controls({
                 <button
                   className="btn btn-secondary"
                   style={{ width: '100%' }}
-                  onClick={() => removeChain(chain.id)}
+                  onClick={() => removeChain?.(chain.id)}
                 >
                   Remove
                 </button>
@@ -397,7 +440,7 @@ function Controls({
           <button
             className="btn btn-secondary"
             style={{ width: '100%' }}
-            onClick={() => addChain()}
+            onClick={() => addChain?.()}
           >
             Add another chain
           </button>
@@ -414,18 +457,24 @@ function Controls({
                 gap: '8px',
               }}
             >
-              {['xMin', 'xMax', 'yMin', 'yMax'].map((k) => (
-                <div key={k} className="control-group" style={{ width: '45%' }}>
-                  <label className="control-label">{k}</label>
-                  <input
-                    type="number"
-                    className="control-input"
-                    value={localAxisLimits[k]}
-                    onChange={(e) => handleAxisLimitChange(k, e.target.value)}
-                    onBlur={() => handleAxisLimitBlur(k)}
-                  />
-                </div>
-              ))}
+              {(['xMin', 'xMax', 'yMin', 'yMax'] as (keyof AxisLimits)[]).map(
+                (k) => (
+                  <div
+                    key={k}
+                    className="control-group"
+                    style={{ width: '45%' }}
+                  >
+                    <label className="control-label">{k}</label>
+                    <input
+                      type="number"
+                      className="control-input"
+                      value={localAxisLimits[k]}
+                      onChange={(e) => handleAxisLimitChange(k, e.target.value)}
+                      onBlur={() => handleAxisLimitBlur(k)}
+                    />
+                  </div>
+                )
+              )}
             </div>
           </details>
         </section>
@@ -456,7 +505,7 @@ function Controls({
             <button
               className="btn btn-accent"
               style={{ flex: 2 }}
-              onClick={() => sampleSteps(nSteps)}
+              onClick={() => sampleSteps?.(nSteps)}
               disabled={isRunning || !logP}
             >
               Sample N Steps
@@ -520,8 +569,8 @@ function Controls({
               <input
                 id="fast-mode-toggle"
                 type="checkbox"
-                checked={useFastMode}
-                onChange={(e) => setUseFastMode(e.target.checked)}
+                checked={useFastMode ?? false}
+                onChange={(e) => setUseFastMode?.(e.target.checked)}
               />
               <label htmlFor="fast-mode-toggle">Fast Sampling Mode</label>
             </div>
@@ -545,51 +594,5 @@ function Controls({
     </div>
   );
 }
-
-Controls.propTypes = {
-  logP: PropTypes.string,
-  chains: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-      samplerType: PropTypes.string,
-      params: PropTypes.object,
-      initialPosition: PropTypes.shape({
-        x: PropTypes.number,
-        y: PropTypes.number,
-      }),
-      seed: PropTypes.number,
-      samples: PropTypes.array,
-      trajectory: PropTypes.array,
-      rejectedCount: PropTypes.number,
-      acceptedCount: PropTypes.number,
-      error: PropTypes.string,
-    })
-  ),
-  isRunning: PropTypes.bool,
-  error: PropTypes.string,
-  setLogP: PropTypes.func,
-  setChainConfig: PropTypes.func,
-  addChain: PropTypes.func,
-  removeChain: PropTypes.func,
-  step: PropTypes.func,
-  sampleSteps: PropTypes.func,
-  reset: PropTypes.func,
-  burnIn: PropTypes.number,
-  setBurnIn: PropTypes.func,
-  axisLimits: PropTypes.shape({
-    xMin: PropTypes.number,
-    xMax: PropTypes.number,
-    yMin: PropTypes.number,
-    yMax: PropTypes.number,
-  }),
-  setAxisLimits: PropTypes.func,
-  useFastMode: PropTypes.bool,
-  setUseFastMode: PropTypes.func,
-  isRecording: PropTypes.bool,
-  isEncoding: PropTypes.bool,
-  startRecording: PropTypes.func,
-  stopRecording: PropTypes.func,
-  stopSampling: PropTypes.func,
-};
 
 export default Controls;

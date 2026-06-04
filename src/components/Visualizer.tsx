@@ -1,21 +1,30 @@
 import './Visualizer.css';
 import { useRef } from 'react';
 import Plot from 'react-plotly.js';
-import PropTypes from 'prop-types';
+import type * as Plotly from 'plotly.js';
 import { GENERAL, HMC_SAMPLER } from '../utils/plotConfig.json';
 import {
   createTrajectoryTrace,
   createSamplesTrace,
 } from '../utils/plotFunctions';
+import type { ChainState, AxisLimits } from '../types';
+
+interface Props {
+  contourData?: Partial<Plotly.PlotData> | null;
+  chains?: ChainState[];
+  axisLimits?: AxisLimits;
+  isRecording?: boolean;
+  captureFrame?: (graphDiv: HTMLElement) => Promise<void>;
+}
 
 function Visualizer({
   contourData,
   chains,
   axisLimits,
   isRecording = false,
-  captureFrame = () => {},
-}) {
-  const graphDivRef = useRef(null);
+  captureFrame = () => Promise.resolve(),
+}: Props) {
+  const graphDivRef = useRef<HTMLElement | null>(null);
   if (!contourData) {
     return (
       <div className="visualizer">
@@ -54,9 +63,9 @@ function Visualizer({
     );
   }
 
-  const traces = [contourData];
+  const traces: Partial<Plotly.PlotData>[] = [contourData!];
 
-  chains.forEach((chain, index) => {
+  (chains ?? []).forEach((chain, index) => {
     const isPrimary = index === 0;
     const color = isPrimary
       ? HMC_SAMPLER.styles.primaryColor
@@ -65,13 +74,13 @@ function Visualizer({
 
     if (chain.samples && chain.samples.length > 0) {
       traces.push(
-        createSamplesTrace(chain.samples, color, `Samples (${label})`)
+        createSamplesTrace(chain.samples, color, `Samples (${label})`)!
       );
     }
 
     if (chain.trajectory && chain.trajectory.length > 0) {
       traces.push(
-        createTrajectoryTrace(chain.trajectory, color, `Trajectory (${label})`)
+        createTrajectoryTrace(chain.trajectory, color, `Trajectory (${label})`)!
       );
     }
   });
@@ -80,45 +89,39 @@ function Visualizer({
     <div className="visualizer">
       <Plot
         data={traces}
-        layout={{
-          ...GENERAL.layout,
-          title: {
-            text: 'Log Probability Density',
-            font: { size: 16, color: GENERAL.layout.font.color },
-          },
-          xaxis: {
-            ...GENERAL.layout.xaxis,
-            range: axisLimits
-              ? [axisLimits.xMin, axisLimits.xMax]
-              : GENERAL.layout.xaxis.range,
-          },
-          yaxis: {
-            ...GENERAL.layout.yaxis,
-            range: axisLimits
-              ? [axisLimits.yMin, axisLimits.yMax]
-              : GENERAL.layout.yaxis.range,
-          },
-        }}
-        config={GENERAL.config}
+        layout={
+          {
+            ...GENERAL.layout,
+            title: {
+              text: 'Log Probability Density',
+              font: { size: 16, color: GENERAL.layout.font.color },
+            },
+            xaxis: {
+              ...GENERAL.layout.xaxis,
+              range: axisLimits
+                ? [axisLimits.xMin, axisLimits.xMax]
+                : undefined,
+            },
+            yaxis: {
+              ...GENERAL.layout.yaxis,
+              range: axisLimits
+                ? [axisLimits.yMin, axisLimits.yMax]
+                : undefined,
+            },
+          } as unknown as Partial<Plotly.Layout>
+        }
+        config={GENERAL.config as unknown as Partial<Plotly.Config>}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler={true}
         onInitialized={(_, graphDiv) => {
           graphDivRef.current = graphDiv;
         }}
         onUpdate={() => {
-          if (isRecording) captureFrame(graphDivRef.current);
+          if (isRecording) captureFrame(graphDivRef.current!);
         }}
       />
     </div>
   );
 }
-
-Visualizer.propTypes = {
-  contourData: PropTypes.object,
-  chains: PropTypes.array,
-  axisLimits: PropTypes.object,
-  isRecording: PropTypes.bool,
-  captureFrame: PropTypes.func,
-};
 
 export default Visualizer;
