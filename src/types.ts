@@ -58,6 +58,15 @@ export interface ChainState {
   acceptedCount: number;
   error: string | null;
   currentParticle: { q: Point; p: Point } | null;
+  /** Palette slot index, assigned at creation and never reassigned. */
+  colorIndex: number;
+}
+
+/** Per-sampler-type group diagnostics replacing the flat rHat/ess scalars. */
+export interface GroupStats {
+  samplerType: SamplerType;
+  rHat: EssResult | null;
+  ess: EssResult | null;
 }
 
 /** Axis bounds used to constrain the 2D visualisation viewport. */

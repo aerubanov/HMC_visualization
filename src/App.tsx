@@ -23,11 +23,8 @@ function App() {
     reset,
     burnIn,
     setBurnIn,
-    rHat,
-    ess,
-    histogramData,
-    essPerChain,
-    histogramDataPerChain,
+    histogramDataByType,
+    groupStats,
     axisLimits,
     setAxisLimits,
     useFastMode,
@@ -117,13 +114,10 @@ function App() {
               <TracePlots
                 chains={chains}
                 burnIn={burnIn}
-                rHat={rHat}
-                ess={ess}
-                essPerChain={essPerChain}
+                groupStats={groupStats}
               />
               <HistogramPlots
-                histogramData={histogramData}
-                histogramDataPerChain={histogramDataPerChain}
+                histogramDataByType={histogramDataByType}
                 axisLimits={axisLimits}
               />
             </>

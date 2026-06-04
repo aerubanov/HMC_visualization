@@ -11,6 +11,19 @@ import { CONTOUR, HMC_SAMPLER, TRACE_PLOT } from './plotConfig.json';
 import type { Point } from '../types';
 
 /**
+ * Fixed 6-colour categorical palette (Plotly default colours).
+ * Index chains by `chain.colorIndex % CHAIN_COLORS.length`.
+ */
+export const CHAIN_COLORS: string[] = [
+  '#636EFA',
+  '#EF553B',
+  '#00CC96',
+  '#AB63FA',
+  '#FFA15A',
+  '#19D3F3',
+];
+
+/**
  * Creates a Plotly contour trace configuration
  * @param x - 1D array of x coordinates
  * @param y - 1D array of y coordinates

@@ -1,23 +1,17 @@
 import './TracePlots.css';
 import Plot from 'react-plotly.js';
 import type * as Plotly from 'plotly.js';
-import { TRACE_PLOT, HMC_SAMPLER } from '../utils/plotConfig.json';
-import { createTracePlotTrace } from '../utils/plotFunctions';
-import type { ChainState, EssResult, PerChainEss } from '../types';
+import { TRACE_PLOT } from '../utils/plotConfig.json';
+import { createTracePlotTrace, CHAIN_COLORS } from '../utils/plotFunctions';
+import type { ChainState, GroupStats } from '../types';
 
 interface Props {
   chains?: ChainState[];
   burnIn?: number;
-  rHat?: EssResult | null;
-  ess?: EssResult | null;
-  essPerChain?: PerChainEss[] | null;
+  groupStats?: GroupStats[];
 }
 
-/**
- * @param {Array<{chainId: *, ess: {x: number, y: number}}>|null|undefined} essPerChain
- *   When provided, each chain's ESS is sourced from this array instead of the aggregate `ess` prop.
- */
-function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
+function TracePlots({ chains = [], burnIn, groupStats = [] }: Props) {
   const commonLayout = {
     ...TRACE_PLOT.layout,
     showlegend: true,
@@ -30,10 +24,7 @@ function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
 
   chains.forEach((chain, index) => {
     if (chain.samples && chain.samples.length > 0) {
-      const color =
-        index === 0
-          ? HMC_SAMPLER.styles.primaryColor
-          : HMC_SAMPLER.styles.secondaryColor;
+      const color = CHAIN_COLORS[chain.colorIndex % CHAIN_COLORS.length];
       const label = `Chain ${index + 1} (${chain.samplerType})`;
       xTraces.push(
         ...createTracePlotTrace(chain.samples, 'x', burnIn, color, label)
@@ -45,9 +36,9 @@ function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
   });
 
   const formatRHat = (val: number | null | undefined) =>
-    val == null ? '' : !isFinite(val) ? ' (R̂ = ∞)' : ` (R̂ = ${val.toFixed(2)})`;
+    val == null ? '' : !isFinite(val) ? ' R̂=∞' : ` R̂=${val.toFixed(2)}`;
   const formatESS = (val: number | null | undefined) =>
-    val ? ` (ESS = ${Math.round(val)})` : '';
+    val ? ` ESS=${Math.round(val)}` : '';
   const formatRate = (chain: ChainState) => {
     const acc = chain.acceptedCount ?? chain.samples.length;
     const total = acc + (chain.rejectedCount ?? 0);
@@ -62,10 +53,7 @@ function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
             <span
               className="chain-label"
               style={{
-                color:
-                  index === 0
-                    ? HMC_SAMPLER.styles.primaryColor
-                    : HMC_SAMPLER.styles.secondaryColor,
+                color: CHAIN_COLORS[chain.colorIndex % CHAIN_COLORS.length],
                 fontWeight: 'bold',
               }}
             >
@@ -81,27 +69,12 @@ function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
           X Trace{' '}
-          {rHat && <span className="stat-label">{formatRHat(rHat.x)}</span>}
-          {!essPerChain && ess && (
-            <span className="stat-label">{formatESS(ess.x)}</span>
-          )}
-          {essPerChain &&
-            essPerChain.map((entry) => {
-              const chainIndex = chains.findIndex(
-                (c) => c.id === entry.chainId
-              );
-              const label =
-                chainIndex >= 0
-                  ? `Chain ${chainIndex + 1} (${chains[chainIndex].samplerType})`
-                  : `Chain ${entry.chainId}`;
-              return (
-                entry.ess && (
-                  <span key={String(entry.chainId)} className="stat-label">
-                    {label}: ESS={Math.round(entry.ess.x)}
-                  </span>
-                )
-              );
-            })}
+          {groupStats.map((gs) => (
+            <span key={gs.samplerType} className="stat-label">
+              {gs.samplerType}:{formatRHat(gs.rHat?.x)}
+              {formatESS(gs.ess?.x)}
+            </span>
+          ))}
         </h4>
         <Plot
           data={xTraces}
@@ -116,27 +89,12 @@ function TracePlots({ chains = [], burnIn, rHat, ess, essPerChain }: Props) {
       <div className="trace-plot-wrapper">
         <h4 className="trace-title">
           Y Trace{' '}
-          {rHat && <span className="stat-label">{formatRHat(rHat.y)}</span>}
-          {!essPerChain && ess && (
-            <span className="stat-label">{formatESS(ess.y)}</span>
-          )}
-          {essPerChain &&
-            essPerChain.map((entry) => {
-              const chainIndex = chains.findIndex(
-                (c) => c.id === entry.chainId
-              );
-              const label =
-                chainIndex >= 0
-                  ? `Chain ${chainIndex + 1} (${chains[chainIndex].samplerType})`
-                  : `Chain ${entry.chainId}`;
-              return (
-                entry.ess && (
-                  <span key={String(entry.chainId)} className="stat-label">
-                    {label}: ESS={Math.round(entry.ess.y)}
-                  </span>
-                )
-              );
-            })}
+          {groupStats.map((gs) => (
+            <span key={gs.samplerType} className="stat-label">
+              {gs.samplerType}:{formatRHat(gs.rHat?.y)}
+              {formatESS(gs.ess?.y)}
+            </span>
+          ))}
         </h4>
         <Plot
           data={yTraces}

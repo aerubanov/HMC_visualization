@@ -2,10 +2,11 @@ import './Visualizer.css';
 import { useRef } from 'react';
 import Plot from 'react-plotly.js';
 import type * as Plotly from 'plotly.js';
-import { GENERAL, HMC_SAMPLER } from '../utils/plotConfig.json';
+import { GENERAL } from '../utils/plotConfig.json';
 import {
   createTrajectoryTrace,
   createSamplesTrace,
+  CHAIN_COLORS,
 } from '../utils/plotFunctions';
 import type { ChainState, AxisLimits } from '../types';
 
@@ -66,10 +67,7 @@ function Visualizer({
   const traces: Partial<Plotly.PlotData>[] = [contourData!];
 
   (chains ?? []).forEach((chain, index) => {
-    const isPrimary = index === 0;
-    const color = isPrimary
-      ? HMC_SAMPLER.styles.primaryColor
-      : HMC_SAMPLER.styles.secondaryColor;
+    const color = CHAIN_COLORS[chain.colorIndex % CHAIN_COLORS.length];
     const label = `Chain ${index + 1} (${chain.samplerType})`;
 
     if (chain.samples && chain.samples.length > 0) {

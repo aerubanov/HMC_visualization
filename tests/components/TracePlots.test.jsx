@@ -19,6 +19,7 @@ describe('TracePlots', () => {
     {
       id: 0,
       samplerType: 'HMC',
+      colorIndex: 0,
       samples: [
         { x: 0.1, y: 0.2 },
         { x: 0.3, y: 0.4 },
@@ -33,6 +34,7 @@ describe('TracePlots', () => {
     {
       id: 0,
       samplerType: 'HMC',
+      colorIndex: 0,
       samples: [
         { x: 0.1, y: 0.2 },
         { x: 0.3, y: 0.4 },
@@ -44,6 +46,7 @@ describe('TracePlots', () => {
     {
       id: 1,
       samplerType: 'GIBBS',
+      colorIndex: 1,
       samples: [
         { x: 1.1, y: 1.2 },
         { x: 1.3, y: 1.4 },
@@ -104,11 +107,13 @@ describe('TracePlots', () => {
 
     expect(xPlotData[0].name).toBe('Chain 1 (HMC) (Burn-in)');
     expect(xPlotData[0].y).toEqual([0.1, 0.3]);
+    // Burn-in trace uses rgba color
     expect(xPlotData[0].line.color).toMatch(/^rgba\(\d+, \d+, \d+, 0\.3\)$/);
 
     expect(xPlotData[1].name).toBe('Chain 1 (HMC)');
     expect(xPlotData[1].y).toEqual([0.3, 0.5]);
-    expect(xPlotData[1].line.color).toBe('#d73a49');
+    // Valid samples trace uses the chain's CHAIN_COLORS color
+    expect(xPlotData[1].line.color).toBe('#636EFA'); // CHAIN_COLORS[0]
   });
 
   test('handles second chain correctly', () => {
@@ -125,11 +130,26 @@ describe('TracePlots', () => {
     expect(xPlotData[1].y).toEqual([1.1, 1.3]);
   });
 
+  test('uses CHAIN_COLORS based on colorIndex for each chain', () => {
+    render(<TracePlots chains={mockChainsDual} iterationCount={150} />);
+    const plots = screen.getAllByTestId('plotly-plot');
+
+    const xPlotData = JSON.parse(
+      plots[0].querySelector('[data-testid="plot-data"]').textContent
+    );
+
+    // Chain 0 has colorIndex 0 → CHAIN_COLORS[0] = '#636EFA'
+    expect(xPlotData[0].line.color).toBe('#636EFA');
+    // Chain 1 has colorIndex 1 → CHAIN_COLORS[1] = '#EF553B'
+    expect(xPlotData[1].line.color).toBe('#EF553B');
+  });
+
   test('handles chains of different lengths correctly', () => {
     const chainsDiffLen = [
       {
         id: 0,
         samplerType: 'HMC',
+        colorIndex: 0,
         samples: [
           { x: 1, y: 1 },
           { x: 2, y: 2 },
@@ -142,6 +162,7 @@ describe('TracePlots', () => {
       {
         id: 1,
         samplerType: 'GIBBS',
+        colorIndex: 1,
         samples: [
           { x: 10, y: 10 },
           { x: 20, y: 20 },
@@ -167,30 +188,78 @@ describe('TracePlots', () => {
     expect(xPlotData[1].y).toEqual([10, 20]);
   });
 
-  test('displays R-hat values when provided', () => {
-    const rHat = { x: 1.05, y: 1.1 };
+  test('displays groupStats rHat and ess values when provided', () => {
+    const groupStats = [
+      {
+        samplerType: 'HMC',
+        rHat: { x: 1.05, y: 1.1 },
+        ess: { x: 200, y: 150 },
+      },
+    ];
 
     render(
-      <TracePlots chains={mockChainsDual} rHat={rHat} iterationCount={150} />
+      <TracePlots
+        chains={mockChainsSingle}
+        groupStats={groupStats}
+        iterationCount={150}
+      />
     );
 
-    expect(screen.getByText('(R̂ = 1.05)')).toBeInTheDocument();
-    expect(screen.getByText('(R̂ = 1.10)')).toBeInTheDocument();
+    // Should show R-hat and ESS for HMC group in both X and Y trace headers
+    expect(screen.getAllByText(/R̂=1\.05/)).toHaveLength(1); // X trace
+    expect(screen.getAllByText(/R̂=1\.10/)).toHaveLength(1); // Y trace
+    expect(screen.getAllByText(/ESS=200/)).toHaveLength(1); // X trace
+    expect(screen.getAllByText(/ESS=150/)).toHaveLength(1); // Y trace
+  });
+
+  test('displays R-hat values when provided', () => {
+    const groupStats = [
+      {
+        samplerType: 'HMC',
+        rHat: { x: 1.05, y: 1.1 },
+        ess: null,
+      },
+    ];
+
+    render(
+      <TracePlots
+        chains={mockChainsDual}
+        groupStats={groupStats}
+        iterationCount={150}
+      />
+    );
+
+    expect(screen.getByText(/R̂=1\.05/)).toBeInTheDocument();
+    expect(screen.getByText(/R̂=1\.10/)).toBeInTheDocument();
   });
 
   test('displays infinity symbol for infinite R-hat', () => {
-    const rHat = { x: Infinity, y: Infinity };
+    const groupStats = [
+      {
+        samplerType: 'HMC',
+        rHat: { x: Infinity, y: Infinity },
+        ess: null,
+      },
+    ];
 
     render(
-      <TracePlots chains={mockChainsDual} rHat={rHat} iterationCount={150} />
+      <TracePlots
+        chains={mockChainsDual}
+        groupStats={groupStats}
+        iterationCount={150}
+      />
     );
 
-    expect(screen.getAllByText('(R̂ = ∞)')).toHaveLength(2);
+    expect(screen.getAllByText(/R̂=∞/)).toHaveLength(2); // X trace + Y trace
   });
 
-  test('does not display R-hat values when null', () => {
+  test('does not display R-hat values when groupStats is empty', () => {
     render(
-      <TracePlots chains={mockChainsSingle} rHat={null} iterationCount={150} />
+      <TracePlots
+        chains={mockChainsSingle}
+        groupStats={[]}
+        iterationCount={150}
+      />
     );
 
     expect(screen.getByText('X Trace')).toBeInTheDocument();
@@ -198,20 +267,24 @@ describe('TracePlots', () => {
   });
 
   test('displays ESS values when provided', () => {
-    const rHat = { x: 1.1, y: 1.1 };
-    const ess = { x: 100, y: 200 };
+    const groupStats = [
+      {
+        samplerType: 'HMC',
+        rHat: { x: 1.1, y: 1.1 },
+        ess: { x: 100, y: 200 },
+      },
+    ];
 
     render(
       <TracePlots
         chains={mockChainsDual}
-        rHat={rHat}
-        ess={ess}
+        groupStats={groupStats}
         iterationCount={150}
       />
     );
 
-    expect(screen.getByText('(ESS = 100)')).toBeInTheDocument();
-    expect(screen.getByText('(ESS = 200)')).toBeInTheDocument();
+    expect(screen.getByText(/ESS=100/)).toBeInTheDocument();
+    expect(screen.getByText(/ESS=200/)).toBeInTheDocument();
   });
 
   test('displays acceptance and rejection counts for single chain', () => {
@@ -247,6 +320,7 @@ describe('TracePlots', () => {
     const chains = [
       {
         id: 0,
+        colorIndex: 0,
         samples: [
           { x: 1, y: 1 },
           { x: 2, y: 2 },
@@ -268,6 +342,7 @@ describe('TracePlots', () => {
     const chains = [
       {
         id: 0,
+        colorIndex: 0,
         samples: [],
         acceptedCount: 8,
         rejectedCount: 2,
@@ -278,52 +353,29 @@ describe('TracePlots', () => {
     expect(screen.getByText(/Rate: 80\.0%/i)).toBeInTheDocument();
   });
 
-  test('displays per-chain ESS from essPerChain when provided', () => {
-    const essPerChain = [
-      { chainId: 0, ess: { x: 42, y: 37 } },
-      { chainId: 1, ess: { x: 55, y: 61 } },
+  test('displays two groupStats entries for mixed-type scenario', () => {
+    const groupStats = [
+      {
+        samplerType: 'HMC',
+        rHat: null,
+        ess: { x: 42, y: 37 },
+      },
+      {
+        samplerType: 'GIBBS',
+        rHat: null,
+        ess: { x: 55, y: 61 },
+      },
     ];
 
     render(
-      <TracePlots
-        chains={mockChainsDual}
-        burnIn={0}
-        essPerChain={essPerChain}
-      />
+      <TracePlots chains={mockChainsDual} burnIn={0} groupStats={groupStats} />
     );
 
-    // Per-chain ESS should appear in X Trace and Y Trace headers
+    // ESS values should appear for HMC and GIBBS entries
     expect(screen.getAllByText(/ESS=42/)).toHaveLength(1);
     expect(screen.getAllByText(/ESS=37/)).toHaveLength(1);
     expect(screen.getAllByText(/ESS=55/)).toHaveLength(1);
     expect(screen.getAllByText(/ESS=61/)).toHaveLength(1);
-  });
-
-  test('shows aggregate ESS from ess prop when essPerChain is absent', () => {
-    const ess = { x: 150, y: 175 };
-
-    render(<TracePlots chains={mockChainsSingle} burnIn={0} ess={ess} />);
-
-    expect(screen.getByText('(ESS = 150)')).toBeInTheDocument();
-    expect(screen.getByText('(ESS = 175)')).toBeInTheDocument();
-    // No per-chain ESS format
-    expect(screen.queryByText(/ESS=/)).not.toBeInTheDocument();
-  });
-
-  test('renders fallback "Chain <id>" label when essPerChain chainId is not in chains', () => {
-    // chains has id 0 only; essPerChain references id 99 which does not exist
-    const essPerChain = [{ chainId: 99, ess: { x: 50, y: 45 } }];
-
-    render(
-      <TracePlots
-        chains={mockChainsSingle}
-        burnIn={0}
-        essPerChain={essPerChain}
-      />
-    );
-
-    // Fallback label "Chain 99" should appear (no samplerType lookup possible)
-    expect(screen.getAllByText(/Chain 99/)).toHaveLength(2); // once in X Trace, once in Y Trace
   });
 
   // Test case 21: Zero-division guard
@@ -331,6 +383,7 @@ describe('TracePlots', () => {
     const chains = [
       {
         id: 0,
+        colorIndex: 0,
         samples: [],
         acceptedCount: 0,
         rejectedCount: 0,
@@ -339,5 +392,12 @@ describe('TracePlots', () => {
 
     render(<TracePlots chains={chains} />);
     expect(screen.getByText(/Rate: 0\.0%/i)).toBeInTheDocument();
+  });
+
+  test('chain header uses CHAIN_COLORS for color styling', () => {
+    render(<TracePlots chains={mockChainsDual} iterationCount={150} />);
+    // Chain headers should render with their labels
+    expect(screen.getByText(/Chain 1:/)).toBeInTheDocument();
+    expect(screen.getByText(/Chain 2:/)).toBeInTheDocument();
   });
 });

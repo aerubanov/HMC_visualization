@@ -26,60 +26,75 @@ describe('HistogramPlots', () => {
     { x: 50, y: 60 },
   ];
 
-  it('should render without crashing with valid data', () => {
-    const histogramData = {
-      samples: mockSamples,
-    };
-    render(<HistogramPlots histogramData={histogramData} />);
+  it('should render without crashing with valid histogramDataByType', () => {
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: mockSamples,
+      },
+    ];
+    render(<HistogramPlots histogramDataByType={histogramDataByType} />);
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
     const plots = screen.getAllByTestId('plotly-plot');
     expect(plots).toHaveLength(3); // X marginal, Y marginal, 2D joint
   });
 
-  it('should render with combined dual chains', () => {
-    // In actual app, these would be combined by the controller
-    const histogramData = {
-      samples: [...mockSamples, ...mockSamples2],
-    };
-    render(<HistogramPlots histogramData={histogramData} />);
+  it('should render with combined dual chains merged by type', () => {
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: [...mockSamples, ...mockSamples2],
+      },
+    ];
+    render(<HistogramPlots histogramDataByType={histogramDataByType} />);
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
     const plots = screen.getAllByTestId('plotly-plot');
     expect(plots).toHaveLength(3);
   });
 
-  it('should handle null samples gracefully', () => {
-    const { container } = render(
-      <HistogramPlots
-        histogramData={{
-          samples: null,
-        }}
-      />
-    );
-
+  it('should handle null/undefined histogramDataByType gracefully', () => {
+    const { container } = render(<HistogramPlots />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('should handle empty samples array', () => {
-    const { container } = render(
-      <HistogramPlots
-        histogramData={{
-          samples: [],
-        }}
-      />
-    );
-
+  it('should handle empty histogramDataByType array', () => {
+    const { container } = render(<HistogramPlots histogramDataByType={[]} />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('should render the filtered samples provided in histogramData', () => {
+  it('should handle entries with no samples gracefully (returns null)', () => {
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: [],
+      },
+    ];
+    const { container } = render(
+      <HistogramPlots histogramDataByType={histogramDataByType} />
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('should render the filtered samples provided in histogramDataByType', () => {
     const filteredSamples = [{ x: 5, y: 6 }];
-    const histogramData = {
-      samples: filteredSamples,
-    };
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: filteredSamples,
+      },
+    ];
 
-    render(<HistogramPlots histogramData={histogramData} />);
+    render(<HistogramPlots histogramDataByType={histogramDataByType} />);
 
     const plots = screen.getAllByTestId('plotly-plot');
     // Check X marginal or 2D joint
@@ -89,53 +104,59 @@ describe('HistogramPlots', () => {
     expect(xPlotData[0].x).toEqual([5]);
   });
 
-  it('should handle missing optional props', () => {
-    render(<HistogramPlots histogramData={{ samples: mockSamples }} />);
-
+  it('should handle missing optional props (no axisLimits)', () => {
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: mockSamples,
+      },
+    ];
+    render(<HistogramPlots histogramDataByType={histogramDataByType} />);
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
   });
-  it('renders two labelled panels when histogramDataPerChain has two entries', () => {
-    const histogramDataPerChain = [
+
+  it('renders two labelled panels when histogramDataByType has two entries', () => {
+    const histogramDataByType = [
       {
-        chainId: 0,
+        chainId: 'HMC',
         samplerType: 'HMC',
-        label: 'Chain 1 (HMC)',
+        label: 'HMC',
         samples: mockSamples,
       },
       {
-        chainId: 1,
-        samplerType: 'Gibbs',
-        label: 'Chain 2 (Gibbs)',
+        chainId: 'GIBBS',
+        samplerType: 'GIBBS',
+        label: 'Gibbs',
         samples: mockSamples2,
       },
     ];
 
-    render(
-      <HistogramPlots
-        histogramData={{ samples: [] }}
-        histogramDataPerChain={histogramDataPerChain}
-      />
-    );
+    render(<HistogramPlots histogramDataByType={histogramDataByType} />);
 
-    expect(screen.getByText('Chain 1 (HMC)')).toBeInTheDocument();
-    expect(screen.getByText('Chain 2 (Gibbs)')).toBeInTheDocument();
+    expect(screen.getByText('HMC')).toBeInTheDocument();
+    expect(screen.getByText('Gibbs')).toBeInTheDocument();
 
-    // Each chain should have 3 plots (2D, X marginal, Y marginal) → 6 total
+    // Each type should have 3 plots (2D, X marginal, Y marginal) → 6 total
     const plots = screen.getAllByTestId('plotly-plot');
     expect(plots).toHaveLength(6);
   });
 
-  it('renders legacy single-panel when histogramDataPerChain is null', () => {
-    render(
-      <HistogramPlots
-        histogramData={{ samples: mockSamples }}
-        histogramDataPerChain={null}
-      />
-    );
+  it('renders single panel when histogramDataByType has one entry', () => {
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: mockSamples,
+      },
+    ];
+
+    render(<HistogramPlots histogramDataByType={histogramDataByType} />);
 
     expect(screen.getByText('Posterior Distributions')).toBeInTheDocument();
-    // No per-chain labels
-    expect(screen.queryByText('Chain 1 (HMC)')).not.toBeInTheDocument();
+    expect(screen.getByText('HMC')).toBeInTheDocument();
 
     const plots = screen.getAllByTestId('plotly-plot');
     expect(plots).toHaveLength(3);
@@ -143,9 +164,17 @@ describe('HistogramPlots', () => {
 
   it('should respect axisLimits prop', () => {
     const axisLimits = { xMin: -10, xMax: 10, yMin: -20, yMax: 20 };
+    const histogramDataByType = [
+      {
+        chainId: 'HMC',
+        samplerType: 'HMC',
+        label: 'HMC',
+        samples: mockSamples,
+      },
+    ];
     render(
       <HistogramPlots
-        histogramData={{ samples: mockSamples }}
+        histogramDataByType={histogramDataByType}
         axisLimits={axisLimits}
       />
     );

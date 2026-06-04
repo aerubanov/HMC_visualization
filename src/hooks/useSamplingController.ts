@@ -7,42 +7,20 @@ import { DEFAULT_SAMPLER_PARAMS } from '../samplers/defaultConfigs';
 import { generateGrid, createContourTrace } from '../utils/plotFunctions';
 import { CONTOUR } from '../utils/plotConfig.json';
 import { calculateGelmanRubin, calculateESS } from '../utils/statistics';
-import {
-  prepareHistogramData,
-  prepareHistogramDataPerChain,
-} from '../utils/histogramUtils';
+import { prepareHistogramDataByType } from '../utils/histogramUtils';
 import { logger } from '../utils/logger';
 import type {
   ChainState,
   ChainConfigUpdate,
   Point,
   AxisLimits,
-  EssResult,
-  PerChainEss,
   HistogramDataPerChain,
+  GroupStats,
+  SamplerType,
 } from '../types';
 
-/**
- * Returns true when all chains share the same samplerType and sampler params
- * (ignoring chain-specific fields: initialPosition and seed), or when there is
- * at most one chain. When this returns false, R-hat is meaningless and ESS
- * should be computed per-chain.
- */
-export function allChainsCompatible(chains: ChainState[]): boolean {
-  if (chains.length <= 1) return true;
-  const ref = chains[0];
-  return chains.every((c) => {
-    if (c.samplerType !== ref.samplerType) return false;
-    const refParams = ref.params || {};
-    const cParams = c.params || {};
-    const keys = new Set([...Object.keys(refParams), ...Object.keys(cParams)]);
-    return [...keys].every(
-      (k) =>
-        (cParams as unknown as Record<string, unknown>)[k] ===
-        (refParams as unknown as Record<string, unknown>)[k]
-    );
-  });
-}
+/** Maximum number of simultaneous sampling chains. */
+export const MAX_CHAINS = 6;
 
 /**
  * Custom hook to control the HMC sampling process using independent chains.
@@ -66,6 +44,7 @@ export default function useSamplingController() {
       acceptedCount: 0,
       error: null,
       currentParticle: null,
+      colorIndex: 0,
     },
   ]);
 
@@ -80,17 +59,11 @@ export default function useSamplingController() {
   // Fast sampling mode
   const [useFastMode, setUseFastMode] = useState(false);
 
-  // Statistics
-  const [rHat, setRHat] = useState<EssResult | null>(null);
-  const [ess, setEss] = useState<EssResult | null>(null);
-  const [histogramData, setHistogramData] = useState<{ samples: Point[] }>({
-    samples: [],
-  });
-  // Per-chain stats — populated only when chains have different sampler types
-  const [histogramDataPerChain, setHistogramDataPerChain] = useState<
-    HistogramDataPerChain[] | null
-  >(null);
-  const [essPerChain, setEssPerChain] = useState<PerChainEss[] | null>(null);
+  // Statistics — unified by sampler type group
+  const [histogramDataByType, setHistogramDataByType] = useState<
+    HistogramDataPerChain[]
+  >([]);
+  const [groupStats, setGroupStats] = useState<GroupStats[]>([]);
 
   // Visualization params
   const [burnIn, setBurnIn] = useState(10);
@@ -104,6 +77,9 @@ export default function useSamplingController() {
   const logpInstanceRef = useRef<Logp | null>(
     null
   ) as React.MutableRefObject<Logp | null>;
+
+  // Monotonically increasing color slot counter; 0 is consumed by the initial chain.
+  const nextColorIndexRef = useRef(1) as React.MutableRefObject<number>;
 
   // Cancellation flag for non-fast sampling loop
   const cancelRef = useRef<boolean>(false) as React.MutableRefObject<boolean>;
@@ -181,75 +157,44 @@ export default function useSamplingController() {
     samplingChainsRef.current.forEach((chain) => chain.reset());
     setIterationCount(0);
     setIsRunning(false);
-    setRHat(null);
-    setEss(null);
-    setHistogramData({ samples: [] });
-    setHistogramDataPerChain(null);
-    setEssPerChain(null);
+    setGroupStats([]);
+    setHistogramDataByType([]);
     setChainErrors({});
     syncChainsState();
   }, [syncChainsState]);
 
-  // Sync stats when chains change OR iteration stops
+  // Sync stats when chains change OR iteration stops.
+  // Unified path: group by samplerType, compute histogram and diagnostics per group.
   useEffect(() => {
     if (isRunning) return;
 
-    if (allChainsCompatible(chains)) {
-      // --- Same sampler type: existing merged behaviour ---
-      const samples1 = chains[0]?.samples || [];
-      const samples2 = chains[1]?.samples || [];
-      const hasSecondChain = chains.length > 1;
+    setHistogramDataByType(prepareHistogramDataByType(chains, burnIn));
 
-      const hData = prepareHistogramData(
-        samples1,
-        samples2,
-        burnIn,
-        hasSecondChain
-      );
-      setHistogramData(hData);
-      setHistogramDataPerChain(null);
-      setEssPerChain(null);
-
-      const validSamples1 = samples1.slice(burnIn);
-      const validSamples2 = samples2.slice(burnIn);
-
-      if (
-        hasSecondChain &&
-        validSamples1.length > 1 &&
-        validSamples2.length > 1
-      ) {
-        setRHat(calculateGelmanRubin([validSamples1, validSamples2]));
-        setEss(calculateESS([validSamples1, validSamples2]));
-      } else if (!hasSecondChain && validSamples1.length > 1) {
-        setRHat(null);
-        setEss(calculateESS([validSamples1]));
-      } else {
-        setRHat(null);
-        setEss(null);
-      }
-    } else {
-      // --- Different sampler types: per-chain stats ---
-      setHistogramData({ samples: [] });
-      setRHat(null);
-      setEss(null);
-
-      setHistogramDataPerChain(prepareHistogramDataPerChain(chains, burnIn));
-
-      const perChainEss: PerChainEss[] = chains.map((c) => {
-        const postBurnin = (c.samples || []).slice(burnIn);
-        if (postBurnin.length <= 1) {
-          logger.warn('ESS skipped — insufficient samples', {
-            chainId: c.id,
-            count: postBurnin.length,
-          });
-        }
-        return {
-          chainId: c.id,
-          ess: postBurnin.length > 1 ? calculateESS([postBurnin]) : null,
-        };
-      });
-      setEssPerChain(perChainEss);
+    // Build per-type post-burn-in sample arrays
+    const byType = new Map<SamplerType, Point[][]>();
+    for (const chain of chains) {
+      const postBurnin = (chain.samples || []).slice(burnIn);
+      const arr = byType.get(chain.samplerType) ?? [];
+      arr.push(postBurnin);
+      byType.set(chain.samplerType, arr);
     }
+
+    const newGroupStats: GroupStats[] = [];
+    for (const [samplerType, chainSampleArrays] of byType) {
+      const validChains = chainSampleArrays.filter((s) => s.length > 1);
+      if (validChains.length === 0) {
+        logger.warn('ESS skipped — insufficient samples for all chains', {
+          samplerType,
+        });
+      }
+      newGroupStats.push({
+        samplerType,
+        rHat:
+          validChains.length >= 2 ? calculateGelmanRubin(validChains) : null,
+        ess: validChains.length >= 1 ? calculateESS(validChains) : null,
+      });
+    }
+    setGroupStats(newGroupStats);
   }, [isRunning, chains, burnIn]);
 
   const setLogP = useCallback(
@@ -337,26 +282,43 @@ export default function useSamplingController() {
 
   /** Add a new chain, optionally pre-seeded with partial config. */
   const addChain = useCallback((config: Partial<ChainState> = {}): void => {
-    const id = config.id || Date.now();
-    const samplerType = config.samplerType || 'HMC';
-    const newConfig: ChainState = {
-      id,
-      samplerType,
-      params: { ...DEFAULT_SAMPLER_PARAMS[samplerType] },
-      initialPosition: { x: 1, y: 1 },
-      seed: null,
-      samples: [],
-      trajectory: [],
-      rejectedCount: 0,
-      acceptedCount: 0,
-      error: null,
-      currentParticle: null,
-      ...config,
-    };
-    // Create the ref instance here; the useEffect will skip it since the id is already present
-    samplingChainsRef.current.set(id, new SamplingChain(newConfig));
-    setChains((prev) => [...prev, newConfig]);
-    logger.info('Chain added', { id, sampler: samplerType });
+    // Capture current length before setState to determine the colorIndex.
+    // We read chains from state snapshot via functional updater below.
+    setChains((prev) => {
+      if (prev.length >= MAX_CHAINS) return prev;
+
+      const id = config.id || Date.now();
+      const samplerType = config.samplerType || 'HMC';
+      // colorIndex is monotonically increasing: never reuse a slot freed by removeChain
+      const colorIndex =
+        config.colorIndex !== undefined
+          ? config.colorIndex
+          : nextColorIndexRef.current;
+      nextColorIndexRef.current = Math.max(
+        nextColorIndexRef.current,
+        colorIndex + 1
+      );
+      const newConfig: ChainState = {
+        id,
+        samplerType,
+        params: { ...DEFAULT_SAMPLER_PARAMS[samplerType] },
+        initialPosition: { x: 1, y: 1 },
+        seed: null,
+        samples: [],
+        trajectory: [],
+        rejectedCount: 0,
+        acceptedCount: 0,
+        error: null,
+        currentParticle: null,
+        // colorIndex is set before spreading config so caller can override it explicitly
+        colorIndex,
+        ...config,
+      };
+      // Create the ref instance here; the useEffect will skip it since the id is already present
+      samplingChainsRef.current.set(id, new SamplingChain(newConfig));
+      logger.info('Chain added', { id, sampler: samplerType, colorIndex });
+      return [...prev, newConfig];
+    });
   }, []);
 
   /** Remove a chain by id. No-op while sampling is running. */
@@ -487,7 +449,6 @@ export default function useSamplingController() {
     cancelRef.current = true;
   }, []);
 
-  // Derived properties for UI backwards compatibility (mostly handling fast mode rendering and general stats)
   return {
     logP,
     chains,
@@ -518,11 +479,10 @@ export default function useSamplingController() {
     setBurnIn,
     axisLimits,
     setAxisLimits,
-    rHat,
-    ess,
-    histogramData,
-    // Per-chain stats (non-null only when chains have different sampler types)
-    essPerChain,
-    histogramDataPerChain,
+
+    // Unified per-type-group statistics
+    histogramDataByType,
+    groupStats,
+    MAX_CHAINS,
   };
 }

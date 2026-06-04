@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import useSamplingController, {
-  allChainsCompatible,
+  MAX_CHAINS,
 } from '../../src/hooks/useSamplingController';
 import { HMCSampler } from '../../src/samplers/HMCSampler';
 import { GibbsSampler } from '../../src/samplers/GibbsSampler';
@@ -1722,7 +1722,7 @@ describe('useSamplingController', () => {
   });
 
   describe('R-hat Statistics', () => {
-    it('should calculate rHat after sampling finishes with second chain', async () => {
+    it('should calculate groupStats[0].rHat after sampling finishes with second chain', async () => {
       const { result } = renderHook(() => useSamplingController());
 
       // Setup: Enable second chain and set positions
@@ -1734,14 +1734,9 @@ describe('useSamplingController', () => {
       });
 
       // Mock step behavior for distinct chains.
-      // Since the mock is shared, we distinguish chains based on the input particle's position.
-      // Chain 1 starts at 0, Chain 2 starts at 10.
       HMCSampler.prototype.step.mockImplementation((particle) => {
         const x = particle.q.x;
-        // If particle is near 0, treat as Chain 1 (return 0).
-        // If near 10, treat as Chain 2 (return 10).
         const nextX = Math.abs(x) < 5 ? 0 : 10;
-
         return {
           q: { x: nextX, y: nextX },
           p: { x: 0, y: 0 },
@@ -1762,22 +1757,20 @@ describe('useSamplingController', () => {
         { timeout: 1000 }
       );
 
-      // Verify rHat
-      // We expect it to be calculated because we have samples and finished running
-      expect(result.current.rHat).not.toBeNull();
-      expect(result.current.rHat).toHaveProperty('x');
-      expect(result.current.rHat).toHaveProperty('y');
+      // groupStats should have one entry for HMC with non-null rHat
+      expect(result.current.groupStats).toHaveLength(1);
+      expect(result.current.groupStats[0].rHat).not.toBeNull();
+      expect(result.current.groupStats[0].rHat).toHaveProperty('x');
+      expect(result.current.groupStats[0].rHat).toHaveProperty('y');
     });
 
-    it('should not calculate rHat if second chain is disabled', async () => {
+    it('should have null rHat in groupStats if only one chain present', async () => {
       const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('-(x^2)/2');
-        result.current.removeChain(1);
       });
 
-      // Mock step
       HMCSampler.prototype.step.mockReturnValue({
         q: { x: 0, y: 0 },
         p: { x: 0, y: 0 },
@@ -1786,13 +1779,16 @@ describe('useSamplingController', () => {
       });
 
       act(() => {
-        result.current.sampleSteps(3);
+        result.current.sampleSteps(15);
       });
 
       await waitFor(() => expect(result.current.isRunning).toBe(false));
 
-      expect(result.current.rHat).toBeNull();
+      // Single chain → rHat is null, ess may be non-null
+      expect(result.current.groupStats).toHaveLength(1);
+      expect(result.current.groupStats[0].rHat).toBeNull();
     });
+
     it('should exclude burn-in samples from R-hat calculation', async () => {
       const { result } = renderHook(() => useSamplingController());
 
@@ -1803,23 +1799,14 @@ describe('useSamplingController', () => {
 
       let callCount = 0;
       HMCSampler.prototype.step.mockImplementation(() => {
-        // Implementation calls step() twice per loop iteration (once per chain).
-        // callCount 0: chain 1, iter 0
-        // callCount 1: chain 2, iter 0
-        // callCount 2: chain 1, iter 1
-        // ...
         const iteration = Math.floor(callCount / 2);
         const isChain2 = callCount % 2 !== 0;
         callCount++;
 
-        // Burn-in is 10. So iterations 0-9 are burn-in.
         let val;
         if (iteration < 10) {
-          // Burn-in: Make them distinct.
-          // Chain 1 -> -100, Chain 2 -> 100
           val = isChain2 ? 100 : -100;
         } else {
-          // Valid: Both 0 (Perfect convergence)
           val = 0;
         }
 
@@ -1831,34 +1818,73 @@ describe('useSamplingController', () => {
         };
       });
 
-      // Run 20 steps (10 burn-in + 10 valid)
       act(() => {
         result.current.sampleSteps(20);
       });
 
       await waitFor(() => expect(result.current.isRunning).toBe(false));
 
-      // If burn-in (first 10) was included, we'd have -100 and 100, variance would be high (R-hat >> 1).
-      // With only valid samples (all 0), R-hat should be 1 (Converged).
-
-      expect(result.current.rHat).not.toBeNull();
+      expect(result.current.groupStats).toHaveLength(1);
+      expect(result.current.groupStats[0].rHat).not.toBeNull();
       // Since valid samples are identical (constant 0), W=0, B=0 => returns 1.
-      expect(result.current.rHat.x).toBe(1);
+      expect(result.current.groupStats[0].rHat.x).toBe(1);
     });
   });
 });
 
-describe('Statistics Calculation (R-hat and ESS)', () => {
-  it('should initialize statistics as null', () => {
+describe('Statistics Calculation (groupStats and histogramDataByType)', () => {
+  it('should initialize groupStats with one HMC entry (null rHat, null ess — no samples yet)', () => {
     const { result } = renderHook(() => useSamplingController());
-    expect(result.current.rHat).toBeNull();
-    expect(result.current.ess).toBeNull();
+    // The useEffect fires immediately; with 0 samples, groupStats has 1 entry with nulls
+    expect(result.current.groupStats).toHaveLength(1);
+    expect(result.current.groupStats[0].samplerType).toBe('HMC');
+    expect(result.current.groupStats[0].rHat).toBeNull();
+    expect(result.current.groupStats[0].ess).toBeNull();
   });
 
-  // Validating that ESS updates would require mocking calculateESS or simulating enough samples
-  // Since we mock HMCSampler, we can simulate samples accumulation.
-  // However, calculateESS is imported in the hook.
-  // If we want to test that 'setEss' is called, we need to inspect the state changes.
+  it('should initialize histogramDataByType with one empty HMC entry', () => {
+    const { result } = renderHook(() => useSamplingController());
+    // prepareHistogramDataByType runs immediately; chain has no samples yet
+    expect(result.current.histogramDataByType).toHaveLength(1);
+    expect(result.current.histogramDataByType[0].samplerType).toBe('HMC');
+    expect(result.current.histogramDataByType[0].samples).toEqual([]);
+  });
+
+  it('should have null rHat/ess in groupStats after reset (no samples)', async () => {
+    const { result } = renderHook(() => useSamplingController());
+
+    act(() => {
+      result.current.setLogP('-(x^2)/2');
+    });
+
+    HMCSampler.prototype.step.mockReturnValue({
+      q: { x: 1, y: 1 },
+      p: { x: 0, y: 0 },
+      accepted: true,
+      trajectory: [{ x: 1, y: 1 }],
+    });
+
+    act(() => {
+      result.current.sampleSteps(20);
+    });
+
+    await waitFor(() => expect(result.current.isRunning).toBe(false), {
+      timeout: 1000,
+    });
+
+    // Before reset — has ess
+    expect(result.current.groupStats[0]?.ess).not.toBeNull();
+
+    // After reset — syncChainsState re-triggers the effect; 0 samples → null stats
+    act(() => {
+      result.current.reset();
+    });
+
+    // The effect re-runs with empty samples, producing null rHat and null ess
+    expect(result.current.groupStats[0]?.rHat).toBeNull();
+    expect(result.current.groupStats[0]?.ess).toBeNull();
+    expect(result.current.histogramDataByType[0]?.samples).toEqual([]);
+  });
 });
 
 describe('Burn-in Parameter', () => {
@@ -1893,16 +1919,14 @@ describe('Burn-in Parameter', () => {
     expect(result.current.burnIn).toBe(20);
   });
 
-  it('should recalculate R-hat when burn-in changes with dual chains', async () => {
+  it('should recalculate groupStats rHat when burn-in changes with dual chains', async () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Setup: Enable second chain
     act(() => {
       result.current.setLogP('-(x^2)/2');
       result.current.addChain({ id: 1 });
     });
 
-    // Mock step to return consistent values
     let callCount = 0;
     HMCSampler.prototype.step.mockImplementation(() => {
       const val = callCount++;
@@ -1914,7 +1938,6 @@ describe('Burn-in Parameter', () => {
       };
     });
 
-    // Run 30 steps
     act(() => {
       result.current.sampleSteps(30);
     });
@@ -1923,31 +1946,25 @@ describe('Burn-in Parameter', () => {
       timeout: 1000,
     });
 
-    // Initial R-hat with burn-in = 10 (20 valid samples)
-    const initialRHat = result.current.rHat;
+    const initialRHat = result.current.groupStats[0]?.rHat;
     expect(initialRHat).not.toBeNull();
 
-    // Change burn-in to 5
     act(() => {
       result.current.setBurnIn(5);
     });
 
-    // R-hat should recalculate with new burn-in (25 valid samples)
-    const newRHat = result.current.rHat;
+    const newRHat = result.current.groupStats[0]?.rHat;
     expect(newRHat).not.toBeNull();
-    // Values should be different because we're using different sample ranges
     expect(newRHat).not.toBe(initialRHat);
   });
 
-  it('should recalculate ESS when burn-in changes', async () => {
+  it('should recalculate groupStats ESS when burn-in changes', async () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Setup
     act(() => {
       result.current.setLogP('-(x^2)/2');
     });
 
-    // Mock step
     let callCount = 0;
     HMCSampler.prototype.step.mockImplementation(() => {
       const val = callCount++;
@@ -1959,7 +1976,6 @@ describe('Burn-in Parameter', () => {
       };
     });
 
-    // Run 30 steps
     act(() => {
       result.current.sampleSteps(30);
     });
@@ -1968,32 +1984,26 @@ describe('Burn-in Parameter', () => {
       timeout: 1000,
     });
 
-    // Initial ESS with burn-in = 10
-    const initialESS = result.current.ess;
+    const initialESS = result.current.groupStats[0]?.ess;
     expect(initialESS).not.toBeNull();
 
-    // Change burn-in to 15
     act(() => {
       result.current.setBurnIn(15);
     });
 
-    // ESS should recalculate
-    const newESS = result.current.ess;
+    const newESS = result.current.groupStats[0]?.ess;
     expect(newESS).not.toBeNull();
-    // Values should be different
     expect(newESS).not.toBe(initialESS);
   });
 
   it('should handle burn-in = 0 (all samples valid)', async () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Setup
     act(() => {
       result.current.setLogP('-(x^2)/2');
       result.current.setBurnIn(0);
     });
 
-    // Mock step
     HMCSampler.prototype.step.mockReturnValue({
       q: { x: 0, y: 0 },
       p: { x: 0, y: 0 },
@@ -2001,7 +2011,6 @@ describe('Burn-in Parameter', () => {
       trajectory: [{ x: 0, y: 0 }],
     });
 
-    // Run 20 steps
     act(() => {
       result.current.sampleSteps(20);
     });
@@ -2010,20 +2019,17 @@ describe('Burn-in Parameter', () => {
       timeout: 1000,
     });
 
-    // All 20 samples should be valid, ESS should be calculated
     expect(result.current.chains[0].samples).toHaveLength(20);
-    expect(result.current.ess).not.toBeNull();
+    expect(result.current.groupStats[0]?.ess).not.toBeNull();
   });
 
-  it('should clear statistics when burn-in > sample count', async () => {
+  it('should have null ess in groupStats when burn-in > sample count', async () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Setup
     act(() => {
       result.current.setLogP('-(x^2)/2');
     });
 
-    // Mock step
     HMCSampler.prototype.step.mockReturnValue({
       q: { x: 0, y: 0 },
       p: { x: 0, y: 0 },
@@ -2031,7 +2037,6 @@ describe('Burn-in Parameter', () => {
       trajectory: [{ x: 0, y: 0 }],
     });
 
-    // Run 15 steps
     act(() => {
       result.current.sampleSteps(15);
     });
@@ -2040,29 +2045,26 @@ describe('Burn-in Parameter', () => {
       timeout: 1000,
     });
 
-    // Should have ESS with burn-in = 10
-    expect(result.current.ess).not.toBeNull();
+    // Should have ess with burn-in = 10
+    expect(result.current.groupStats[0]?.ess).not.toBeNull();
 
-    // Set burn-in > sample count
     act(() => {
       result.current.setBurnIn(20);
     });
 
-    // Statistics should be null (no valid samples)
-    expect(result.current.rHat).toBeNull();
-    expect(result.current.ess).toBeNull();
+    // After burn-in > sample count, ess should be null (0 valid samples ≤ 1)
+    expect(result.current.groupStats[0]?.ess).toBeNull();
+    expect(result.current.groupStats[0]?.rHat).toBeNull();
   });
 
-  it('should clear statistics when burn-in leaves insufficient samples for dual chains', async () => {
+  it('should have null rHat in groupStats when burn-in leaves insufficient samples for dual chains', async () => {
     const { result } = renderHook(() => useSamplingController());
 
-    // Setup: Enable second chain
     act(() => {
       result.current.setLogP('-(x^2)/2');
       result.current.addChain({ id: 1 });
     });
 
-    // Mock step
     HMCSampler.prototype.step.mockReturnValue({
       q: { x: 0, y: 0 },
       p: { x: 0, y: 0 },
@@ -2070,7 +2072,6 @@ describe('Burn-in Parameter', () => {
       trajectory: [{ x: 0, y: 0 }],
     });
 
-    // Run 12 steps (12 samples per chain)
     act(() => {
       result.current.sampleSteps(12);
     });
@@ -2079,17 +2080,17 @@ describe('Burn-in Parameter', () => {
       timeout: 1000,
     });
 
-    // With burn-in = 10, we have 2 valid samples per chain, R-hat should be calculated
-    expect(result.current.rHat).not.toBeNull();
+    // With burn-in = 10, 2 valid samples per chain → rHat computed
+    expect(result.current.groupStats[0]?.rHat).not.toBeNull();
 
-    // Set burn-in to 11 (only 1 valid sample per chain)
     act(() => {
       result.current.setBurnIn(11);
     });
 
-    // Statistics should be null (need >1 sample per chain)
-    expect(result.current.rHat).toBeNull();
-    expect(result.current.ess).toBeNull();
+    // Only 1 valid sample per chain → rHat null
+    expect(result.current.groupStats[0]?.rHat).toBeNull();
+    // 1 valid sample → ess null (need > 1)
+    expect(result.current.groupStats[0]?.ess).toBeNull();
   });
 });
 
@@ -2756,87 +2757,100 @@ describe('Code Quality Fix Tests', () => {
     expect(Object.keys(result.current.chainErrors)).toEqual([]);
   });
 
-  describe('allChainsCompatible helper', () => {
-    it('returns true when all chains have the same samplerType', () => {
-      const chains = [
-        { id: 0, samplerType: 'HMC' },
-        { id: 1, samplerType: 'HMC' },
-      ];
-      expect(allChainsCompatible(chains)).toBe(true);
+  describe('colorIndex assignment', () => {
+    it('first chain (initial) gets colorIndex 0', () => {
+      const { result } = renderHook(() => useSamplingController());
+      expect(result.current.chains[0].colorIndex).toBe(0);
     });
 
-    it('returns true for a single chain', () => {
-      expect(allChainsCompatible([{ id: 0, samplerType: 'HMC' }])).toBe(true);
+    it('second chain gets colorIndex 1, third gets 2', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.addChain({ id: 1 });
+      });
+
+      await waitFor(() => expect(result.current.chains).toHaveLength(2));
+      expect(result.current.chains[1].colorIndex).toBe(1);
+
+      act(() => {
+        result.current.addChain({ id: 2 });
+      });
+
+      await waitFor(() => expect(result.current.chains).toHaveLength(3));
+      expect(result.current.chains[2].colorIndex).toBe(2);
     });
 
-    it('returns true for empty array', () => {
-      expect(allChainsCompatible([])).toBe(true);
-    });
+    it('colorIndex is not reused after remove+add', async () => {
+      const { result } = renderHook(() => useSamplingController());
 
-    it('returns false when at least one chain has a different samplerType', () => {
-      const chains = [
-        { id: 0, samplerType: 'HMC' },
-        { id: 1, samplerType: 'Gibbs' },
-      ];
-      expect(allChainsCompatible(chains)).toBe(false);
-    });
+      // Add chain 1 (colorIndex 1) then chain 2 (colorIndex 2)
+      act(() => {
+        result.current.addChain({ id: 1 });
+        result.current.addChain({ id: 2 });
+      });
 
-    it('returns false when chains have the same samplerType but different params', () => {
-      const chains = [
-        {
-          id: 0,
-          samplerType: 'HMC',
-          params: { epsilon: 0.1, numLeapfrog: 10 },
-        },
-        {
-          id: 1,
-          samplerType: 'HMC',
-          params: { epsilon: 0.3, numLeapfrog: 10 },
-        },
-      ];
-      expect(allChainsCompatible(chains)).toBe(false);
-    });
+      await waitFor(() => expect(result.current.chains).toHaveLength(3));
 
-    it('returns true when chains differ only in seed or initialPosition', () => {
-      const chains = [
-        {
-          id: 0,
-          samplerType: 'HMC',
-          params: { epsilon: 0.1, numLeapfrog: 10 },
-          seed: 42,
-          initialPosition: { x: 0, y: 0 },
-        },
-        {
-          id: 1,
-          samplerType: 'HMC',
-          params: { epsilon: 0.1, numLeapfrog: 10 },
-          seed: 99,
-          initialPosition: { x: 1, y: 1 },
-        },
-      ];
-      expect(allChainsCompatible(chains)).toBe(true);
+      // Remove chain at id=1 (colorIndex 1)
+      act(() => {
+        result.current.removeChain(1);
+      });
+
+      await waitFor(() => expect(result.current.chains).toHaveLength(2));
+
+      // Add a new chain — it should get colorIndex 3 (next unassigned slot), not reuse colorIndex 2
+      act(() => {
+        result.current.addChain({ id: 3 });
+      });
+
+      await waitFor(() => expect(result.current.chains).toHaveLength(3));
+      const newChain = result.current.chains.find((c) => c.id === 3);
+      expect(newChain).toBeDefined();
+      expect(newChain.colorIndex).toBe(3);
     });
   });
 
-  describe('mixed sampler type post-processing', () => {
-    it('sets essPerChain and clears rHat/histogramData when chain types differ', async () => {
+  describe('MAX_CHAINS guard', () => {
+    it('MAX_CHAINS is exported and equals 6', () => {
+      expect(MAX_CHAINS).toBe(6);
+    });
+
+    it('addChain is a no-op when chains.length >= MAX_CHAINS', async () => {
       const { result } = renderHook(() => useSamplingController());
 
-      // Set up logP so sampling can run
+      // Add chains until we hit the limit (start with 1, need 5 more)
+      for (let i = 1; i < MAX_CHAINS; i++) {
+        act(() => {
+          result.current.addChain({ id: i });
+        });
+      }
+
+      await waitFor(() =>
+        expect(result.current.chains).toHaveLength(MAX_CHAINS)
+      );
+
+      // 7th call should be a no-op
+      act(() => {
+        result.current.addChain({ id: 99 });
+      });
+
+      expect(result.current.chains).toHaveLength(MAX_CHAINS);
+    });
+  });
+
+  describe('groupStats and histogramDataByType', () => {
+    it('sets groupStats with 2 entries when chains have different samplerTypes', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
       act(() => {
         result.current.setLogP('-(x^2 + y^2)/2');
       });
 
-      // Add a second chain with a different sampler type
       act(() => {
-        result.current.addChain({ id: 99, samplerType: 'Gibbs' });
+        result.current.addChain({ id: 99, samplerType: 'GIBBS' });
       });
 
-      // Simulate samples on chain 0 (HMC mock) and chain 1 (Gibbs mock)
-      // Inject samples directly through setChainConfig — we test the useEffect branch,
-      // so we need isRunning to be false. The effect fires when chains state changes.
-
-      // Mock steps to populate samples
       let hmcCallCount = 0;
       HMCSampler.prototype.step.mockImplementation(() => {
         const val = hmcCallCount++;
@@ -2859,7 +2873,6 @@ describe('Code Quality Fix Tests', () => {
         };
       });
 
-      // Run a batch of steps so both chains accumulate samples
       act(() => {
         result.current.sampleSteps(20);
       });
@@ -2868,28 +2881,33 @@ describe('Code Quality Fix Tests', () => {
         timeout: 3000,
       });
 
-      // With burnIn=10 (default), after 20 samples each chain has 10 post-burnin samples
-      // Different sampler types → essPerChain populated, rHat null, histogramData empty
-      expect(result.current.rHat).toBeNull();
-      expect(result.current.histogramData).toEqual({ samples: [] });
-      expect(result.current.essPerChain).not.toBeNull();
-      expect(result.current.essPerChain).toHaveLength(2);
-      expect(result.current.essPerChain[0]).toHaveProperty('chainId');
-      expect(result.current.essPerChain[0]).toHaveProperty('ess');
-      expect(result.current.essPerChain[0].ess).toHaveProperty('x');
-      expect(result.current.essPerChain[0].ess).toHaveProperty('y');
-      expect(result.current.histogramDataPerChain).not.toBeNull();
-      expect(result.current.histogramDataPerChain).toHaveLength(2);
+      // Two sampler types → 2 groupStats entries
+      expect(result.current.groupStats).toHaveLength(2);
+      expect(result.current.histogramDataByType).toHaveLength(2);
+
+      const hmcStats = result.current.groupStats.find(
+        (g) => g.samplerType === 'HMC'
+      );
+      const gibbsStats = result.current.groupStats.find(
+        (g) => g.samplerType === 'GIBBS'
+      );
+      expect(hmcStats).toBeDefined();
+      expect(gibbsStats).toBeDefined();
+
+      // Each group has only 1 chain → rHat null, ess may be non-null
+      expect(hmcStats.rHat).toBeNull();
+      expect(gibbsStats.rHat).toBeNull();
+      expect(hmcStats.ess).not.toBeNull();
+      expect(gibbsStats.ess).not.toBeNull();
     });
 
-    it('keeps existing merged behaviour (rHat, histogramData) when all chains share same samplerType', async () => {
+    it('single groupStats entry with rHat when all chains are same type', async () => {
       const { result } = renderHook(() => useSamplingController());
 
       act(() => {
         result.current.setLogP('-(x^2 + y^2)/2');
       });
 
-      // Add a second HMC chain (same type)
       act(() => {
         result.current.addChain({ id: 88, samplerType: 'HMC' });
       });
@@ -2913,12 +2931,79 @@ describe('Code Quality Fix Tests', () => {
         timeout: 3000,
       });
 
-      // Same sampler type → rHat computed, essPerChain null, histogramDataPerChain null
-      expect(result.current.rHat).not.toBeNull();
-      expect(result.current.essPerChain).toBeNull();
-      expect(result.current.histogramDataPerChain).toBeNull();
-      expect(result.current.histogramData).not.toBeNull();
-      expect(result.current.histogramData).toHaveProperty('samples');
+      // All HMC → 1 groupStats entry with rHat computed (2 chains)
+      expect(result.current.groupStats).toHaveLength(1);
+      expect(result.current.groupStats[0].samplerType).toBe('HMC');
+      expect(result.current.groupStats[0].rHat).not.toBeNull();
+      expect(result.current.histogramDataByType).toHaveLength(1);
+    });
+
+    it('3 HMC chains → groupStats has 1 entry with non-null rHat and ess', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+        result.current.addChain({ id: 1 });
+        result.current.addChain({ id: 2 });
+      });
+
+      await waitFor(() => expect(result.current.chains).toHaveLength(3));
+
+      let hmcCallCount = 0;
+      HMCSampler.prototype.step.mockImplementation(() => {
+        const val = hmcCallCount++;
+        return {
+          q: { x: val * 0.1, y: val * 0.2 },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: val * 0.1, y: val * 0.2 }],
+        };
+      });
+
+      act(() => {
+        result.current.sampleSteps(20);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false), {
+        timeout: 3000,
+      });
+
+      expect(result.current.groupStats).toHaveLength(1);
+      expect(result.current.groupStats[0].samplerType).toBe('HMC');
+      expect(result.current.groupStats[0].rHat).not.toBeNull();
+      expect(result.current.groupStats[0].ess).not.toBeNull();
+      expect(result.current.histogramDataByType).toHaveLength(1);
+    });
+
+    it('single chain → groupStats has 1 entry with rHat null and ess non-null', async () => {
+      const { result } = renderHook(() => useSamplingController());
+
+      act(() => {
+        result.current.setLogP('-(x^2 + y^2)/2');
+      });
+
+      let hmcCallCount = 0;
+      HMCSampler.prototype.step.mockImplementation(() => {
+        const val = hmcCallCount++;
+        return {
+          q: { x: val * 0.1, y: val * 0.2 },
+          p: { x: 0, y: 0 },
+          accepted: true,
+          trajectory: [{ x: val * 0.1, y: val * 0.2 }],
+        };
+      });
+
+      act(() => {
+        result.current.sampleSteps(20);
+      });
+
+      await waitFor(() => expect(result.current.isRunning).toBe(false), {
+        timeout: 3000,
+      });
+
+      expect(result.current.groupStats).toHaveLength(1);
+      expect(result.current.groupStats[0].rHat).toBeNull();
+      expect(result.current.groupStats[0].ess).not.toBeNull();
     });
   });
 
