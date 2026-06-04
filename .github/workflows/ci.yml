@@ -34,6 +34,9 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Type check
+        run: npx tsc --noEmit
+
   test:
     name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
