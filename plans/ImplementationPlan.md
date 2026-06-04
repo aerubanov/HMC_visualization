@@ -13,3 +13,4 @@ Interactive React app for visualizing HMC and Gibbs sampling algorithms side-by-
 - [Stop Sampling](plans/stop-sampling-plan.md) — "Stop Sampling" button that cancels an in-progress standard-mode run early via a cancellation ref checked inside the requestAnimationFrame loop.
 - [Debug Logging](plans/debug-logging-plan.md) — structured console logger with DEBUG/INFO/WARN/ERROR levels; level auto-selected from Vite build mode (dev → DEBUG, prod → INFO); instrumented in useSamplingController and SamplingChain.
 - [TypeScript Migration](plans/typescript-migration-plan.md) — migrate all src/ files from JS to TS with strict: true; shared types in src/types.ts; PropTypes removed and replaced by TS interfaces; tests remain in JS.
+- [N-Chains Support](plans/n-chains-plan.md) — support up to 6 simultaneous chains; unified group-by-sampler-type histogram/diagnostics; color-coded collapsible chain panels in Controls.
