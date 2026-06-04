@@ -2,64 +2,48 @@
  * Utility functions for histogram data preparation and calculations
  */
 
-import type { Point, HistogramDataPerChain, ChainState } from '../types';
+import type {
+  Point,
+  HistogramDataPerChain,
+  ChainState,
+  SamplerType,
+} from '../types';
 
 /**
- * Prepares histogram data by filtering out burn-in samples and combining chains
- * @param samples - Array of sample objects from chain 1
- * @param samples2 - Array of sample objects from chain 2 (optional)
- * @param burnIn - Number of samples to exclude as burn-in
- * @param useSecondChain - Whether to include second chain data
- */
-export function prepareHistogramData(
-  samples: Point[],
-  samples2: Point[],
-  burnIn: number,
-  useSecondChain: boolean
-): { samples: Point[] } {
-  let combinedSamples: Point[] = [];
-
-  // Handle chain 1
-  if (samples && Array.isArray(samples) && burnIn < samples.length) {
-    combinedSamples = samples.slice(burnIn);
-  }
-
-  // Handle chain 2 if enabled
-  if (
-    useSecondChain &&
-    samples2 &&
-    Array.isArray(samples2) &&
-    burnIn < samples2.length
-  ) {
-    combinedSamples = combinedSamples.concat(samples2.slice(burnIn));
-  }
-
-  return { samples: combinedSamples };
-}
-
-/**
- * Prepares per-chain histogram data for mixed sampler type scenarios.
- * Each chain's burn-in samples are removed independently; chains are NOT merged.
+ * Groups chains by samplerType, merges post-burn-in samples within each group,
+ * and returns one `HistogramDataPerChain` entry per sampler type present.
  *
- * @param chains - Array of chain objects (each must have id, samplerType, and samples fields)
- * @param burnIn - Number of initial samples to exclude as burn-in
+ * @param chains - Array of chain state objects
+ * @param burnIn - Number of initial samples to exclude as burn-in per chain
  */
-export function prepareHistogramDataPerChain(
-  chains: Pick<ChainState, 'id' | 'samplerType' | 'samples'>[],
+export function prepareHistogramDataByType(
+  chains: ChainState[],
   burnIn: number
 ): HistogramDataPerChain[] {
-  return chains.map((chain, index) => {
+  if (!chains || chains.length === 0) return [];
+
+  // Group post-burn-in samples by samplerType
+  const byType = new Map<SamplerType, Point[]>();
+  for (const chain of chains) {
     const postBurnin =
       chain.samples && Array.isArray(chain.samples)
         ? chain.samples.slice(burnIn)
         : [];
-    return {
-      chainId: chain.id,
-      samplerType: chain.samplerType,
-      label: `Chain ${index + 1} (${chain.samplerType})`,
-      samples: postBurnin,
-    };
-  });
+    const existing = byType.get(chain.samplerType) ?? [];
+    byType.set(chain.samplerType, existing.concat(postBurnin));
+  }
+
+  // Convert to HistogramDataPerChain entries, one per type
+  const result: HistogramDataPerChain[] = [];
+  for (const [samplerType, samples] of byType) {
+    result.push({
+      chainId: samplerType,
+      samplerType,
+      label: samplerType === 'HMC' ? 'HMC' : 'Gibbs',
+      samples,
+    });
+  }
+  return result;
 }
 
 interface HistogramBins {

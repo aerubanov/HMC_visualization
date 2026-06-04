@@ -1,6 +1,8 @@
 import './Controls.css';
 import { useState } from 'react';
 import { PREDEFINED_FUNCTIONS } from '../utils/predefinedFunctions';
+import { CHAIN_COLORS } from '../utils/plotFunctions';
+import { MAX_CHAINS } from '../hooks/useSamplingController';
 import type {
   ChainState,
   ChainConfigUpdate,
@@ -244,195 +246,217 @@ function Controls({
             key={chain.id}
             className="control-section"
             style={{
-              borderLeft: `4px solid ${index === 0 ? '#2c3e50' : '#e74c3c'}`,
+              borderLeft: `4px solid ${CHAIN_COLORS[chain.colorIndex % CHAIN_COLORS.length]}`,
               paddingLeft: '8px',
             }}
           >
-            <h3 className="section-title">Chain {index + 1} Configuration</h3>
-            {/* TODO: display per-chain error from chainErrors prop */}
-
-            <div className="control-group">
-              <label
-                htmlFor={`sampler-type-${chain.id}`}
-                className="control-label"
+            <details open={index === 0}>
+              <summary
+                className="section-title"
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
               >
-                Sampler Type
-              </label>
-              <select
-                id={`sampler-type-${chain.id}`}
-                className="control-select"
-                style={{ width: '100%', padding: '6px' }}
-                value={chain.samplerType}
-                onChange={(e) =>
-                  setChainConfig?.(chain.id, {
-                    samplerType: e.target.value as SamplerType,
-                  })
-                }
-              >
-                <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
-                <option value="GIBBS">Gibbs Sampling</option>
-              </select>
-            </div>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '2px',
+                    backgroundColor:
+                      CHAIN_COLORS[chain.colorIndex % CHAIN_COLORS.length],
+                    flexShrink: 0,
+                  }}
+                />
+                Chain {index + 1} — {chain.samplerType}
+              </summary>
+              {/* TODO: display per-chain error from chainErrors prop */}
 
-            {chain.samplerType === 'HMC' && (
-              <>
-                <div className="control-group">
-                  <label
-                    htmlFor={`epsilon-${chain.id}`}
-                    className="control-label"
-                  >
-                    Epsilon (ε)
-                  </label>
-                  <input
-                    id={`epsilon-${chain.id}`}
-                    type="number"
-                    className="control-input"
-                    step="0.001"
-                    value={(chain.params as HMCParams).epsilon}
-                    onChange={(e) =>
-                      setChainConfig?.(chain.id, {
-                        params: {
-                          ...chain.params,
-                          epsilon: parseFloat(e.target.value),
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div className="control-group">
-                  <label
-                    htmlFor={`leapfrog-steps-${chain.id}`}
-                    className="control-label"
-                  >
-                    L (Leapfrog Steps)
-                  </label>
-                  <input
-                    id={`leapfrog-steps-${chain.id}`}
-                    type="number"
-                    className="control-input"
-                    step="1"
-                    value={(chain.params as HMCParams).L}
-                    onChange={(e) =>
-                      setChainConfig?.(chain.id, {
-                        params: {
-                          ...chain.params,
-                          L: parseInt(e.target.value),
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </>
-            )}
-            {chain.samplerType === 'GIBBS' && (
               <div className="control-group">
                 <label
-                  htmlFor={`slice-width-${chain.id}`}
+                  htmlFor={`sampler-type-${chain.id}`}
                   className="control-label"
                 >
-                  Slice Width (w)
+                  Sampler Type
                 </label>
-                <input
-                  id={`slice-width-${chain.id}`}
-                  type="number"
-                  className="control-input"
-                  step="0.1"
-                  value={(chain.params as GibbsParams).w}
+                <select
+                  id={`sampler-type-${chain.id}`}
+                  className="control-select"
+                  style={{ width: '100%', padding: '6px' }}
+                  value={chain.samplerType}
                   onChange={(e) =>
                     setChainConfig?.(chain.id, {
-                      params: {
-                        ...chain.params,
-                        w: parseFloat(e.target.value),
-                      },
+                      samplerType: e.target.value as SamplerType,
                     })
                   }
-                />
-              </div>
-            )}
-
-            <div
-              className="control-row"
-              style={{ display: 'flex', gap: '8px' }}
-            >
-              <div className="control-group" style={{ flex: 1 }}>
-                <label
-                  htmlFor={`initial-x-${chain.id}`}
-                  className="control-label"
                 >
-                  X
-                </label>
-                <input
-                  id={`initial-x-${chain.id}`}
-                  type="text"
-                  className="control-input"
-                  value={localPositions[chain.id]?.x ?? ''}
-                  onChange={(e) => {
-                    setLocalPositions((p) => ({
-                      ...p,
-                      [chain.id]: { ...p[chain.id], x: e.target.value },
-                    }));
-                    handlePosChange(chain.id, 'x', e.target.value);
-                  }}
-                />
+                  <option value="HMC">Hamiltonian Monte Carlo (HMC)</option>
+                  <option value="GIBBS">Gibbs Sampling</option>
+                </select>
               </div>
-              <div className="control-group" style={{ flex: 1 }}>
-                <label
-                  htmlFor={`initial-y-${chain.id}`}
-                  className="control-label"
-                >
-                  Y
-                </label>
-                <input
-                  id={`initial-y-${chain.id}`}
-                  type="text"
-                  className="control-input"
-                  value={localPositions[chain.id]?.y ?? ''}
-                  onChange={(e) => {
-                    setLocalPositions((p) => ({
-                      ...p,
-                      [chain.id]: { ...p[chain.id], y: e.target.value },
-                    }));
-                    handlePosChange(chain.id, 'y', e.target.value);
-                  }}
-                />
-              </div>
-            </div>
 
-            {useSeededMode && (
-              <div className="control-group">
-                <label className="control-label">Seed</label>
-                <input
-                  type="number"
-                  className="control-input"
-                  style={{ width: '100%' }}
-                  value={localSeedStrings[chain.id] ?? ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setLocalSeedStrings((prev) => ({
-                      ...prev,
-                      [chain.id]: raw,
-                    }));
-                    const s = parseInt(raw);
-                    if (!isNaN(s)) {
-                      setLocalSeeds((prev) => ({ ...prev, [chain.id]: s }));
-                      setChainConfig?.(chain.id, { seed: s });
+              {chain.samplerType === 'HMC' && (
+                <>
+                  <div className="control-group">
+                    <label
+                      htmlFor={`epsilon-${chain.id}`}
+                      className="control-label"
+                    >
+                      Epsilon (ε)
+                    </label>
+                    <input
+                      id={`epsilon-${chain.id}`}
+                      type="number"
+                      className="control-input"
+                      step="0.001"
+                      value={(chain.params as HMCParams).epsilon}
+                      onChange={(e) =>
+                        setChainConfig?.(chain.id, {
+                          params: {
+                            ...chain.params,
+                            epsilon: parseFloat(e.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="control-group">
+                    <label
+                      htmlFor={`leapfrog-steps-${chain.id}`}
+                      className="control-label"
+                    >
+                      L (Leapfrog Steps)
+                    </label>
+                    <input
+                      id={`leapfrog-steps-${chain.id}`}
+                      type="number"
+                      className="control-input"
+                      step="1"
+                      value={(chain.params as HMCParams).L}
+                      onChange={(e) =>
+                        setChainConfig?.(chain.id, {
+                          params: {
+                            ...chain.params,
+                            L: parseInt(e.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
+              {chain.samplerType === 'GIBBS' && (
+                <div className="control-group">
+                  <label
+                    htmlFor={`slice-width-${chain.id}`}
+                    className="control-label"
+                  >
+                    Slice Width (w)
+                  </label>
+                  <input
+                    id={`slice-width-${chain.id}`}
+                    type="number"
+                    className="control-input"
+                    step="0.1"
+                    value={(chain.params as GibbsParams).w}
+                    onChange={(e) =>
+                      setChainConfig?.(chain.id, {
+                        params: {
+                          ...chain.params,
+                          w: parseFloat(e.target.value),
+                        },
+                      })
                     }
-                  }}
-                />
-              </div>
-            )}
+                  />
+                </div>
+              )}
 
-            {index > 0 && (
-              <div className="control-group">
-                <button
-                  className="btn btn-secondary"
-                  style={{ width: '100%' }}
-                  onClick={() => removeChain?.(chain.id)}
-                >
-                  Remove
-                </button>
+              <div
+                className="control-row"
+                style={{ display: 'flex', gap: '8px' }}
+              >
+                <div className="control-group" style={{ flex: 1 }}>
+                  <label
+                    htmlFor={`initial-x-${chain.id}`}
+                    className="control-label"
+                  >
+                    X
+                  </label>
+                  <input
+                    id={`initial-x-${chain.id}`}
+                    type="text"
+                    className="control-input"
+                    value={localPositions[chain.id]?.x ?? ''}
+                    onChange={(e) => {
+                      setLocalPositions((p) => ({
+                        ...p,
+                        [chain.id]: { ...p[chain.id], x: e.target.value },
+                      }));
+                      handlePosChange(chain.id, 'x', e.target.value);
+                    }}
+                  />
+                </div>
+                <div className="control-group" style={{ flex: 1 }}>
+                  <label
+                    htmlFor={`initial-y-${chain.id}`}
+                    className="control-label"
+                  >
+                    Y
+                  </label>
+                  <input
+                    id={`initial-y-${chain.id}`}
+                    type="text"
+                    className="control-input"
+                    value={localPositions[chain.id]?.y ?? ''}
+                    onChange={(e) => {
+                      setLocalPositions((p) => ({
+                        ...p,
+                        [chain.id]: { ...p[chain.id], y: e.target.value },
+                      }));
+                      handlePosChange(chain.id, 'y', e.target.value);
+                    }}
+                  />
+                </div>
               </div>
-            )}
+
+              {useSeededMode && (
+                <div className="control-group">
+                  <label className="control-label">Seed</label>
+                  <input
+                    type="number"
+                    className="control-input"
+                    style={{ width: '100%' }}
+                    value={localSeedStrings[chain.id] ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setLocalSeedStrings((prev) => ({
+                        ...prev,
+                        [chain.id]: raw,
+                      }));
+                      const s = parseInt(raw);
+                      if (!isNaN(s)) {
+                        setLocalSeeds((prev) => ({ ...prev, [chain.id]: s }));
+                        setChainConfig?.(chain.id, { seed: s });
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {index > 0 && (
+                <div className="control-group">
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: '100%' }}
+                    onClick={() => removeChain?.(chain.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </details>
           </section>
         ))}
 
@@ -441,8 +465,11 @@ function Controls({
             className="btn btn-secondary"
             style={{ width: '100%' }}
             onClick={() => addChain?.()}
+            disabled={chains.length >= MAX_CHAINS}
           >
-            Add another chain
+            {chains.length >= MAX_CHAINS
+              ? `Maximum ${MAX_CHAINS} chains reached`
+              : 'Add another chain'}
           </button>
         </section>
 

@@ -9,8 +9,7 @@ import {
 import type { Point, AxisLimits, HistogramDataPerChain } from '../types';
 
 interface Props {
-  histogramData: { samples: Point[] };
-  histogramDataPerChain?: HistogramDataPerChain[] | null;
+  histogramDataByType?: HistogramDataPerChain[];
   axisLimits?: AxisLimits;
 }
 
@@ -153,45 +152,36 @@ function SingleHistogramPanel({
   );
 }
 
-function HistogramPlots({
-  histogramData,
-  histogramDataPerChain,
-  axisLimits,
-}: Props) {
-  // Per-chain split layout: one panel per chain with its sampler label
-  if (histogramDataPerChain && histogramDataPerChain.length > 0) {
-    return (
-      <div className="histogram-plots-container">
-        <h3 className="section-title">Posterior Distributions</h3>
-        <div className="histogram-per-chain-row">
-          {histogramDataPerChain.map((entry) => (
-            <div
-              key={String(entry.chainId)}
-              className="histogram-per-chain-panel"
-            >
-              <h4 className="histogram-chain-label">{entry.label}</h4>
-              <SingleHistogramPanel
-                samples={entry.samples}
-                axisLimits={axisLimits}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+function HistogramPlots({ histogramDataByType, axisLimits }: Props) {
+  if (!histogramDataByType || histogramDataByType.length === 0) {
+    return null;
   }
 
-  // Legacy single-panel path (unchanged)
-  const { samples } = histogramData;
-
-  if (!samples || samples.length === 0) {
+  // Check if any entry has samples
+  const hasAnySamples = histogramDataByType.some(
+    (entry) => entry.samples && entry.samples.length > 0
+  );
+  if (!hasAnySamples) {
     return null;
   }
 
   return (
     <div className="histogram-plots-container">
       <h3 className="section-title">Posterior Distributions</h3>
-      <SingleHistogramPanel samples={samples} axisLimits={axisLimits} />
+      <div className="histogram-per-chain-row">
+        {histogramDataByType.map((entry) => (
+          <div
+            key={String(entry.chainId)}
+            className="histogram-per-chain-panel"
+          >
+            <h4 className="histogram-chain-label">{entry.label}</h4>
+            <SingleHistogramPanel
+              samples={entry.samples}
+              axisLimits={axisLimits}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
