@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": ["AskUserQuestion"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | { read -r f; echo \"$f\" | grep -q '^/home/anatolii/Projects/HMC_visualization/src/' && cd /home/anatolii/Projects/HMC_visualization && npx eslint --max-warnings=0 \"$f\"; } 2>/dev/null || true",
+            "statusMessage": "Running ESLint..."
+          }
+        ]
+      }
+    ]
+  }
+}
