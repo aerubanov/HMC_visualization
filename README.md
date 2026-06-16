@@ -194,3 +194,8 @@ This project uses [GitHub Actions](./.github/workflows/ci.yml) for continuous in
 - Verifies build artifacts
 
 **All jobs must pass before a PR can be merged.**
+
+## Contributing
+
+- [Contributing Guide](./docs/contributing.md) — fork-based workflow, dev setup, code style, testing conventions, and PR checklist for new contributors.
+- [Adding a New Sampler](./docs/adding-a-sampler.md) — step-by-step walkthrough of every file to touch when implementing a new sampling algorithm.
